@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -900,9 +901,11 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
               <div id="cfgPrazoStatus" style="font-size:12px;color:var(--ink3);margin-top:4px;"></div>
             </div>
             <div style="display:flex;gap:8px;">
-              <button class="btn-sm" id="btnCfgAlterarPrazo" style="background:#3B82F6;color:white;border-color:#3B82F6;">Alterar</button>
-              <button class="btn-sm" id="btnCfgCancelarPrazo" style="background:#DC2626;color:white;border-color:#DC2626;">Cancelar prazo</button>
+              <button class="btn-sm" id="btnCfgAlterarPrazo" style="background:#3B82F6;color:white;border-color:#3B82F6;">Alterar prazo</button>
             </div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3);line-height:1.4;">
+            💡 O prazo permanece ativo até você definir um novo. Isso garante que os estagiários pendentes continuem sinalizados.
           </div>
         </div>
         
@@ -980,6 +983,12 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
       <div class="prow"><span class="prow-lbl">Certificação</span><span class="prow-val" id="pCertificacao">—</span></div>
       <div class="prow"><span class="prow-lbl">Aniversário</span><span class="prow-val" id="pNascimento">—</span></div>
       <div class="prow"><span class="prow-lbl">Última atualização de produção</span><span class="prow-val" id="pUltimaAtualizacao">—</span></div>
+      <div id="pMarcarAtualizadoWrap" style="display:none;padding:8px 0 4px;">
+        <button id="btnMarcarAtualizado" style="font-size:12px;padding:6px 14px;border:1px solid var(--or);border-radius:8px;background:var(--surface);color:var(--or);font-weight:600;cursor:pointer;">
+          ✓ Marcar produção como verificada hoje
+        </button>
+        <div style="font-size:10px;color:var(--ink3);margin-top:4px;">Use quando você já conferiu a produção mas não teve alteração de valores.</div>
+      </div>
     </div>
     <div class="psec psec-full">
       <div class="psec-ttl">Trilha de aprendizado</div>
@@ -1452,7 +1461,7 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
 
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 var PWD = 'kamilla2025';
-console.log('🔶 NEXTUBER BUILD: 2026-06-17-v23 - remove feedback');
+console.log('🔶 NEXTUBER BUILD: 2026-06-17-v25 - remove cancelar prazo');
 var SUPA_URL = 'https://hbebkripmytkknqydjpt.supabase.co';
 var SUPA_KEY = 'sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH';
 var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -2032,10 +2041,19 @@ function isAniversario(e){
   return mes === (hoje.getMonth()+1) && dia === hoje.getDate();
 }
 
+// Retorna data local YYYY-MM-DD (evita bug do UTC durante o dia)
+function hojeLocalYMD(){
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth()+1).padStart(2,'0');
+  var dia = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dia;
+}
+
 function statusAtualizacao(e){
   if(!S.cfg || !S.cfg.prazo_producao) return 'ok';
   var definidoEm = S.cfg.prazo_definido_em || '2000-01-01';
-  var hoje = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  var hoje = hojeLocalYMD();
   var prazo = S.cfg.prazo_producao; // YYYY-MM-DD
   // Se já atualizou produção DEPOIS que o prazo foi definido → ok
   if(e.perfil && e.perfil.ultima_atualizacao_prod && e.perfil.ultima_atualizacao_prod >= definidoEm) return 'ok';
@@ -2043,7 +2061,7 @@ function statusAtualizacao(e){
   var prazoDt = new Date(prazo+'T00:00:00');
   var hojeDt = new Date(hoje+'T00:00:00');
   var diffDias = Math.round((prazoDt - hojeDt) / 86400000);
-  if(diffDias < 0) return 'atrasado'; // prazo já passou
+  if(diffDias < 0) return 'atrasado'; // prazo já passou (mantém vermelho até atualizar)
   if(diffDias === 0) return 'atrasado'; // é hoje, prazo vencendo
   if(diffDias <= 2) return 'alerta'; // faltam 1-2 dias
   return 'ok'; // ainda tem tempo
@@ -2671,9 +2689,15 @@ function renderContatosCard(idx){
       var diaIdx = parseInt(inputs[i].getAttribute('data-dia'));
       await saveContatoDia(e.id, contatosSelectedWeek, diaIdx, val);
     }
+    // Marca estagiário como atualizado (contatos fazem parte da produção)
+    if(!e.perfil) e.perfil = {};
+    e.perfil.ultima_atualizacao_prod = hojeLocalYMD();
+    await saveEstagiario(e);
+    
     var sv = document.getElementById('contatosSaved');
     if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
     renderContatosCard(idx);
+    renderCards();
   });
 }
 
@@ -3112,7 +3136,7 @@ function renderResultadosForTri(idx, tri){
       await saveProducaoTri(e.id, tri, totalGeral);
       
       if(!e.perfil) e.perfil = {};
-      e.perfil.ultima_atualizacao_prod = new Date().toISOString().slice(0,10);
+      e.perfil.ultima_atualizacao_prod = hojeLocalYMD();
       await saveEstagiario(e);
       await salvarSnapshot(e.id, tri);
       
@@ -3716,6 +3740,12 @@ function openPanel(idx){
       var corSt2 = st==='atrasado'?'#DC2626':(st==='alerta'?'#F59E0B':'var(--ink3)');
       updEl.innerHTML = '<span style="color:'+corSt2+';font-size:12px;">Ainda não atualizada</span>';
     } else { updEl.textContent = '—'; }
+  }
+  // Botão "Marcar como atualizado" (só se tem prazo definido e usuário pode editar)
+  var wrapMarcar = document.getElementById('pMarcarAtualizadoWrap');
+  if(wrapMarcar){
+    var podeMarcar = (editor || (modoGestor && gestorLogado)) && S.cfg && S.cfg.prazo_producao;
+    wrapMarcar.style.display = podeMarcar ? 'block' : 'none';
   }
   renderPanelTrilha(idx);
   updateAtencaoBtn(idx);
@@ -4736,6 +4766,49 @@ document.getElementById('btnObs').addEventListener('click', function(){
     var b=document.getElementById('obsSaved'); b.classList.add('show'); setTimeout(function(){b.classList.remove('show');},2000);
   });
 
+// Botão "Marcar produção como verificada hoje"
+var btnMarcarAtz = document.getElementById('btnMarcarAtualizado');
+if(btnMarcarAtz){
+  btnMarcarAtz.addEventListener('click', async function(){
+    var _pIdx = getPanelEstIdx();
+    if(_pIdx < 0) return;
+    if(!editor && !(modoGestor && gestorLogado)) return;
+    var e = S.ests[_pIdx];
+    if(!e.perfil) e.perfil = {};
+    e.perfil.ultima_atualizacao_prod = hojeLocalYMD();
+    await saveEstagiario(e);
+    
+    // Feedback visual: pisca o botão em verde
+    var original = this.innerHTML;
+    var originalBg = this.style.background;
+    var originalColor = this.style.color;
+    var originalBorder = this.style.borderColor;
+    this.innerHTML = '✓ Marcado como verificado!';
+    this.style.background = '#16A34A';
+    this.style.color = '#fff';
+    this.style.borderColor = '#16A34A';
+    var self = this;
+    setTimeout(function(){
+      self.innerHTML = original;
+      self.style.background = originalBg;
+      self.style.color = originalColor;
+      self.style.borderColor = originalBorder;
+    }, 1500);
+    
+    // Re-render partes que dependem do status
+    renderCards();
+    // Reabrir painel para atualizar linha "última atualização"
+    setTimeout(function(){ 
+      if(getPanelEstIdx() >= 0){
+        // Re-preencher só a linha (sem fechar o painel)
+        var updEl = document.getElementById('pUltimaAtualizacao');
+        if(updEl){
+          updEl.innerHTML = fmtDate(e.perfil.ultima_atualizacao_prod) + ' <span style="color:#16A34A;font-size:11px;font-weight:600;"> (em dia)</span>';
+        }
+      }
+    }, 100);
+  });
+}
 
   // Permissões do gestor (tutora)
   var btnFecharP = document.getElementById('btnFecharPermissoes');
@@ -4834,7 +4907,7 @@ document.getElementById('btnObs').addEventListener('click', function(){
     var val = document.getElementById('cfgPrazoData').value;
     if(!val){ alert('Selecione uma data.'); return; }
     S.cfg.prazo_producao = val;
-    S.cfg.prazo_definido_em = new Date().toISOString().slice(0,10);
+    S.cfg.prazo_definido_em = hojeLocalYMD();
     await sb.from('configuracoes').upsert(JSON.parse(JSON.stringify({id:'cfg_geral', valor:S.cfg})));
     var sv = document.getElementById('cfgPrazoSaved');
     if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
@@ -4858,18 +4931,6 @@ document.getElementById('btnObs').addEventListener('click', function(){
   var btnFechar = document.getElementById('btnCfgFecharForm');
   if(btnFechar) btnFechar.addEventListener('click', function(){
     renderPrazoAtual();
-  });
-  
-  // Botão "Cancelar prazo" - remove o prazo definido
-  var btnCancelar = document.getElementById('btnCfgCancelarPrazo');
-  if(btnCancelar) btnCancelar.addEventListener('click', async function(){
-    if(!confirm('Tem certeza que deseja cancelar o prazo atual? Os cards voltarão a mostrar status normal.')) return;
-    S.cfg.prazo_producao = null;
-    S.cfg.prazo_definido_em = null;
-    await sb.from('configuracoes').upsert(JSON.parse(JSON.stringify({id:'cfg_geral', valor:S.cfg})));
-    if(cfgPrazoInput) cfgPrazoInput.value = '';
-    renderPrazoAtual();
-    renderCards();
   });
 
   // Encontros
