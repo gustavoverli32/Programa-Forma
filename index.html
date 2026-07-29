@@ -1460,7 +1460,7 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
 
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 var PWD = 'kamilla2025';
-console.log('🔶 NEXTUBER BUILD: 2026-06-17-v30 - IA + contatos + resumo');
+console.log('🔶 NEXTUBER BUILD: 2026-06-17-v32 - margem botao mobile');
 var SUPA_URL = 'https://hbebkripmytkknqydjpt.supabase.co';
 var SUPA_KEY = 'sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH';
 var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -6118,28 +6118,43 @@ async function aiSendMessage(){
 function initAIListeners(){
   var floatBtn = document.getElementById('aiFloatBtn');
   var modal = document.getElementById('aiChatModal');
+  var backdrop = document.getElementById('aiBackdrop');
   var closeBtn = document.getElementById('aiChatClose');
   var sendBtn = document.getElementById('aiSendBtn');
   var input = document.getElementById('aiInput');
   
-  if(floatBtn) floatBtn.addEventListener('click', function(){
-    aiChatOpen = !aiChatOpen;
-    if(aiChatOpen){
-      modal.classList.add('open');
-      floatBtn.style.transform = 'scale(0.9)';
-      setTimeout(function(){ floatBtn.style.transform = ''; input && input.focus(); }, 200);
-      // Recarregar agendamentos ao abrir
-      if(typeof carregarAgendamentos === 'function'){
-        carregarAgendamentos();
-      }
-    } else {
-      modal.classList.remove('open');
+  function abrirChat(){
+    aiChatOpen = true;
+    if(modal) modal.classList.add('open');
+    if(backdrop) backdrop.classList.add('open');
+    if(floatBtn) floatBtn.classList.add('ai-hidden');
+    // Evita scroll do body atrás do pop-up no mobile
+    document.body.style.overflow = 'hidden';
+    setTimeout(function(){ if(input) input.focus(); }, 250);
+    // Recarregar agendamentos ao abrir
+    if(typeof carregarAgendamentos === 'function'){
+      try { carregarAgendamentos(); } catch(e){}
     }
+  }
+  
+  function fecharChat(){
+    aiChatOpen = false;
+    if(modal) modal.classList.remove('open');
+    if(backdrop) backdrop.classList.remove('open');
+    if(floatBtn) floatBtn.classList.remove('ai-hidden');
+    document.body.style.overflow = '';
+  }
+  
+  if(floatBtn) floatBtn.addEventListener('click', function(){
+    if(aiChatOpen) fecharChat(); else abrirChat();
   });
   
-  if(closeBtn) closeBtn.addEventListener('click', function(){
-    aiChatOpen = false;
-    modal.classList.remove('open');
+  if(closeBtn) closeBtn.addEventListener('click', fecharChat);
+  if(backdrop) backdrop.addEventListener('click', fecharChat);
+  
+  // ESC fecha o chat
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && aiChatOpen) fecharChat();
   });
   
   if(sendBtn) sendBtn.addEventListener('click', aiSendMessage);
@@ -6186,10 +6201,6 @@ if(document.readyState === 'loading'){
   0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(236, 112, 0, 0.4), 0 0 0 0 rgba(236, 112, 0, 0.6); }
   50% { transform: scale(1.05); box-shadow: 0 6px 26px rgba(236, 112, 0, 0.5), 0 0 0 15px rgba(236, 112, 0, 0); }
 }
-@keyframes aiShimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
 @keyframes aiBounceIn {
   0% { transform: scale(0) rotate(-180deg); opacity: 0; }
   60% { transform: scale(1.1) rotate(10deg); }
@@ -6210,35 +6221,35 @@ if(document.readyState === 'loading'){
   right: 24px;
   width: 60px;
   height: 60px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #EC7000 0%, #FF9800 50%, #EC7000 100%);
-  background-size: 200% 200%;
-  border: none;
-  color: white;
-  font-size: 26px;
+  border-radius: 20px;
+  background: #FFFFFF;
+  border: 2px solid #EC7000;
+  padding: 0;
   cursor: pointer;
-  z-index: 999;
-  animation: aiPulse 2.5s infinite, aiBounceIn 0.6s ease-out, aiShimmer 3s linear infinite;
+  z-index: 1002;
+  animation: aiPulse 2.5s infinite, aiBounceIn 0.6s ease-out;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+#aiFloatBtn svg {
+  width: 30px;
+  height: 30px;
+  display: block;
 }
 #aiFloatBtn:hover {
-  transform: scale(1.1) rotate(5deg);
-  animation: aiShimmer 1.5s linear infinite;
+  transform: scale(1.08) rotate(-4deg);
 }
-#aiFloatBtn::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 10px;
-  height: 10px;
-  background: #FEF3C7;
-  border-radius: 50%;
-  border: 2px solid white;
-  animation: aiPulse 1.5s infinite;
+#aiFloatBtn:active {
+  transform: scale(0.94);
+}
+/* Esconde o botão enquanto o chat está aberto (evita sobreposição) */
+#aiFloatBtn.ai-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.6);
+  animation: none;
 }
 
 #aiChatModal {
@@ -6253,13 +6264,25 @@ if(document.readyState === 'loading'){
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.25);
   border: 1px solid var(--border);
-  z-index: 998;
+  z-index: 1001;
   display: none;
   flex-direction: column;
   overflow: hidden;
   animation: aiSlideUp 0.3s ease-out;
 }
 #aiChatModal.open { display: flex; }
+
+/* Backdrop escuro atrás do pop-up */
+#aiBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1000;
+  display: none;
+  animation: aiFadeIn 0.25s ease-out;
+}
+#aiBackdrop.open { display: block; }
+@keyframes aiFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .ai-chat-header {
   padding: 14px 16px;
@@ -6413,28 +6436,48 @@ if(document.readyState === 'loading'){
 .ai-send-btn:hover:not(:disabled) { background: var(--or-d); }
 .ai-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Mobile */
+/* Mobile — pop-up com margens, respeitando safe-area do iOS */
 @media (max-width: 480px) {
-  #aiFloatBtn { bottom: 16px; right: 16px; width: 54px; height: 54px; font-size: 22px; }
+  #aiFloatBtn {
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    right: 22px;
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+  }
+  #aiFloatBtn svg { width: 27px; height: 27px; }
   #aiChatModal {
-    bottom: 0;
-    right: 0;
-    left: 0;
-    width: 100%;
-    max-width: 100%;
-    height: 85vh;
-    max-height: 85vh;
-    border-radius: 16px 16px 0 0;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    border-radius: 18px;
   }
 }
 </style>
 
-<button id="aiFloatBtn" title="Assistente IA">✨</button>
+<div id="aiBackdrop"></div>
+
+<button id="aiFloatBtn" title="Assistente IA" aria-label="Abrir Assistente IA">
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M13 4.2 L15.1 10.4 L21.3 12.5 L15.1 14.6 L13 20.8 L10.9 14.6 L4.7 12.5 L10.9 10.4 Z" fill="#EC7000"/>
+    <path d="M23.5 16.5 L24.6 19.7 L27.8 20.8 L24.6 21.9 L23.5 25.1 L22.4 21.9 L19.2 20.8 L22.4 19.7 Z" fill="#EC7000"/>
+    <path d="M24.8 5.0 L25.5 7.0 L27.5 7.7 L25.5 8.4 L24.8 10.4 L24.1 8.4 L22.1 7.7 L24.1 7.0 Z" fill="#EC7000"/>
+  </svg>
+</button>
 
 <div id="aiChatModal">
   <div class="ai-chat-header">
     <div class="ai-chat-title">
-      <span style="font-size:16px;">✨</span>
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:22px;height:22px;flex-shrink:0;">
+        <path d="M13 4.2 L15.1 10.4 L21.3 12.5 L15.1 14.6 L13 20.8 L10.9 14.6 L4.7 12.5 L10.9 10.4 Z" fill="#FFFFFF"/>
+        <path d="M23.5 16.5 L24.6 19.7 L27.8 20.8 L24.6 21.9 L23.5 25.1 L22.4 21.9 L19.2 20.8 L22.4 19.7 Z" fill="#FFFFFF"/>
+        <path d="M24.8 5.0 L25.5 7.0 L27.5 7.7 L25.5 8.4 L24.8 10.4 L24.1 8.4 L22.1 7.7 L24.1 7.0 Z" fill="#FFFFFF"/>
+      </svg>
       <div>
         <div>Assistente Nextuber</div>
         <div style="font-size:10px;opacity:0.85;font-weight:400;">Análises e insights inteligentes</div>
