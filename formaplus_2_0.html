@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#EC7000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nextuber">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="pwa-icons/apple-touch-icon.png">
+<title>Nextuber · A próxima geração de Itubers</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/css/app.css">
+</head>
+<body>
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="sb-logo">
+    <img src="data:image/webp;base64,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" alt="Nextuber" style="width:140px;display:block;margin:0 auto;border-radius:8px;">
+  </div>
+  <div class="nav-section">
+    <div class="nav-lbl">Painel</div>
+    <div class="nav-item active" data-page="overview">◈ Página inicial</div>
+    <div class="nav-item" data-page="estagiarios" data-tutora="only">◎ Acompanhamento</div>
+    <div class="nav-item" data-page="cadastro" data-tutora="only" data-gga="show">◫ Cadastro</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-lbl">Programa</div>
+    <div class="nav-item" data-page="trilhas" data-tutora="only">◑ Trilhas</div>
+    <div class="nav-item" data-page="agendamentos">◉ Agendamentos</div>
+  </div>
+  <div class="nav-section" data-tutora="only">
+    <div class="nav-lbl">Sistema</div>
+    <div class="nav-item" data-page="configuracoes" data-tutora="only">⚙ Configurações</div>
+  </div>
+  <div class="sb-progress" data-tutora="only">
+    <div class="sb-progress-row"><span>PROGRESSO</span><span id="pctLbl">0%</span></div>
+    <div class="sb-track"><div class="sb-fill" id="pctFill" style="width:0%"></div></div>
+  </div>
+  <div class="sb-mode">
+    <button class="btn-mode" id="modeBtn">Fazer login</button>
+    <button class="btn-mode" id="btnMeuPerfil" style="margin-top:8px;display:none;background:var(--bg);color:var(--ink);border:1px solid var(--border2);">👤 Meu perfil</button>
+  </div>
+  <div class="sb-footer">Tutora regional<br><strong>Kamilla</strong><br><span style="font-size:11px">6 meses · 3 ciclos</span></div>
+</aside>
+
+<main class="main">
+  <div class="mob-topbar" id="mobTopbar">
+    <div class="mob-hamburger" id="hamburger">
+      <span></span><span></span><span></span>
+    </div>
+    <span class="mob-topbar-title">Nextuber</span>
+    <button class="mob-mode-btn" id="mobileModeBtn">Login</button>
+  </div>
+
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <img src="data:image/webp;base64,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" alt="Nextuber" style="height:48px;display:block;border-radius:6px;">
+      <div class="drawer-sub">Nextuber · A próxima geração de Itubers</div>
+    </div>
+    <div class="drawer-nav">
+      <div class="drawer-section-lbl">Painel</div>
+      <div class="drawer-item active" data-page="overview">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Página inicial
+      </div>
+      <div class="drawer-item" data-page="estagiarios" data-tutora="only">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-4 3.1-7 7-7s7 3 7 7"/><circle cx="18" cy="8" r="2.5"/><path d="M22 20c0-3-2-5-4-5"/></svg>
+        Estagiários
+      </div>
+      <div class="drawer-item" data-page="cadastro" data-tutora="only" data-gga="show">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Cadastro
+      </div>
+      <div class="drawer-section-lbl">Programa</div>
+      <div class="drawer-item" data-page="trilhas" data-tutora="only">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/><circle cx="19" cy="18" r="2.5"/></svg>
+        Trilhas
+      </div>
+      <div class="drawer-item" data-page="agendamentos">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><circle cx="8" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><circle cx="16" cy="14" r="1"/></svg>
+        Agendamentos
+      </div>
+      <div class="drawer-section-lbl" data-tutora="only">Sistema</div>
+      <div class="drawer-item" data-page="configuracoes" data-tutora="only">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8l2.8-2.8M17 7l2.8-2.8"/></svg>
+        Configurações
+      </div>
+      </div>
+    <div class="drawer-footer">
+      <button class="drawer-mode-btn" id="drawerModeBtn">Fazer login</button>
+      <button class="drawer-mode-btn" id="drawerMeuPerfil" style="margin-top:8px;display:none;background:var(--bg);color:var(--ink);">👤 Meu perfil</button>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section id="page-overview" class="page active">
+    <!-- HEADER: descrição + data + trimestre -->
+    <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:18px;">
+      <!-- Card descrição -->
+      <div style="background:linear-gradient(135deg,var(--or),var(--or-d));color:#fff;border-radius:var(--r);padding:24px 26px;box-shadow:0 6px 24px rgba(236,112,0,.18);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:240px;">
+            <div id="bannerOver" style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;opacity:.85;margin-bottom:6px;">Nextuber</div>
+            <h2 id="bannerTitulo" style="font-family:'DM Serif Display',serif;font-size:24px;line-height:1.2;margin-bottom:10px;">Desenvolvendo o futuro comercial do Itaú</h2>
+            <p id="bannerDesc" style="font-size:13.5px;line-height:1.7;opacity:.95;max-width:680px;">Programa estruturado de 6 meses para formar estagiários comerciais com excelência técnica, comportamental e comprometimento com o cliente. Acompanhamento contínuo, trilhas adaptadas e desenvolvimento orientado por dados.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;align-items:flex-end;">
+            <button id="btnEditarBanner" style="display:none;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;cursor:pointer;backdrop-filter:blur(4px);">✎ Editar</button>
+            <button id="btnVerMaisProjeto" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:9px 18px;border-radius:8px;cursor:pointer;backdrop-filter:blur(4px);">Ver mais →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data + trimestre -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;">Hoje</div>
+          <div id="ovHoje" style="font-size:17px;font-weight:500;color:var(--ink);">—</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;">Trimestre vigente</div>
+          <div id="ovTri" style="font-size:17px;font-weight:500;color:var(--or);">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs / Cards de números -->
+    <div style="margin-bottom:18px;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;">Visão consolidada</div>
+      <div id="overviewKpis" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;"></div>
+    </div>
+
+    <!-- Distribuição por trilha (gráfico) -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-ttl">Distribuição por trilha</div>
+      <div id="overviewTrilhaChart"></div>
+    </div>
+
+    <!-- Próximos encontros -->
+    <div class="card" id="cardEncontros" style="margin-bottom:16px;">
+      <div class="card-ttl" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Próximos encontros</span>
+        <button class="btn-show-add" id="btnAddEncontro" style="display:none;padding:5px 12px;font-size:12px;">+ Adicionar</button>
+      </div>
+      <div id="encontrosList"></div>
+      <div id="encontroFormWrap" style="display:none;background:var(--bg);border:1.5px dashed var(--border2);border-radius:var(--r2);padding:14px;margin-top:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div class="field-grp"><div class="field-lbl">Título</div><input class="field-in" type="text" id="encTitulo" placeholder="Ex: Encontro mensal" maxlength="80"></div>
+          <div class="field-grp"><div class="field-lbl">Data</div><input class="field-in" type="date" id="encData"></div>
+        </div>
+        <div class="field-grp" style="margin-bottom:8px;"><div class="field-lbl">Descrição (opcional)</div><textarea class="obs" id="encDescricao" placeholder="Detalhes do encontro..." style="min-height:60px;"></textarea></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-obs" id="btnSalvarEncontro">Salvar</button>
+          <button class="btn-cancel-content" id="btnCancelarEncontro" style="padding:8px 14px;">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ranking (tutora apenas) -->
+    <div class="card" id="cardRanking" style="display:none;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+        <div class="card-ttl" style="margin:0;">Ranking do trimestre</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <select id="filtroRanking" style="font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
+            <optgroup label="Geral">
+              <option value="nota">🏆 Nota (Crédito + Produtos)</option>
+              <option value="credito">💳 Crédito total (INSS+OP+EP+Creditário)</option>
+              <option value="produtos">📦 Produtos total (Seg+PIC+Comb+Cons+Eng)</option>
+            </optgroup>
+            <optgroup label="Crédito (por modalidade)">
+              <option value="cred_INSS">🔵 INSS</option>
+              <option value="cred_OP">🟠 OP</option>
+              <option value="cred_EP">🩷 EP</option>
+              <option value="cred_Crediario">🟢 Creditário</option>
+            </optgroup>
+            <optgroup label="Produtos (por tipo)">
+              <option value="out_Seguros">🟣 Seguros</option>
+              <option value="out_PIC">🔵 PIC</option>
+              <option value="out_Combinaqui">🟠 Combinaqui</option>
+              <option value="out_Consorcios">🟢 Consórcios</option>
+              <option value="out_Engajamento">🩷 Engajamento</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div id="rankingList"></div>
+    </div>
+  </section>
+
+  <!-- ACOMPANHAMENTO -->
+  <section id="page-estagiarios" class="page">
+
+    <!-- Lock screen (shown when not tutora) -->
+    <div class="lock-screen" id="estagLock">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-title">Acesso restrito</div>
+      <div class="lock-sub">Esta área é exclusiva para a tutora.<br>Faça login para visualizar o acompanhamento dos estagiários.</div>
+      <button class="btn-lock-login" id="btnLockLogin">Fazer login</button>
+    </div>
+
+    <!-- Content (shown when tutora) -->
+    <div id="estagContent" style="display:none;">
+      <div class="ph" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div><h1>Acompanhamento <em>individual</em></h1><p>Toque no card para ver o perfil e adicionar observações.</p></div>
+        <button id="btnExportExcel" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:500;cursor:pointer;margin-top:6px;white-space:nowrap;" title="Exportar resultados para Excel">
+          <span style="font-size:16px;">📊</span> Exportar Excel
+        </button>
+      </div>
+      
+      <!-- Barra de filtros -->
+      <div id="filtrosBar" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:6px;color:var(--ink3);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">
+          <span style="font-size:14px;">🔍</span> Filtros
+        </div>
+        
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:12px;color:var(--ink2);">Agência:</label>
+          <select id="filtroAgencia" style="font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
+            <option value="todas">Todas</option>
+          </select>
+        </div>
+        
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:12px;color:var(--ink2);">Certificação:</label>
+          <select id="filtroCertificacao" style="font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
+            <option value="todas">Todas</option>
+            <option value="sem">Sem certificação</option>
+            <option value="CPA">CPA</option>
+            <option value="C-PRO R">C-PRO R</option>
+            <option value="C-PRO I">C-PRO I</option>
+          </select>
+        </div>
+        
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:12px;color:var(--ink2);">Ordenar por:</label>
+          <select id="filtroOrdem" style="font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
+            <option value="nome">Nome (A-Z)</option>
+            <option value="maior_nota">Maior nota</option>
+            <option value="menor_nota">Menor nota</option>
+          </select>
+        </div>
+        
+        <button id="btnLimparFiltros" style="font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--ink2);cursor:pointer;font-weight:500;">Limpar</button>
+        
+        <div id="filtroContador" style="margin-left:auto;font-size:12px;color:var(--ink3);font-weight:500;"></div>
+      </div>
+      
+      <div id="notionGrid"></div>
+    </div>
+
+  </section>
+
+  <!-- CADASTRO -->
+  <section id="page-cadastro" class="page">
+    <div class="ph"><h1>Cadastro de <em>estagiários</em></h1><p>Preencha os dados e clique em adicionar. O estagiário aparece automaticamente na lista de acompanhamento.</p></div>
+
+    <div class="cad-single-card">
+      <div class="cad-single-header">
+        <div class="cad-single-av" id="cadAv">?</div>
+        <div>
+          <div class="cad-single-title" id="cadPreviewName">Novo estagiário</div>
+          <div class="cad-single-sub" id="cadPreviewSub">Preencha o nome para começar</div>
+        </div>
+      </div>
+      <div class="cad-single-fields">
+        <div class="field-grp" style="grid-column:1/-1;">
+          <div class="field-lbl">Nome completo</div>
+          <input class="field-in" type="text" id="cadNome" placeholder="Ex: João Silva" maxlength="60">
+        </div>
+        <div class="field-grp">
+          <div class="field-lbl">Funcional (9 dígitos)</div>
+          <input class="field-in" type="text" id="cadFunc" placeholder="000000000" maxlength="9" inputmode="numeric">
+        </div>
+        <div class="field-grp">
+          <div class="field-lbl">Agência</div>
+          <input class="field-in" type="text" id="cadAgencia" placeholder="0000" maxlength="6" inputmode="numeric">
+        </div>
+        <div class="field-grp">
+          <div class="field-lbl">Data de início</div>
+          <input class="field-in" type="date" id="cadInicio">
+        </div>
+        <div class="field-grp">
+          <div class="field-lbl">Funcional GA</div>
+          <input class="field-in" type="text" id="cadGAFunc" placeholder="000000000" maxlength="9" inputmode="numeric">
+        </div>
+        <div class="field-grp">
+          <div class="field-lbl">Funcional GGA</div>
+          <input class="field-in" type="text" id="cadGGAFunc" placeholder="000000000" maxlength="9" inputmode="numeric">
+        </div>
+        <div class="field-grp">
+          <div class="field-lbl">Certificação</div>
+          <select class="field-in" id="cadCertificacao" style="cursor:pointer;">
+            <option value="">Nenhuma</option>
+            <option value="CPA">CPA</option>
+            <option value="C-PRO R">C-PRO R</option>
+            <option value="C-PRO I">C-PRO I</option>
+          </select>
+        </div>
+        <div class="field-grp" style="grid-column:1/-1;">
+          <div class="field-lbl">Mês de aniversário</div>
+          <div style="display:flex;gap:8px;">
+            <select class="field-in" id="cadAnivDia" style="cursor:pointer;flex:1;">
+              <option value="">Dia</option>
+              <script>for(var _d=1;_d<=31;_d++) document.write('<option value="'+_d+'">'+_d+'</option>');</script>
+            </select>
+            <select class="field-in" id="cadAnivMes" style="cursor:pointer;flex:1;">
+              <option value="">Mês</option>
+              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+              <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="cad-single-footer">
+        <button class="btn-cad-add" id="cadAddBtn">+ Adicionar estagiário</button>
+        <span class="saved-lbl" id="cadSavedLbl">✓ Adicionado</span>
+      </div>
+    </div>
+
+    <div id="cadListWrap" style="margin-top:28px;">
+      <div class="cad-list-title">Estagiários cadastrados <span class="cad-list-count" id="cadListCount">0</span></div>
+      <div id="cadList"></div>
+    </div>
+
+    <div id="gestoresSection" style="display:none;margin-top:32px;">
+      <div class="cad-list-title" style="margin-bottom:12px;">Gestores <span class="cad-list-count" id="gestoresCount">0</span></div>
+      <div class="cad-single-card" style="margin-bottom:16px;">
+        <div class="cad-single-header">
+          <div class="cad-form-av" style="background:var(--ink);color:#fff;font-size:16px;">G</div>
+          <div>
+            <div class="cad-single-title">Novo gestor</div>
+            <div class="cad-single-sub">A senha inicial será os 4 primeiros dígitos do funcional</div>
+          </div>
+        </div>
+        <div class="cad-single-fields">
+          <div class="field-grp" style="grid-column:1/-1;">
+            <div class="field-lbl">Nome do gestor</div>
+            <input class="field-in" type="text" id="gestorNome" placeholder="Nome completo" maxlength="60">
+          </div>
+          <div class="field-grp" style="grid-column:1/-1;">
+            <div class="field-lbl">Funcional (9 dígitos)</div>
+            <input class="field-in" type="text" id="gestorFunc" placeholder="000000000" maxlength="9" inputmode="numeric">
+          </div>
+        </div>
+        <div class="cad-single-footer">
+          <button class="btn-cad-add" id="btnAddGestor">+ Adicionar gestor</button>
+          <span class="saved-lbl" id="gestorSaved">✓ Adicionado</span>
+        </div>
+      </div>
+      <div id="gestoresList"></div>
+    </div>
+  </section>
+
+  <!-- TRILHAS -->
+  <section id="page-trilhas" class="page">
+    <div class="ph"><h1>Trilhas de <em>aprendizado</em></h1><p>Cronogramas adaptados ao tempo de casa · A tutora seleciona a trilha de cada estagiário.</p></div>
+    <div class="trilha-tabs">
+      <button class="trilha-tab active" data-trilha="iniciante"><span class="tt-dot" style="background:#EC7000"></span>1 a 3 meses</button>
+      <button class="trilha-tab" data-trilha="intermediario"><span class="tt-dot" style="background:#B45309"></span>3 a 6 meses</button>
+      <button class="trilha-tab" data-trilha="avancado"><span class="tt-dot" style="background:#166534"></span>Acima de 6 meses</button>
+    </div>
+    <div id="trilhaContent"></div>
+  </section>
+
+  <!-- CONFIGURAÇÕES -->
+  <section id="page-configuracoes" class="page">
+    <div class="ph"><h1>Configurações</h1><p>Ajustes gerais do programa Nextuber.</p></div>
+    
+    <div style="max-width:600px;">
+      <!-- Recorrência de produção -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:18px;">⏰</span>
+          <h3 style="font-size:15px;font-weight:600;color:var(--ink);margin:0;">Prazo para atualização de produção</h3>
+        </div>
+        <p style="font-size:12px;color:var(--ink3);margin:8px 0 14px;">Defina a data limite para os gestores atualizarem a produção dos estagiários. Quando o prazo se aproximar (2 dias antes), os cards ficarão amarelos. No dia do vencimento, ficarão vermelhos.</p>
+        
+        <!-- Card do prazo atual (aparece quando há prazo definido) -->
+        <div id="cfgPrazoCardAtual" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Prazo definido</div>
+              <div id="cfgPrazoDataDisplay" style="font-size:18px;font-weight:600;color:var(--ink);"></div>
+              <div id="cfgPrazoStatus" style="font-size:12px;color:var(--ink3);margin-top:4px;"></div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn-sm" id="btnCfgAlterarPrazo" style="background:#3B82F6;color:white;border-color:#3B82F6;">Alterar prazo</button>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3);line-height:1.4;">
+            💡 O prazo permanece ativo até você definir um novo. Isso garante que os estagiários pendentes continuem sinalizados.
+          </div>
+        </div>
+        
+        <!-- Formulário de definir/alterar -->
+        <div id="cfgPrazoForm" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <input type="date" id="cfgPrazoData" style="font-size:13px;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;background:var(--surface);color:var(--ink);cursor:pointer;">
+          <button class="btn-obs" id="btnCfgSalvarPrazo">Definir prazo</button>
+          <button class="btn-sm" id="btnCfgFecharForm" style="display:none;">Cancelar edição</button>
+          <span class="obs-saved" id="cfgPrazoSaved">✓ Salvo</span>
+        </div>
+        <div id="cfgPrazoAtual" style="margin-top:12px;font-size:12px;color:var(--ink3);display:none;"></div>
+      </div>
+
+      <!-- Placeholder para futuras configs -->
+      <div style="background:var(--surface);border:1px dashed var(--border);border-radius:12px;padding:20px;text-align:center;color:var(--ink3);font-size:13px;">
+        Mais configurações em breve.
+      </div>
+    </div>
+  </section>
+
+  <section id="page-agendamentos" class="page">
+    <div class="ph">
+      <h1>Agendamentos</h1>
+      <p>Registre aulas, treinamentos e eventos com os estagiários.</p>
+    </div>
+    
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <select id="filtroAgendFase" style="font-size:13px;border:1px solid var(--border2);border-radius:8px;padding:8px 12px;background:var(--surface);color:var(--ink);cursor:pointer;">
+          <option value="todos">Todas as fases</option>
+          <option value="fase1">Fase 1 - Decolar</option>
+          <option value="fase2">Fase 2 - Evoluir</option>
+          <option value="fase3">Fase 3 - Impactar</option>
+        </select>
+        <select id="filtroAgendTipo" style="font-size:13px;border:1px solid var(--border2);border-radius:8px;padding:8px 12px;background:var(--surface);color:var(--ink);cursor:pointer;">
+          <option value="todos">Todos os tipos</option>
+          <option value="aula">Aula</option>
+          <option value="workshop">Workshop</option>
+          <option value="treinamento">Treinamento</option>
+          <option value="reuniao">Reunião</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <button class="btn-obs" id="btnNovoAgendamento" style="font-size:13px;">+ Novo Agendamento</button>
+    </div>
+    
+    <div id="agendamentosList" style="display:grid;gap:12px;">
+      <div style="text-align:center;padding:40px;color:var(--ink3);">Carregando...</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<!-- BOTTOM NAV -->
+
+
+<!-- PANEL -->
+<div class="overlay" id="overlay"></div>
+<div class="panel" id="panel">
+  <div class="panel-hd">
+    <div class="panel-av" id="pAv">?</div>
+    <div><div class="panel-nm" id="pNm">—</div><div class="panel-fn" id="pFn">—</div></div>
+    <button class="panel-close" id="panelClose">✕</button>
+  </div>
+  <div class="panel-body">
+    <div class="psec">
+      <div class="psec-ttl">Informações</div>
+      <div class="prow"><span class="prow-lbl">Funcional</span><span class="prow-val" id="pFunc" style="font-family:monospace">—</span></div>
+      <div class="prow"><span class="prow-lbl">Agência</span><span class="prow-val" id="pAgencia" style="font-family:monospace">—</span></div>
+      <div class="prow"><span class="prow-lbl">Início</span><span class="prow-val" id="pInicio">—</span></div>
+      <div class="prow"><span class="prow-lbl">Tempo no programa</span><span class="prow-val" id="pTempo">—</span></div>
+      <div class="prow"><span class="prow-lbl">GA</span><span class="prow-val" id="pGA">—</span></div>
+      <div class="prow"><span class="prow-lbl">GGA</span><span class="prow-val" id="pGGA">—</span></div>
+      <div class="prow"><span class="prow-lbl">Certificação</span><span class="prow-val" id="pCertificacao">—</span></div>
+      <div class="prow"><span class="prow-lbl">Aniversário</span><span class="prow-val" id="pNascimento">—</span></div>
+      <div class="prow"><span class="prow-lbl">Última atualização de produção</span><span class="prow-val" id="pUltimaAtualizacao">—</span></div>
+      <div id="pMarcarAtualizadoWrap" style="display:none;padding:8px 0 4px;">
+        <button id="btnMarcarAtualizado" style="font-size:12px;padding:6px 14px;border:1px solid var(--or);border-radius:8px;background:var(--surface);color:var(--or);font-weight:600;cursor:pointer;">
+          ✓ Marcar produção como verificada hoje
+        </button>
+        <div style="font-size:10px;color:var(--ink3);margin-top:4px;">Use quando você já conferiu a produção mas não teve alteração de valores.</div>
+      </div>
+    </div>
+    <div class="psec psec-full">
+      <div class="psec-ttl">Trilha de aprendizado</div>
+      <div id="pTrilha"></div>
+    </div>
+    <!-- AVALIAÇÃO -->
+    <div class="psec">
+      <div class="psec-ttl">Avaliação</div>
+      <div id="pAvaliacao"></div>
+    </div>
+
+    <!-- RESULTADOS TRIMESTRAIS -->
+    <div class="psec">
+      <div class="psec-ttl" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Resultados</span>
+        <select id="pTriSelect" style="font-size:11px;border:1px solid var(--border2);border-radius:5px;padding:2px 6px;background:var(--surface);color:var(--ink2);cursor:pointer;"></select>
+      </div>
+      <div id="pResultados"></div>
+    </div>
+
+    <div class="psec psec-full">
+      <div class="psec-ttl">Marcação de atenção</div>
+      <button class="btn-atencao" id="btnAtencao" disabled>
+        <span>⚠</span><span id="btnAtencaoTxt">Marcar como atenção</span>
+      </button>
+      <div style="font-size:11.5px;color:var(--ink3);margin-top:7px;" id="atencaoHint">Entre como tutora para alterar.</div>
+    </div>
+
+    <div class="psec psec-full">
+      <div class="psec-ttl">Observações</div>
+      <textarea class="obs" id="obsTA" placeholder="Anotações sobre este estagiário..." disabled></textarea>
+      <div class="obs-hint" id="obsHint">Entre como tutora para editar.</div>
+      <div style="display:flex;align-items:center;">
+        <button class="btn-obs" id="btnObs" disabled>Salvar</button>
+        <span class="obs-saved" id="obsSaved">✓ Salvo</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDITAR BANNER PROJETO -->
+<div class="login-ov" id="editBannerOv">
+  <div class="login-box" style="max-width:680px;max-height:88vh;overflow-y:auto;">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:4px;">Editar descrição do projeto</h3>
+    <p style="font-size:12px;color:var(--ink3);margin-bottom:18px;">Edite os textos que aparecem na página inicial.</p>
+    
+    <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:10px;">Banner principal</div>
+      <div class="field-grp" style="margin-bottom:10px;">
+        <div class="field-lbl">Texto pequeno (superior)</div>
+        <input class="field-in" type="text" id="edBannerOver" maxlength="80">
+      </div>
+      <div class="field-grp" style="margin-bottom:10px;">
+        <div class="field-lbl">Título principal</div>
+        <input class="field-in" type="text" id="edBannerTitulo" maxlength="120">
+      </div>
+      <div class="field-grp">
+        <div class="field-lbl">Descrição (breve)</div>
+        <textarea class="field-in" id="edBannerDesc" rows="3" style="resize:vertical;min-height:80px;"></textarea>
+      </div>
+    </div>
+
+    <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:10px;">Modal "Ver mais"</div>
+      <p style="font-size:11.5px;color:var(--ink3);margin-bottom:10px;">Edite as 5 seções da descrição completa.</p>
+      
+      <div class="field-grp" style="margin-bottom:10px;">
+        <div class="field-lbl">🎯 Objetivo</div>
+        <textarea class="field-in" id="edSecObjetivo" rows="3" style="resize:vertical;min-height:70px;"></textarea>
+      </div>
+      <div class="field-grp" style="margin-bottom:10px;">
+        <div class="field-lbl">📋 Estrutura</div>
+        <textarea class="field-in" id="edSecEstrutura" rows="4" style="resize:vertical;min-height:90px;"></textarea>
+      </div>
+      <div class="field-grp" style="margin-bottom:10px;">
+        <div class="field-lbl">⚖️ Avaliação</div>
+        <textarea class="field-in" id="edSecAvaliacao" rows="3" style="resize:vertical;min-height:70px;"></textarea>
+      </div>
+      <div class="field-grp" style="margin-bottom:10px;">
+        <div class="field-lbl">👥 Quem participa</div>
+        <textarea class="field-in" id="edSecParticipa" rows="3" style="resize:vertical;min-height:70px;"></textarea>
+      </div>
+      <div class="field-grp">
+        <div class="field-lbl">📊 Acompanhamento</div>
+        <textarea class="field-in" id="edSecAcomp" rows="3" style="resize:vertical;min-height:70px;"></textarea>
+      </div>
+    </div>
+
+    <div class="lerr" id="editBannerErr"></div>
+    <button class="btn-login" id="btnSalvarBanner">Salvar alterações</button>
+    <button class="btn-cancel" id="btnFecharEditBanner">Cancelar</button>
+  </div>
+</div>
+
+<!-- VER MAIS PROJETO -->
+<div class="login-ov" id="projetoOv">
+  <div class="login-box" style="max-width:640px;max-height:85vh;overflow-y:auto;">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:6px;color:var(--or);">Nextuber</h3>
+    <p style="font-size:12px;color:var(--ink3);margin-bottom:18px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Programa de desenvolvimento comercial</p>
+
+    <div id="projetoConteudo" style="font-size:13.5px;color:var(--ink2);line-height:1.75;">
+      <div style="margin-bottom:18px;">
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;">🎯 Objetivo</div>
+        <p id="secObjetivo">—</p>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;">📋 Estrutura</div>
+        <p id="secEstrutura" style="white-space:pre-wrap;">—</p>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;">⚖️ Avaliação</div>
+        <p id="secAvaliacao" style="white-space:pre-wrap;">—</p>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;">👥 Quem participa</div>
+        <p id="secParticipa">—</p>
+      </div>
+
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;">📊 Acompanhamento</div>
+        <p id="secAcomp">—</p>
+      </div>
+    </div>
+
+    <button class="btn-cancel" id="btnFecharProjeto" style="margin-top:18px;">Fechar</button>
+  </div>
+</div>
+
+<!-- PERMISSÕES GESTOR -->
+<div class="login-ov" id="permissoesOv">
+  <div class="login-box" style="max-width:520px;">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:4px;">Permissões do gestor</h3>
+    <p style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Definir tipo de acesso e permissões para <strong id="permGestorNome">—</strong>.</p>
+
+    <!-- Tipo de Gestor (GA / GGA) -->
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;padding:14px;background:#F3F4F6;border-radius:8px;border:1px solid var(--border);">
+      <div style="font-size:12px;font-weight:600;color:var(--ink);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">Tipo de gestor</div>
+      <p style="font-size:11.5px;color:var(--ink3);margin-bottom:10px;">Escolha o nível de acesso deste gestor à plataforma.</p>
+      
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:white;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s;">
+        <input type="radio" id="tipoGA" name="permTipoGestor" value="ga" style="width:16px;height:16px;accent-color:var(--or);flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:500;color:var(--ink);">👤 GA - Gerente de Atendimento</div>
+          <div style="font-size:10.5px;color:var(--ink3);">Acesso limitado aos seus estagiários e permissões específicas</div>
+        </div>
+      </label>
+      
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:white;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s;">
+        <input type="radio" id="tipoGGA" name="permTipoGestor" value="gga" style="width:16px;height:16px;accent-color:var(--or);flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:500;color:var(--ink);">👔 GGA - Gerente Geral da Agência</div>
+          <div style="font-size:10.5px;color:var(--ink3);">Acesso completo à plataforma (todas as permissões ativadas)</div>
+        </div>
+      </label>
+    </div>
+
+    <!-- Checkboxes de permissões -->
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+        <input type="checkbox" id="permTrilhas" style="width:18px;height:18px;accent-color:var(--or);flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-size:13.5px;font-weight:500;color:var(--ink);">◑ Trilhas</div>
+          <div style="font-size:11.5px;color:var(--ink3);">Visualizar conteúdo das trilhas de aprendizado</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+        <input type="checkbox" id="permRanking" style="width:18px;height:18px;accent-color:var(--or);flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-size:13.5px;font-weight:500;color:var(--ink);">🏆 Ranking</div>
+          <div style="font-size:11.5px;color:var(--ink3);">Ver o ranking de notas do trimestre na página inicial</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+        <input type="checkbox" id="permTodosEstag" style="width:18px;height:18px;accent-color:var(--or);flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-size:13.5px;font-weight:500;color:var(--ink);">👥 Todos os estagiários</div>
+          <div style="font-size:11.5px;color:var(--ink3);">Ver estagiários de outros gestores (não apenas os próprios)</div>
+        </div>
+      </label>
+    </div>
+
+    <!-- Redefinir senha -->
+    <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px;">🔐 Redefinir senha</div>
+      <p style="font-size:11.5px;color:var(--ink3);margin-bottom:10px;">Caso o gestor tenha esquecido a senha, defina uma nova abaixo.</p>
+      <div class="field-grp" style="margin-bottom:8px;">
+        <div class="field-lbl">Nova senha (mínimo 4 caracteres)</div>
+        <input class="field-in" type="text" id="permNovaSenha" placeholder="Deixe em branco para manter">
+      </div>
+      <div style="font-size:10.5px;color:var(--ink3);font-style:italic;margin-top:-4px;">Dica: use os 4 primeiros dígitos do funcional para padronizar.</div>
+    </div>
+
+    <input type="hidden" id="permGestorId" value="">
+    <button class="btn-login" id="btnSalvarPermissoes" style="margin-top:18px;">Salvar alterações</button>
+    <button class="btn-cancel" id="btnFecharPermissoes">Cancelar</button>
+  </div>
+</div>
+
+<!-- MEU PERFIL (gestor) -->
+<div class="login-ov" id="perfilOv">
+  <div class="login-box">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:4px;">Meu perfil</h3>
+    <p style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Atualize seus dados de acesso.</p>
+    
+    <div class="field-grp" style="margin-bottom:10px;">
+      <div class="field-lbl">Nome</div>
+      <input class="field-in" type="text" id="perfilNome" maxlength="60">
+    </div>
+    <div class="field-grp" style="margin-bottom:10px;">
+      <div class="field-lbl">Funcional (9 dígitos)</div>
+      <input class="field-in" type="text" id="perfilFunc" maxlength="9" inputmode="numeric">
+    </div>
+    <div class="field-grp" style="margin-bottom:6px;">
+      <div class="field-lbl">Nova senha (opcional)</div>
+      <input class="field-in" type="password" id="perfilSenha" placeholder="Deixe em branco para manter">
+    </div>
+    <div class="field-grp" style="margin-bottom:14px;">
+      <div class="field-lbl">Confirmar nova senha</div>
+      <input class="field-in" type="password" id="perfilSenhaConfirma">
+    </div>
+    
+    <div class="lerr" id="perfilErr"></div>
+    <button class="btn-login" id="btnSalvarPerfil">Salvar alterações</button>
+    <button class="btn-cancel" id="btnFecharPerfil">Cancelar</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-ov" id="loginOv">
+  <div class="login-box">
+    <div class="login-logo"><img src="data:image/webp;base64,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" alt="Nextuber" style="width:48px;border-radius:8px;"><div class="login-brand"><span style="font-family:'DM Serif Display',serif;font-size:18px;">Nextuber</span><span>Acesso restrito</span></div></div>
+    <div id="loginTipoWrap">
+      <p style="font-size:13px;color:var(--ink3);margin-bottom:14px;">Como deseja acessar?</p>
+      <button class="btn-login" id="btnEscolheTutora" style="margin-bottom:8px;">👩‍🏫 Sou tutora</button>
+      <button class="btn-login" id="btnEscolheGestor" style="background:var(--ink);">👔 Sou gestor</button>
+      <button class="btn-cancel" id="btnCancelLogin">Cancelar</button>
+    </div>
+
+    <div id="loginTutoraWrap" style="display:none;">
+      <h3 style="font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:4px;">Acesso — Tutora</h3>
+      <p style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Digite a senha para acessar.</p>
+      <input class="lin" type="password" id="loginPwd" placeholder="Senha">
+      <div class="lerr" id="loginErr">Senha incorreta.</div>
+      <button class="btn-login" id="btnLogin">Acessar</button>
+      <button class="btn-cancel" id="btnVoltarTutora">← Voltar</button>
+    </div>
+
+    <div id="loginGestorWrap" style="display:none;">
+      <h3 style="font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:4px;">Acesso — Gestor</h3>
+      <p style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Entre com funcional e senha.</p>
+      <input class="lin" type="text" id="loginGestorFunc" placeholder="Funcional (9 dígitos)" maxlength="9" inputmode="numeric">
+      <input class="lin" type="password" id="loginGestorSenha" placeholder="Senha (4 dígitos)">
+      <div class="lerr" id="loginGestorErr">Funcional ou senha incorretos.</div>
+      <button class="btn-login" id="btnLoginGestor">Acessar</button>
+      <button class="btn-cancel" id="btnVoltarGestor">← Voltar</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME -->
+<!-- EXPORT EXCEL MODAL -->
+<div class="login-ov" id="exportOv">
+  <div class="login-box" style="max-width:420px;">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:4px;">📊 Exportar Resultados</h3>
+    <p style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Selecione os trimestres que deseja incluir na planilha.</p>
+    <div id="exportTriCheckboxes" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn-cancel" id="btnCancelExport" style="margin:0;">Cancelar</button>
+      <button class="btn-login" id="btnConfirmExport" style="margin:0;padding:8px 20px;">Exportar</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME -->
+<div class="modal-ov" id="renameOv">
+  <div class="modal-box">
+    <h3>Renomear estagiário</h3>
+    <input class="field-in" type="text" id="renameIn" maxlength="50" placeholder="Nome completo" style="margin-bottom:0;">
+    <div class="modal-btns">
+      <button class="btn-sm" id="btnCancelRename">Cancelar</button>
+      <button class="btn-sm pr" id="btnConfirmRename">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AGENDAMENTO -->
+<div class="modal-ov" id="modalAgendamento">
+  <div class="modal-box" style="max-width:560px;width:95%;max-height:90vh;overflow-y:auto;">
+    <h3 id="modalAgendTitulo" style="margin-bottom:14px;">Novo Agendamento</h3>
+    
+    <div style="display:grid;gap:12px;">
+      <div>
+        <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Título *</label>
+        <input class="field-in" type="text" id="agendTitulo" maxlength="120" placeholder="Ex: Aula sobre consignados de prefeituras" style="margin-bottom:0;">
+      </div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Data *</label>
+          <input class="field-in" type="date" id="agendData" style="margin-bottom:0;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Tipo</label>
+          <select class="field-in" id="agendTipo" style="margin-bottom:0;">
+            <option value="aula">Aula</option>
+            <option value="workshop">Workshop</option>
+            <option value="treinamento">Treinamento</option>
+            <option value="reuniao">Reunião</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+      </div>
+      
+      <div>
+        <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Público-alvo</label>
+        <select class="field-in" id="agendFaseAlvo" style="margin-bottom:0;">
+          <option value="todos">Todos os estagiários</option>
+          <option value="fase1">Apenas Fase 1 - Decolar (0-90 dias)</option>
+          <option value="fase2">Apenas Fase 2 - Evoluir (91-180 dias)</option>
+          <option value="fase3">Apenas Fase 3 - Impactar (181+ dias)</option>
+        </select>
+      </div>
+      
+      <div>
+        <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Descrição</label>
+        <textarea class="field-in" id="agendDescricao" rows="3" placeholder="Detalhes sobre o conteúdo abordado..." style="margin-bottom:0;resize:vertical;font-family:inherit;"></textarea>
+      </div>
+      
+      <div>
+        <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Arquivo (opcional)</label>
+        <input type="file" id="agendArquivo" style="font-size:13px;width:100%;padding:8px;border:1px dashed var(--border2);border-radius:8px;background:var(--bg);cursor:pointer;">
+        <div id="agendArquivoAtual" style="margin-top:6px;font-size:11px;color:var(--ink3);"></div>
+      </div>
+      
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:8px;">Presença dos estagiários</label>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:13px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="agendPresenca" value="todos" checked id="agendPresencaTodos">
+            <span>Todos presentes</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="agendPresenca" value="parcial" id="agendPresencaParcial">
+            <span>Marcar quem faltou</span>
+          </label>
+        </div>
+        <div id="agendListaEstagiarios" style="display:none;max-height:200px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;">
+          <!-- Preenchido dinamicamente -->
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-btns" style="margin-top:18px;">
+      <button class="btn-sm" id="btnCancelAgend">Cancelar</button>
+      <button class="btn-sm pr" id="btnSalvarAgend">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHES AGENDAMENTO -->
+<div class="modal-ov" id="modalAgendDetalhes">
+  <div class="modal-box" style="max-width:560px;width:95%;max-height:90vh;overflow-y:auto;">
+    <div id="agendDetalhesBody"></div>
+    <div class="modal-btns" style="margin-top:18px;">
+      <button class="btn-sm" id="btnFecharAgendDetalhes">Fechar</button>
+      <button class="btn-sm" id="btnEditarAgend" style="background:#3B82F6;color:white;border-color:#3B82F6;">Editar</button>
+      <button class="btn-sm" id="btnExcluirAgend" style="background:#DC2626;color:white;border-color:#DC2626;">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div id="loadingOverlay" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+  <div style="width:40px;height:40px;border:3px solid var(--or-l);border-top-color:var(--or);border-radius:50%;animation:spin .8s linear infinite;"></div>
+  <div style="font-size:14px;color:var(--ink2);font-weight:500;">Carregando dados...</div>
+</div>
+<link rel="stylesheet" href="./assets/css/app.css">
+
+<div class="toast"  id="toast"><span class="tdot"></span>Salvo com sucesso</div>
+
+<script src="./assets/js/app.js"></script>
+<!-- ═══════════════════════════════════════════ -->
+<!-- ═══════ ASSISTENTE IA - BOTÃO FLUTUANTE ═══ -->
+<!-- ═══════════════════════════════════════════ -->
+<link rel="stylesheet" href="./assets/css/app.css">
+
+<button id="aiFloatBtn" title="Assistente IA">✨</button>
+
+<div id="aiChatModal">
+  <div class="ai-chat-header">
+    <div class="ai-chat-title">
+      <span style="font-size:16px;">✨</span>
+      <div>
+        <div>Assistente Nextuber</div>
+        <div style="font-size:10px;opacity:0.85;font-weight:400;">Análises e insights inteligentes</div>
+      </div>
+    </div>
+    <button class="ai-chat-close" id="aiChatClose">✕</button>
+  </div>
+  
+  <div class="ai-chat-messages" id="aiMessages">
+    <div class="ai-msg assistant">
+      Olá! 👋 Sou o assistente do Nextuber. Posso analisar os dados dos estagiários, mostrar rankings, comparar performance, sugerir ações de venda e muito mais.
+      
+Como posso ajudar?
+    </div>
+  </div>
+  
+  <div class="ai-suggestions" id="aiSuggestions">
+    <div class="ai-sug-chip" data-msg="Quais estagiários estão com produção abaixo da meta neste trimestre?">📉 Abaixo da meta</div>
+    <div class="ai-sug-chip" data-msg="Quem lidera o ranking de crédito?">🏆 Top crédito</div>
+    <div class="ai-sug-chip" data-msg="Quais estagiários não atualizaram a produção recentemente?">⏰ Não atualizaram</div>
+    <div class="ai-sug-chip" data-msg="Me dê dicas de como vender mais seguros">💡 Dicas de seguros</div>
+    <div class="ai-sug-chip" data-msg="Quais agendamentos aconteceram este mês?">📅 Agendamentos do mês</div>
+  </div>
+  
+  <div class="ai-chat-input">
+    <textarea id="aiInput" placeholder="Pergunte qualquer coisa..." rows="1"></textarea>
+    <button class="ai-send-btn" id="aiSendBtn">Enviar</button>
+  </div>
+</div>
+
+</body>
+<script src="./assets/js/pwa.js"></script>
+</html>
