@@ -1,49 +1,59 @@
 const CACHE_NAME = 'nextuber-v2';
-const ASSETS = [
+const APP_SHELL = [
+  './',
   './index.html',
+  './formaplus_2_0.html',
   './manifest.json',
+  './assets/css/app.css',
+  './assets/js/app.js',
+  './assets/js/pwa.js',
   './pwa-icons/icon-192x192.png',
   './pwa-icons/icon-512x512.png'
 ];
 
-// Install — cachear arquivos essenciais
-self.addEventListener('install', event => {
+self.addEventListener('install', function (event) {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(function (cache) {
+      return cache.addAll(APP_SHELL);
+    })
   );
   self.skipWaiting();
 });
 
-// Activate — limpar caches antigos
-self.addEventListener('activate', event => {
+self.addEventListener('activate', function (event) {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    caches.keys().then(function (keys) {
+      return Promise.all(
+        keys.filter(function (key) { return key !== CACHE_NAME; })
+          .map(function (key) { return caches.delete(key); })
+      );
+    }).then(function () {
+      return self.clients.claim();
+    })
   );
-  self.clients.claim();
 });
 
-// Fetch — network first, fallback to cache (garante dados atualizados do Supabase)
-self.addEventListener('fetch', event => {
-  // Requisições ao Supabase sempre vão pela rede
-  if (event.request.url.includes('supabase.co')) {
-    event.respondWith(fetch(event.request));
+self.addEventListener('fetch', function (event) {
+  var request = event.request;
+  var url = new URL(request.url);
+
+  if (request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
-  // CDNs sempre pela rede
-  if (event.request.url.includes('cdn.jsdelivr.net')) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-  // App shell: tenta rede, senão usa cache
+
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    fetch(request).then(function (response) {
+      if (response.ok) {
+        var copy = response.clone();
+        caches.open(CACHE_NAME).then(function (cache) {
+          cache.put(request, copy);
+        });
+      }
+      return response;
+    }).catch(function () {
+      return caches.match(request).then(function (cached) {
+        return cached || caches.match('./index.html');
+      });
+    })
   );
 });
