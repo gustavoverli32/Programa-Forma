@@ -1460,7 +1460,7 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
 
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 var PWD = 'kamilla2025';
-console.log('🔶 NEXTUBER BUILD: 2026-06-17-v26 - assistente IA');
+console.log('🔶 NEXTUBER BUILD: 2026-06-17-v27 - IA escopo defensivo');
 var SUPA_URL = 'https://hbebkripmytkknqydjpt.supabase.co';
 var SUPA_KEY = 'sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH';
 var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -5688,79 +5688,120 @@ var AI_EDGE_FUNCTION_URL = 'https://hbebkripmytkknqydjpt.supabase.co/functions/v
 var aiChatHistory = []; // histórico da conversa atual
 var aiChatOpen = false;
 
+// Helper interno pra pegar data local (fallback se hojeLocalYMD não existir no escopo)
+function _aiHojeYMD(){
+  try { if(typeof hojeLocalYMD === 'function') return hojeLocalYMD(); } catch(e){}
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth()+1).padStart(2,'0');
+  var dia = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dia;
+}
+
+// Helper defensivo para pegar variáveis globais
+function _aiGet(nome, fallback){
+  try {
+    // Tenta como variável direta
+    var val = eval(nome);
+    if(typeof val !== 'undefined') return val;
+  } catch(e){}
+  try {
+    if(typeof window !== 'undefined' && typeof window[nome] !== 'undefined') return window[nome];
+  } catch(e){}
+  return fallback;
+}
+
 // Gera um snapshot completo dos dados para a IA analisar
 function gerarContextoIA(){
+  var S_ = _aiGet('S', {ests:[], cfg:{}});
+  var modoGestor_ = _aiGet('modoGestor', false);
+  var gestorLogado_ = _aiGet('gestorLogado', null);
+  
   var ctx = { 
-    data_atual: hojeLocalYMD(),
-    total_estagiarios: (S.ests||[]).length,
-    trimestre_atual: trimestreRef(),
-    prazo_producao: (S.cfg && S.cfg.prazo_producao) || null,
+    data_atual: _aiHojeYMD(),
+    total_estagiarios: (S_.ests||[]).length,
+    trimestre_atual: (typeof trimestreRef === 'function') ? trimestreRef() : null,
+    prazo_producao: (S_.cfg && S_.cfg.prazo_producao) || null,
     estagiarios: [],
     agendamentos: []
   };
   
   // Determinar lista de estagiários (respeitando permissão do gestor)
-  var lista = S.ests || [];
-  if(modoGestor && gestorLogado){
-    var perm = gestorLogado.permissoes || {};
-    if(!perm.todos_estagiarios && !isGGA()){
+  var lista = S_.ests || [];
+  if(modoGestor_ && gestorLogado_){
+    var perm = gestorLogado_.permissoes || {};
+    var _isGGA = false;
+    try { if(typeof isGGA === 'function') _isGGA = isGGA(); } catch(e){}
+    if(!perm.todos_estagiarios && !_isGGA){
       lista = lista.filter(function(e){
-        return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional);
+        return e.perfil && (e.perfil.ga_funcional === gestorLogado_.funcional || e.perfil.gga_funcional === gestorLogado_.funcional);
       });
     }
   }
   
-  var tri = trimestreRef();
+  var tri = ctx.trimestre_atual;
+  if(!tri){ return ctx; } // sem trimestre, retorna estrutura vazia
+  
   ctx.estagiarios = lista.map(function(e){
-    var nota = calcScore(e, tri);
-    var producaoCredito = getTotalTrimestreModalidades(e.id, tri);
-    var producaoOutros = getTotalTrimestreOutros(e.id, tri);
-    var prod = getProducaoTri(e.id, tri);
-    var meta = parseFloat(prod.meta) || 0;
-    var trilhaKey = getEffectiveTrilhaKey(e);
+    var nota = 0, producaoCredito = 0, producaoOutros = 0, meta = 0;
+    var producaoCred = {INSS:0, OP:0, EP:0, Creditario:0};
+    var producaoProd = {Seguros:0, PIC:0, Combinaqui:0, Consorcios:0, Engajamento:0};
+    var statusAtz = 'ok';
+    var metaContatos = 0;
+    
+    try { nota = calcScore(e, tri); } catch(err){}
+    try { producaoCredito = getTotalTrimestreModalidades(e.id, tri); } catch(err){}
+    try { producaoOutros = getTotalTrimestreOutros(e.id, tri); } catch(err){}
+    try { var prod = getProducaoTri(e.id, tri); meta = parseFloat(prod.meta) || 0; } catch(err){}
+    try { producaoCred.INSS = getTotalTrimestreModalidade(e.id, tri, 0); } catch(err){}
+    try { producaoCred.OP = getTotalTrimestreModalidade(e.id, tri, 1); } catch(err){}
+    try { producaoCred.EP = getTotalTrimestreModalidade(e.id, tri, 2); } catch(err){}
+    try { producaoCred.Creditario = getTotalTrimestreModalidade(e.id, tri, 3); } catch(err){}
+    try { producaoProd.Seguros = getTotalTrimestreOutroProduto(e.id, tri, 0); } catch(err){}
+    try { producaoProd.PIC = getTotalTrimestreOutroProduto(e.id, tri, 1); } catch(err){}
+    try { producaoProd.Combinaqui = getTotalTrimestreOutroProduto(e.id, tri, 2); } catch(err){}
+    try { producaoProd.Consorcios = getTotalTrimestreOutroProduto(e.id, tri, 3); } catch(err){}
+    try { producaoProd.Engajamento = getTotalTrimestreOutroProduto(e.id, tri, 4); } catch(err){}
+    try { statusAtz = statusAtualizacao(e); } catch(err){}
+    try { metaContatos = getMetaContatos(e.id); } catch(err){}
+    
+    var trilhaKey = null;
+    try { trilhaKey = getEffectiveTrilhaKey(e); } catch(err){}
     var trilhaNome = trilhaKey ? {iniciante:'Decolar (0-90d)', intermediario:'Evoluir (91-180d)', avancado:'Impactar (181+d)'}[trilhaKey] : 'Não definida';
-    var statusAtz = statusAtualizacao(e);
+    
+    var tempo = null;
+    try { if(e.perfil && e.perfil.inicio && typeof calcTempo === 'function') tempo = calcTempo(e.perfil.inicio); } catch(err){}
     
     return {
       nome: e.nome,
       agencia: (e.perfil && e.perfil.agencia) || null,
       funcional: (e.perfil && e.perfil.funcional) || null,
       inicio: (e.perfil && e.perfil.inicio) || null,
-      tempo_no_programa: (e.perfil && e.perfil.inicio) ? calcTempo(e.perfil.inicio) : null,
+      tempo_no_programa: tempo,
       trilha: trilhaNome,
       certificacao: (e.perfil && e.perfil.certificacao) || 'sem certificação',
       nota_trimestre: nota,
       meta_trimestre: meta,
       producao_credito_total: producaoCredito,
-      producao_credito: {
-        INSS: getTotalTrimestreModalidade(e.id, tri, 0),
-        OP: getTotalTrimestreModalidade(e.id, tri, 1),
-        EP: getTotalTrimestreModalidade(e.id, tri, 2),
-        Creditario: getTotalTrimestreModalidade(e.id, tri, 3)
-      },
+      producao_credito: producaoCred,
       producao_produtos_total: producaoOutros,
-      producao_produtos: {
-        Seguros: getTotalTrimestreOutroProduto(e.id, tri, 0),
-        PIC: getTotalTrimestreOutroProduto(e.id, tri, 1),
-        Combinaqui: getTotalTrimestreOutroProduto(e.id, tri, 2),
-        Consorcios: getTotalTrimestreOutroProduto(e.id, tri, 3),
-        Engajamento: getTotalTrimestreOutroProduto(e.id, tri, 4)
-      },
+      producao_produtos: producaoProd,
       pct_atingido_credito: meta > 0 ? Math.round((producaoCredito/meta)*100) : 0,
       pct_atingido_produtos: meta > 0 ? Math.round((producaoOutros/(meta*0.2))*100) : 0,
       ultima_atualizacao_producao: (e.perfil && e.perfil.ultima_atualizacao_prod) || null,
-      status_atualizacao: statusAtz, // 'ok', 'alerta', 'atrasado'
-      meta_diaria_contatos: getMetaContatos(e.id)
+      status_atualizacao: statusAtz,
+      meta_diaria_contatos: metaContatos
     };
   });
   
   // Agendamentos (últimos 30 dias)
-  if(typeof agendamentosCache !== 'undefined' && agendamentosCache.length > 0){
+  var agendCache = _aiGet('agendamentosCache', []);
+  if(agendCache && agendCache.length > 0){
     var hoje30 = new Date();
     hoje30.setDate(hoje30.getDate() - 30);
     var lim = hoje30.toISOString().slice(0,10);
     
-    ctx.agendamentos = agendamentosCache.filter(function(a){ return a.data >= lim; }).map(function(a){
+    ctx.agendamentos = agendCache.filter(function(a){ return a.data >= lim; }).map(function(a){
       var pres = 0, aus = 0;
       var nomesAusentes = [];
       if(a.presenca && Array.isArray(a.presenca)){
@@ -5768,7 +5809,7 @@ function gerarContextoIA(){
           if(x.presente) pres++;
           else {
             aus++;
-            var est = S.ests.find(function(e){return e.id === x.estagiario_id;});
+            var est = (S_.ests||[]).find(function(e){return e.id === x.estagiario_id;});
             if(est) nomesAusentes.push(est.nome);
           }
         });
