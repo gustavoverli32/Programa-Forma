@@ -648,19 +648,6 @@ body.ai-chat-is-open #aiFloatBtn {
   transform: scale(1.1) rotate(5deg);
   animation: aiShimmer 1.5s linear infinite;
 }
-#aiFloatBtn::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 10px;
-  height: 10px;
-  background: #EC7000;
-  border-radius: 50%;
-  border: 2px solid white;
-  animation: aiPulse 1.5s infinite;
-}
-
 #aiChatModal {
   position: fixed;
   bottom: 100px;
