@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1461,7 +1460,7 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
 
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 var PWD = 'kamilla2025';
-console.log('🔶 NEXTUBER BUILD: 2026-06-17-v25 - remove cancelar prazo');
+console.log('🔶 NEXTUBER BUILD: 2026-06-17-v26 - assistente IA');
 var SUPA_URL = 'https://hbebkripmytkknqydjpt.supabase.co';
 var SUPA_KEY = 'sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH';
 var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -5679,8 +5678,562 @@ document.querySelectorAll('[data-page="agendamentos"]').forEach(function(item){
 });
 
 
+// ═══════════════════════════════════════════════
+// ═══════════ ASSISTENTE IA ═════════════════════
+// ═══════════════════════════════════════════════
+
+// URL da Supabase Edge Function (será configurada no Supabase)
+var AI_EDGE_FUNCTION_URL = 'https://hbebkripmytkknqydjpt.supabase.co/functions/v1/ai-assistant';
+
+var aiChatHistory = []; // histórico da conversa atual
+var aiChatOpen = false;
+
+// Gera um snapshot completo dos dados para a IA analisar
+function gerarContextoIA(){
+  var ctx = { 
+    data_atual: hojeLocalYMD(),
+    total_estagiarios: (S.ests||[]).length,
+    trimestre_atual: trimestreRef(),
+    prazo_producao: (S.cfg && S.cfg.prazo_producao) || null,
+    estagiarios: [],
+    agendamentos: []
+  };
+  
+  // Determinar lista de estagiários (respeitando permissão do gestor)
+  var lista = S.ests || [];
+  if(modoGestor && gestorLogado){
+    var perm = gestorLogado.permissoes || {};
+    if(!perm.todos_estagiarios && !isGGA()){
+      lista = lista.filter(function(e){
+        return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional);
+      });
+    }
+  }
+  
+  var tri = trimestreRef();
+  ctx.estagiarios = lista.map(function(e){
+    var nota = calcScore(e, tri);
+    var producaoCredito = getTotalTrimestreModalidades(e.id, tri);
+    var producaoOutros = getTotalTrimestreOutros(e.id, tri);
+    var prod = getProducaoTri(e.id, tri);
+    var meta = parseFloat(prod.meta) || 0;
+    var trilhaKey = getEffectiveTrilhaKey(e);
+    var trilhaNome = trilhaKey ? {iniciante:'Decolar (0-90d)', intermediario:'Evoluir (91-180d)', avancado:'Impactar (181+d)'}[trilhaKey] : 'Não definida';
+    var statusAtz = statusAtualizacao(e);
+    
+    return {
+      nome: e.nome,
+      agencia: (e.perfil && e.perfil.agencia) || null,
+      funcional: (e.perfil && e.perfil.funcional) || null,
+      inicio: (e.perfil && e.perfil.inicio) || null,
+      tempo_no_programa: (e.perfil && e.perfil.inicio) ? calcTempo(e.perfil.inicio) : null,
+      trilha: trilhaNome,
+      certificacao: (e.perfil && e.perfil.certificacao) || 'sem certificação',
+      nota_trimestre: nota,
+      meta_trimestre: meta,
+      producao_credito_total: producaoCredito,
+      producao_credito: {
+        INSS: getTotalTrimestreModalidade(e.id, tri, 0),
+        OP: getTotalTrimestreModalidade(e.id, tri, 1),
+        EP: getTotalTrimestreModalidade(e.id, tri, 2),
+        Creditario: getTotalTrimestreModalidade(e.id, tri, 3)
+      },
+      producao_produtos_total: producaoOutros,
+      producao_produtos: {
+        Seguros: getTotalTrimestreOutroProduto(e.id, tri, 0),
+        PIC: getTotalTrimestreOutroProduto(e.id, tri, 1),
+        Combinaqui: getTotalTrimestreOutroProduto(e.id, tri, 2),
+        Consorcios: getTotalTrimestreOutroProduto(e.id, tri, 3),
+        Engajamento: getTotalTrimestreOutroProduto(e.id, tri, 4)
+      },
+      pct_atingido_credito: meta > 0 ? Math.round((producaoCredito/meta)*100) : 0,
+      pct_atingido_produtos: meta > 0 ? Math.round((producaoOutros/(meta*0.2))*100) : 0,
+      ultima_atualizacao_producao: (e.perfil && e.perfil.ultima_atualizacao_prod) || null,
+      status_atualizacao: statusAtz, // 'ok', 'alerta', 'atrasado'
+      meta_diaria_contatos: getMetaContatos(e.id)
+    };
+  });
+  
+  // Agendamentos (últimos 30 dias)
+  if(typeof agendamentosCache !== 'undefined' && agendamentosCache.length > 0){
+    var hoje30 = new Date();
+    hoje30.setDate(hoje30.getDate() - 30);
+    var lim = hoje30.toISOString().slice(0,10);
+    
+    ctx.agendamentos = agendamentosCache.filter(function(a){ return a.data >= lim; }).map(function(a){
+      var pres = 0, aus = 0;
+      var nomesAusentes = [];
+      if(a.presenca && Array.isArray(a.presenca)){
+        a.presenca.forEach(function(x){
+          if(x.presente) pres++;
+          else {
+            aus++;
+            var est = S.ests.find(function(e){return e.id === x.estagiario_id;});
+            if(est) nomesAusentes.push(est.nome);
+          }
+        });
+      }
+      return {
+        data: a.data,
+        titulo: a.titulo,
+        tipo: a.tipo,
+        publico: a.fase_alvo,
+        criado_por: a.gestor_nome,
+        descricao: a.descricao || null,
+        presentes: pres,
+        ausentes: aus,
+        nomes_ausentes: nomesAusentes
+      };
+    });
+  }
+  
+  return ctx;
+}
+
+// Renderiza uma mensagem no chat
+function aiAddMsg(role, content){
+  var el = document.getElementById('aiMessages');
+  if(!el) return;
+  var div = document.createElement('div');
+  div.className = 'ai-msg ' + role;
+  div.textContent = content;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function aiShowTyping(){
+  var el = document.getElementById('aiMessages');
+  if(!el) return;
+  var div = document.createElement('div');
+  div.className = 'ai-typing';
+  div.id = 'aiTypingIndicator';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function aiHideTyping(){
+  var t = document.getElementById('aiTypingIndicator');
+  if(t) t.remove();
+}
+
+async function aiSendMessage(){
+  var input = document.getElementById('aiInput');
+  var btn = document.getElementById('aiSendBtn');
+  if(!input) return;
+  
+  var msg = input.value.trim();
+  if(!msg) return;
+  
+  // Adiciona mensagem do usuário
+  aiAddMsg('user', msg);
+  aiChatHistory.push({ role: 'user', content: msg });
+  
+  input.value = '';
+  input.style.height = 'auto';
+  btn.disabled = true;
+  input.disabled = true;
+  aiShowTyping();
+  
+  try {
+    // Gera contexto atualizado
+    var contexto = gerarContextoIA();
+    
+    // Pega token de autenticação Supabase
+    var supaKey = 'sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH';
+    
+    // Chama a Edge Function
+    var response = await fetch(AI_EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + supaKey,
+        'apikey': supaKey
+      },
+      body: JSON.stringify({
+        pergunta: msg,
+        contexto: contexto,
+        historico: aiChatHistory.slice(-10) // últimas 10 mensagens
+      })
+    });
+    
+    aiHideTyping();
+    
+    if(!response.ok){
+      var errText = await response.text();
+      aiAddMsg('system', '❌ Erro na comunicação com a IA. Verifique se a Edge Function foi criada. (' + response.status + ')');
+      console.error('Erro IA:', errText);
+      return;
+    }
+    
+    var data = await response.json();
+    var resposta = data.resposta || data.answer || data.content || 'Sem resposta.';
+    
+    aiAddMsg('assistant', resposta);
+    aiChatHistory.push({ role: 'assistant', content: resposta });
+    
+  } catch(err) {
+    aiHideTyping();
+    aiAddMsg('system', '❌ Erro: ' + (err.message || 'desconhecido'));
+    console.error('Erro IA:', err);
+  } finally {
+    btn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+// Inicializar listeners da IA
+function initAIListeners(){
+  var floatBtn = document.getElementById('aiFloatBtn');
+  var modal = document.getElementById('aiChatModal');
+  var closeBtn = document.getElementById('aiChatClose');
+  var sendBtn = document.getElementById('aiSendBtn');
+  var input = document.getElementById('aiInput');
+  
+  if(floatBtn) floatBtn.addEventListener('click', function(){
+    aiChatOpen = !aiChatOpen;
+    if(aiChatOpen){
+      modal.classList.add('open');
+      floatBtn.style.transform = 'scale(0.9)';
+      setTimeout(function(){ floatBtn.style.transform = ''; input && input.focus(); }, 200);
+      // Recarregar agendamentos ao abrir
+      if(typeof carregarAgendamentos === 'function'){
+        carregarAgendamentos();
+      }
+    } else {
+      modal.classList.remove('open');
+    }
+  });
+  
+  if(closeBtn) closeBtn.addEventListener('click', function(){
+    aiChatOpen = false;
+    modal.classList.remove('open');
+  });
+  
+  if(sendBtn) sendBtn.addEventListener('click', aiSendMessage);
+  
+  if(input){
+    input.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        aiSendMessage();
+      }
+    });
+    input.addEventListener('input', function(){
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+  }
+  
+  // Chips de sugestão
+  document.querySelectorAll('.ai-sug-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      var msg = this.getAttribute('data-msg');
+      if(input && msg){
+        input.value = msg;
+        aiSendMessage();
+      }
+    });
+  });
+}
+
+// Inicializa quando o DOM está pronto
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initAIListeners);
+} else {
+  initAIListeners();
+}
+
 
 </script>
+<!-- ═══════════════════════════════════════════ -->
+<!-- ═══════ ASSISTENTE IA - BOTÃO FLUTUANTE ═══ -->
+<!-- ═══════════════════════════════════════════ -->
+<style>
+@keyframes aiPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(236, 112, 0, 0.4), 0 0 0 0 rgba(236, 112, 0, 0.6); }
+  50% { transform: scale(1.05); box-shadow: 0 6px 26px rgba(236, 112, 0, 0.5), 0 0 0 15px rgba(236, 112, 0, 0); }
+}
+@keyframes aiShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes aiBounceIn {
+  0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+  60% { transform: scale(1.1) rotate(10deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes aiSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes aiTyping {
+  0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+#aiFloatBtn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #EC7000 0%, #FF9800 50%, #EC7000 100%);
+  background-size: 200% 200%;
+  border: none;
+  color: white;
+  font-size: 26px;
+  cursor: pointer;
+  z-index: 999;
+  animation: aiPulse 2.5s infinite, aiBounceIn 0.6s ease-out, aiShimmer 3s linear infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+#aiFloatBtn:hover {
+  transform: scale(1.1) rotate(5deg);
+  animation: aiShimmer 1.5s linear infinite;
+}
+#aiFloatBtn::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  background: #FEF3C7;
+  border-radius: 50%;
+  border: 2px solid white;
+  animation: aiPulse 1.5s infinite;
+}
+
+#aiChatModal {
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  height: 600px;
+  max-height: calc(100vh - 130px);
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  z-index: 998;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  animation: aiSlideUp 0.3s ease-out;
+}
+#aiChatModal.open { display: flex; }
+
+.ai-chat-header {
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #EC7000 0%, #FF9800 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ai-chat-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.ai-chat-close {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.85;
+  padding: 4px;
+}
+.ai-chat-close:hover { opacity: 1; }
+
+.ai-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg);
+}
+.ai-msg {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  animation: aiSlideUp 0.25s ease-out;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.ai-msg.user {
+  align-self: flex-end;
+  background: var(--or);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.ai-msg.assistant {
+  align-self: flex-start;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+.ai-msg.system {
+  align-self: center;
+  background: #FEF3C7;
+  color: #92400E;
+  font-size: 11px;
+  border-radius: 20px;
+  padding: 4px 12px;
+}
+.ai-typing {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 4px;
+}
+.ai-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--or);
+  animation: aiTyping 1.4s infinite;
+}
+.ai-typing span:nth-child(2) { animation-delay: 0.2s; }
+.ai-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+.ai-suggestions {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ai-suggestions::-webkit-scrollbar { display: none; }
+.ai-sug-chip {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--ink2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.ai-sug-chip:hover {
+  background: var(--or);
+  color: white;
+  border-color: var(--or);
+}
+
+.ai-chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.ai-chat-input textarea {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: none;
+  min-height: 36px;
+  max-height: 100px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.ai-chat-input textarea:focus {
+  outline: none;
+  border-color: var(--or);
+}
+.ai-send-btn {
+  padding: 8px 16px;
+  background: var(--or);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ai-send-btn:hover:not(:disabled) { background: var(--or-d); }
+.ai-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Mobile */
+@media (max-width: 480px) {
+  #aiFloatBtn { bottom: 16px; right: 16px; width: 54px; height: 54px; font-size: 22px; }
+  #aiChatModal {
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 85vh;
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+  }
+}
+</style>
+
+<button id="aiFloatBtn" title="Assistente IA">✨</button>
+
+<div id="aiChatModal">
+  <div class="ai-chat-header">
+    <div class="ai-chat-title">
+      <span style="font-size:16px;">✨</span>
+      <div>
+        <div>Assistente Nextuber</div>
+        <div style="font-size:10px;opacity:0.85;font-weight:400;">Análises e insights inteligentes</div>
+      </div>
+    </div>
+    <button class="ai-chat-close" id="aiChatClose">✕</button>
+  </div>
+  
+  <div class="ai-chat-messages" id="aiMessages">
+    <div class="ai-msg assistant">
+      Olá! 👋 Sou o assistente do Nextuber. Posso analisar os dados dos estagiários, mostrar rankings, comparar performance, sugerir ações de venda e muito mais.
+      
+Como posso ajudar?
+    </div>
+  </div>
+  
+  <div class="ai-suggestions" id="aiSuggestions">
+    <div class="ai-sug-chip" data-msg="Quais estagiários estão com produção abaixo da meta neste trimestre?">📉 Abaixo da meta</div>
+    <div class="ai-sug-chip" data-msg="Quem lidera o ranking de crédito?">🏆 Top crédito</div>
+    <div class="ai-sug-chip" data-msg="Quais estagiários não atualizaram a produção recentemente?">⏰ Não atualizaram</div>
+    <div class="ai-sug-chip" data-msg="Me dê dicas de como vender mais seguros">💡 Dicas de seguros</div>
+    <div class="ai-sug-chip" data-msg="Quais agendamentos aconteceram este mês?">📅 Agendamentos do mês</div>
+  </div>
+  
+  <div class="ai-chat-input">
+    <textarea id="aiInput" placeholder="Pergunte qualquer coisa..." rows="1"></textarea>
+    <button class="ai-send-btn" id="aiSendBtn">Enviar</button>
+  </div>
+</div>
+
 </body>
 <script>
 // Forçar limpeza de cache antigo (v3)
