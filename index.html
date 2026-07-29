@@ -1460,7 +1460,7 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
 
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 var PWD = 'kamilla2025';
-console.log('🔶 NEXTUBER BUILD: 2026-06-17-v27 - IA escopo defensivo');
+console.log('🔶 NEXTUBER BUILD: 2026-06-17-v30 - IA + contatos + resumo');
 var SUPA_URL = 'https://hbebkripmytkknqydjpt.supabase.co';
 var SUPA_KEY = 'sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH';
 var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -1633,6 +1633,7 @@ async function hashSenha(senha) {
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{} };
+window.S = S; // exposto pra IA e outros escopos
 var DB_LOADED = false;
 
 var TEXTOS_PROJETO_DEFAULT = {
@@ -5161,7 +5162,7 @@ async function carregarAgendamentos(){
   
   if(!_sb){
     console.warn('Cliente Supabase ainda não inicializado');
-    agendamentosCache = [];
+    agendamentosCache = []; window.agendamentosCache = agendamentosCache;
     var el = document.getElementById('agendamentosList');
     if(el) el.innerHTML = '<div style="background:#FEF2F2;border:1px solid #DC2626;border-radius:10px;padding:16px;color:#991B1B;font-size:13px;">⚠ Cliente Supabase não inicializado. Recarregue a página.</div>';
     return;
@@ -5173,7 +5174,7 @@ async function carregarAgendamentos(){
       // Se a tabela não existe, mostra mensagem amigável
       if(r.error.message && r.error.message.indexOf('does not exist') >= 0){
         console.warn('Tabela "agendamentos" não existe no Supabase. Execute o SQL para criá-la.');
-        agendamentosCache = [];
+        agendamentosCache = []; window.agendamentosCache = agendamentosCache;
         var el2 = document.getElementById('agendamentosList');
         if(el2){
           el2.innerHTML = '<div style="background:#FEF2F2;border:1px solid #DC2626;border-radius:10px;padding:16px;color:#991B1B;font-size:13px;">' 
@@ -5192,6 +5193,7 @@ async function carregarAgendamentos(){
     console.error('Erro:', e);
     agendamentosCache = [];
   }
+  window.agendamentosCache = agendamentosCache;
 }
 
 function getFaseEstagiario(e){
@@ -5679,6 +5681,31 @@ document.querySelectorAll('[data-page="agendamentos"]').forEach(function(item){
 
 
 // ═══════════════════════════════════════════════
+// Expor funções e variáveis globais para a IA
+// Usa eval para forçar resolução no escopo correto
+// ═══════════════════════════════════════════════
+(function exporGlobaisParaIA(){
+  var nomes = [
+    'S', 'modoGestor', 'gestorLogado', 'editor', 'agendamentosCache',
+    'trimestreRef', 'calcScore', 'calcTempo',
+    'getTotalTrimestreModalidades', 'getTotalTrimestreModalidade',
+    'getTotalTrimestreOutros', 'getTotalTrimestreOutroProduto',
+    'getProducaoTri', 'getEffectiveTrilhaKey', 'statusAtualizacao',
+    'getMetaContatos', 'hojeLocalYMD', 'isGGA',
+    'getProducaoSemanalModalidade', 'getProducaoOutroProduto'
+  ];
+  nomes.forEach(function(nome){
+    try {
+      var valor = eval(nome);
+      if(typeof valor !== 'undefined') window[nome] = valor;
+    } catch(e){
+      // Silencioso: nome não existe no escopo, tudo bem
+    }
+  });
+})();
+
+
+// ═══════════════════════════════════════════════
 // ═══════════ ASSISTENTE IA ═════════════════════
 // ═══════════════════════════════════════════════
 
@@ -5691,6 +5718,7 @@ var aiChatOpen = false;
 // Helper interno pra pegar data local (fallback se hojeLocalYMD não existir no escopo)
 function _aiHojeYMD(){
   try { if(typeof hojeLocalYMD === 'function') return hojeLocalYMD(); } catch(e){}
+  try { if(window.hojeLocalYMD) return window.hojeLocalYMD(); } catch(e){}
   var d = new Date();
   var y = d.getFullYear();
   var m = String(d.getMonth()+1).padStart(2,'0');
@@ -5698,40 +5726,188 @@ function _aiHojeYMD(){
   return y+'-'+m+'-'+dia;
 }
 
-// Helper defensivo para pegar variáveis globais
-function _aiGet(nome, fallback){
-  try {
-    // Tenta como variável direta
-    var val = eval(nome);
-    if(typeof val !== 'undefined') return val;
-  } catch(e){}
-  try {
-    if(typeof window !== 'undefined' && typeof window[nome] !== 'undefined') return window[nome];
-  } catch(e){}
-  return fallback;
-}
 
-// Gera um snapshot completo dos dados para a IA analisar
+
+// ═══════════════════════════════════════════════
+// gerarContextoIA - VERSÃO AUTOSSUFICIENTE
+// Calcula tudo diretamente de window.S.producao
+// Não depende de outras funções externas
+// ═══════════════════════════════════════════════
 function gerarContextoIA(){
-  var S_ = _aiGet('S', {ests:[], cfg:{}});
-  var modoGestor_ = _aiGet('modoGestor', false);
-  var gestorLogado_ = _aiGet('gestorLogado', null);
+  var S_ = window.S || {ests:[], cfg:{}, producao:[]};
+  var modoGestor_ = window.modoGestor || false;
+  var gestorLogado_ = window.gestorLogado || null;
+  
+  // Trimestre atual (calcula do zero)
+  function _trimestreAtualLocal(){
+    var d = new Date();
+    var m = d.getMonth() + 1; // 1-12
+    var q = Math.ceil(m/3); // 1-4
+    return d.getFullYear() + '-Q' + q;
+  }
+  var tri = _trimestreAtualLocal();
+  
+  // Meses do trimestre
+  function _mesesDoTri(triRef){
+    var partes = triRef.split('-Q');
+    var q = parseInt(partes[1]);
+    var mesInicio = (q-1)*3 + 1;
+    var nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return [nomes[mesInicio-1], nomes[mesInicio], nomes[mesInicio+1]];
+  }
+  
+  // Busca valor de produção pelo ref
+  function _prod(eid, ref){
+    var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
+    return row ? (parseFloat(row.producao) || 0) : 0;
+  }
+  
+  // Total de uma modalidade no trimestre (soma 3 meses × 4 semanas)
+  function _totCredMod(eid, modIdx){
+    var t = 0;
+    for(var m = 1; m <= 3; m++){
+      for(var s = 1; s <= 4; s++){
+        t += _prod(eid, tri+'-M'+m+'-S'+s+'-MOD'+modIdx);
+      }
+    }
+    return t;
+  }
+  
+  // Total de crédito no trimestre (todas as 4 modalidades)
+  function _totCredTri(eid){
+    return _totCredMod(eid, 0) + _totCredMod(eid, 1) + _totCredMod(eid, 2) + _totCredMod(eid, 3);
+  }
+  
+  // Total de um produto "outros" no trimestre
+  function _totOutProd(eid, prodIdx){
+    var t = 0;
+    for(var m = 1; m <= 3; m++){
+      for(var s = 1; s <= 4; s++){
+        t += _prod(eid, tri+'-M'+m+'-S'+s+'-OUT'+prodIdx);
+      }
+    }
+    return t;
+  }
+  
+  // Total de outros produtos no trimestre
+  function _totOutTri(eid){
+    var t = 0;
+    for(var p = 0; p < 5; p++){ t += _totOutProd(eid, p); }
+    return t;
+  }
+  
+  // Meta do trimestre
+  function _metaTri(eid){
+    var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === tri; });
+    return row ? (parseFloat(row.meta) || 0) : 0;
+  }
+  
+  // Meta diária de contatos
+  function _metaContatos(eid){
+    var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === 'CONTATO-META'; });
+    return row ? (parseFloat(row.meta) || 0) : 0;
+  }
+  
+  // Semana ISO atual (formato "2026-W31")
+  function _semanaISOAtual(){
+    var date = new Date();
+    var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    var dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+    return d.getUTCFullYear() + '-W' + String(weekNo).padStart(2, '0');
+  }
+  var semAtual = _semanaISOAtual();
+  
+  // Contatos da semana atual
+  function _contatosSemana(eid){
+    var dias = ['segunda','terca','quarta','quinta','sexta'];
+    var res = { semana: semAtual, total: 0 };
+    for(var i = 0; i < 5; i++){
+      var ref = 'CONTATO-' + semAtual + '-D' + i;
+      var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
+      var v = row ? (parseFloat(row.producao) || 0) : 0;
+      res[dias[i]] = v;
+      res.total += v;
+    }
+    var meta = _metaContatos(eid);
+    res.meta_semanal = meta * 5;
+    res.pct_meta_semanal = res.meta_semanal > 0 ? Math.round(res.total / res.meta_semanal * 100) : 0;
+    return res;
+  }
+  
+  // Calcula nota
+  function _nota(eid){
+    var meta = _metaTri(eid);
+    if(meta <= 0) return 0;
+    var cred = _totCredTri(eid);
+    var out = _totOutTri(eid);
+    var metaOut = meta * 0.2;
+    var pctCred = Math.min(cred/meta, 1);
+    var pctOut = metaOut > 0 ? Math.min(out/metaOut, 1) : 0;
+    return Math.min(Math.round((pctCred*6 + pctOut*4)*10)/10, 10);
+  }
+  
+  // Fase (trilha) baseada em meses no programa
+  function _fase(e){
+    if(!e.perfil || !e.perfil.inicio) return 'Não definida';
+    var inicio = new Date(e.perfil.inicio);
+    var agora = new Date();
+    var dias = Math.floor((agora - inicio)/(86400000));
+    if(dias <= 90) return 'Decolar (0-90d)';
+    if(dias <= 180) return 'Evoluir (91-180d)';
+    return 'Impactar (181+d)';
+  }
+  
+  // Status de atualização
+  function _statusAtz(e){
+    if(!S_.cfg || !S_.cfg.prazo_producao) return 'ok';
+    var definidoEm = S_.cfg.prazo_definido_em || '2000-01-01';
+    var hoje = new Date();
+    var y = hoje.getFullYear();
+    var m = String(hoje.getMonth()+1).padStart(2,'0');
+    var d = String(hoje.getDate()).padStart(2,'0');
+    var hojeStr = y+'-'+m+'-'+d;
+    if(e.perfil && e.perfil.ultima_atualizacao_prod && e.perfil.ultima_atualizacao_prod >= definidoEm) return 'ok';
+    var prazoDt = new Date(S_.cfg.prazo_producao+'T00:00:00');
+    var hojeDt = new Date(hojeStr+'T00:00:00');
+    var diff = Math.round((prazoDt - hojeDt)/86400000);
+    if(diff < 1) return 'atrasado';
+    if(diff <= 2) return 'alerta';
+    return 'ok';
+  }
+  
+  // Tempo no programa
+  function _tempo(inicio){
+    if(!inicio) return null;
+    var s = new Date(inicio), now = new Date();
+    var y = now.getFullYear()-s.getFullYear(), m = now.getMonth()-s.getMonth();
+    if(m<0){y--;m+=12;}
+    if(y===0&&m===0) return 'Iniciando';
+    if(y===0) return m===1?'1 mês':m+' meses';
+    if(m===0) return y===1?'1 ano':y+' anos';
+    return y+' ano'+(y>1?'s':'')+' e '+m+' '+(m===1?'mês':'meses');
+  }
+  
+  var hojeYMD = _aiHojeYMD();
   
   var ctx = { 
-    data_atual: _aiHojeYMD(),
+    data_atual: hojeYMD,
     total_estagiarios: (S_.ests||[]).length,
-    trimestre_atual: (typeof trimestreRef === 'function') ? trimestreRef() : null,
+    trimestre_atual: tri,
     prazo_producao: (S_.cfg && S_.cfg.prazo_producao) || null,
     estagiarios: [],
     agendamentos: []
   };
   
-  // Determinar lista de estagiários (respeitando permissão do gestor)
+  console.log('[IA] Contexto: total_ests=', ctx.total_estagiarios, 'trimestre=', tri);
+  
+  // Filtrar por permissão
   var lista = S_.ests || [];
   if(modoGestor_ && gestorLogado_){
     var perm = gestorLogado_.permissoes || {};
-    var _isGGA = false;
-    try { if(typeof isGGA === 'function') _isGGA = isGGA(); } catch(e){}
+    var _isGGA = (gestorLogado_.tipo_gestor === 'gga');
     if(!perm.todos_estagiarios && !_isGGA){
       lista = lista.filter(function(e){
         return e.perfil && (e.perfil.ga_funcional === gestorLogado_.funcional || e.perfil.gga_funcional === gestorLogado_.funcional);
@@ -5739,63 +5915,83 @@ function gerarContextoIA(){
     }
   }
   
-  var tri = ctx.trimestre_atual;
-  if(!tri){ return ctx; } // sem trimestre, retorna estrutura vazia
-  
   ctx.estagiarios = lista.map(function(e){
-    var nota = 0, producaoCredito = 0, producaoOutros = 0, meta = 0;
-    var producaoCred = {INSS:0, OP:0, EP:0, Creditario:0};
-    var producaoProd = {Seguros:0, PIC:0, Combinaqui:0, Consorcios:0, Engajamento:0};
-    var statusAtz = 'ok';
-    var metaContatos = 0;
-    
-    try { nota = calcScore(e, tri); } catch(err){}
-    try { producaoCredito = getTotalTrimestreModalidades(e.id, tri); } catch(err){}
-    try { producaoOutros = getTotalTrimestreOutros(e.id, tri); } catch(err){}
-    try { var prod = getProducaoTri(e.id, tri); meta = parseFloat(prod.meta) || 0; } catch(err){}
-    try { producaoCred.INSS = getTotalTrimestreModalidade(e.id, tri, 0); } catch(err){}
-    try { producaoCred.OP = getTotalTrimestreModalidade(e.id, tri, 1); } catch(err){}
-    try { producaoCred.EP = getTotalTrimestreModalidade(e.id, tri, 2); } catch(err){}
-    try { producaoCred.Creditario = getTotalTrimestreModalidade(e.id, tri, 3); } catch(err){}
-    try { producaoProd.Seguros = getTotalTrimestreOutroProduto(e.id, tri, 0); } catch(err){}
-    try { producaoProd.PIC = getTotalTrimestreOutroProduto(e.id, tri, 1); } catch(err){}
-    try { producaoProd.Combinaqui = getTotalTrimestreOutroProduto(e.id, tri, 2); } catch(err){}
-    try { producaoProd.Consorcios = getTotalTrimestreOutroProduto(e.id, tri, 3); } catch(err){}
-    try { producaoProd.Engajamento = getTotalTrimestreOutroProduto(e.id, tri, 4); } catch(err){}
-    try { statusAtz = statusAtualizacao(e); } catch(err){}
-    try { metaContatos = getMetaContatos(e.id); } catch(err){}
-    
-    var trilhaKey = null;
-    try { trilhaKey = getEffectiveTrilhaKey(e); } catch(err){}
-    var trilhaNome = trilhaKey ? {iniciante:'Decolar (0-90d)', intermediario:'Evoluir (91-180d)', avancado:'Impactar (181+d)'}[trilhaKey] : 'Não definida';
-    
-    var tempo = null;
-    try { if(e.perfil && e.perfil.inicio && typeof calcTempo === 'function') tempo = calcTempo(e.perfil.inicio); } catch(err){}
+    var meta = _metaTri(e.id);
+    var producaoCredito = _totCredTri(e.id);
+    var producaoOutros = _totOutTri(e.id);
+    var metaProdutos = meta * 0.2;
     
     return {
       nome: e.nome,
       agencia: (e.perfil && e.perfil.agencia) || null,
       funcional: (e.perfil && e.perfil.funcional) || null,
       inicio: (e.perfil && e.perfil.inicio) || null,
-      tempo_no_programa: tempo,
-      trilha: trilhaNome,
+      tempo_no_programa: (e.perfil && e.perfil.inicio) ? _tempo(e.perfil.inicio) : null,
+      trilha: _fase(e),
       certificacao: (e.perfil && e.perfil.certificacao) || 'sem certificação',
-      nota_trimestre: nota,
+      nota_trimestre: _nota(e.id),
       meta_trimestre: meta,
       producao_credito_total: producaoCredito,
-      producao_credito: producaoCred,
+      producao_credito: {
+        INSS: _totCredMod(e.id, 0),
+        OP: _totCredMod(e.id, 1),
+        EP: _totCredMod(e.id, 2),
+        Creditario: _totCredMod(e.id, 3)
+      },
       producao_produtos_total: producaoOutros,
-      producao_produtos: producaoProd,
+      producao_produtos: {
+        Seguros: _totOutProd(e.id, 0),
+        PIC: _totOutProd(e.id, 1),
+        Combinaqui: _totOutProd(e.id, 2),
+        Consorcios: _totOutProd(e.id, 3),
+        Engajamento: _totOutProd(e.id, 4)
+      },
       pct_atingido_credito: meta > 0 ? Math.round((producaoCredito/meta)*100) : 0,
-      pct_atingido_produtos: meta > 0 ? Math.round((producaoOutros/(meta*0.2))*100) : 0,
+      pct_atingido_produtos: metaProdutos > 0 ? Math.round((producaoOutros/metaProdutos)*100) : 0,
       ultima_atualizacao_producao: (e.perfil && e.perfil.ultima_atualizacao_prod) || null,
-      status_atualizacao: statusAtz,
-      meta_diaria_contatos: metaContatos
+      status_atualizacao: _statusAtz(e),
+      meta_diaria_contatos: _metaContatos(e.id),
+      contatos_semana_atual: _contatosSemana(e.id)
     };
   });
   
+  // ── Resumo agregado (facilita perguntas de totais) ──
+  var somaCred = 0, somaOut = 0, somaMeta = 0, somaNotas = 0;
+  var porProduto = { Seguros:0, PIC:0, Combinaqui:0, Consorcios:0, Engajamento:0 };
+  var porModalidade = { INSS:0, OP:0, EP:0, Creditario:0 };
+  var agencias = {};
+  var porStatus = { ok:0, alerta:0, atrasado:0 };
+  var porFase = {};
+  
+  ctx.estagiarios.forEach(function(e){
+    somaCred += e.producao_credito_total;
+    somaOut += e.producao_produtos_total;
+    somaMeta += e.meta_trimestre;
+    somaNotas += e.nota_trimestre;
+    Object.keys(porProduto).forEach(function(k){ porProduto[k] += e.producao_produtos[k] || 0; });
+    Object.keys(porModalidade).forEach(function(k){ porModalidade[k] += e.producao_credito[k] || 0; });
+    if(e.agencia) agencias[e.agencia] = (agencias[e.agencia]||0) + 1;
+    porStatus[e.status_atualizacao] = (porStatus[e.status_atualizacao]||0) + 1;
+    porFase[e.trilha] = (porFase[e.trilha]||0) + 1;
+  });
+  
+  var n = ctx.estagiarios.length;
+  ctx.resumo = {
+    total_credito: somaCred,
+    total_produtos: somaOut,
+    total_geral: somaCred + somaOut,
+    soma_metas: somaMeta,
+    pct_atingido_geral: somaMeta > 0 ? Math.round(somaCred/somaMeta*100) : 0,
+    nota_media: n > 0 ? Math.round(somaNotas/n*10)/10 : 0,
+    credito_por_modalidade: porModalidade,
+    produtos_por_tipo: porProduto,
+    estagiarios_por_agencia: agencias,
+    estagiarios_por_status_atualizacao: porStatus,
+    estagiarios_por_fase: porFase
+  };
+  
   // Agendamentos (últimos 30 dias)
-  var agendCache = _aiGet('agendamentosCache', []);
+  var agendCache = window.agendamentosCache || [];
   if(agendCache && agendCache.length > 0){
     var hoje30 = new Date();
     hoje30.setDate(hoje30.getDate() - 30);
@@ -5815,15 +6011,9 @@ function gerarContextoIA(){
         });
       }
       return {
-        data: a.data,
-        titulo: a.titulo,
-        tipo: a.tipo,
-        publico: a.fase_alvo,
-        criado_por: a.gestor_nome,
-        descricao: a.descricao || null,
-        presentes: pres,
-        ausentes: aus,
-        nomes_ausentes: nomesAusentes
+        data: a.data, titulo: a.titulo, tipo: a.tipo, publico: a.fase_alvo,
+        criado_por: a.gestor_nome, descricao: a.descricao || null,
+        presentes: pres, ausentes: aus, nomes_ausentes: nomesAusentes
       };
     });
   }
