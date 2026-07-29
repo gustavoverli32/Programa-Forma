@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nextuber-v2';
+const CACHE_NAME = 'nextuber-v3-ai';
 const APP_SHELL = [
   './',
   './index.html',
