@@ -3415,16 +3415,17 @@ if(btnMarcarAtz){
     var statusEl = document.getElementById('cfgPrazoStatus');
     var btnFecharForm = document.getElementById('btnCfgFecharForm');
     
-    if(S.cfg && S.cfg.prazo_producao){
+    var prazoAtual = S.cfg && (S.cfg.ultimo_prazo_producao || S.cfg.prazo_producao);
+    if(prazoAtual){
       // Mostra o card e esconde o form
       if(cardEl) cardEl.style.display = 'block';
       if(formEl) formEl.style.display = 'none';
       if(btnFecharForm) btnFecharForm.style.display = 'none';
       
-      if(displayEl) displayEl.textContent = '📅 ' + fmtDate(S.cfg.prazo_producao);
+      if(displayEl) displayEl.textContent = '📅 ' + fmtDate(prazoAtual);
       
       if(statusEl){
-        var d = new Date(S.cfg.prazo_producao+'T12:00:00');
+        var d = new Date(prazoAtual+'T12:00:00');
         var hoje = new Date();
         var diff = Math.ceil((d - hoje) / 86400000);
         var status, cor;
@@ -3448,7 +3449,9 @@ if(btnMarcarAtz){
   if(btnCfgPrazo) btnCfgPrazo.addEventListener('click', async function(){
     var val = document.getElementById('cfgPrazoData').value;
     if(!val){ alert('Selecione uma data.'); return; }
+    S.cfg = S.cfg || {};
     S.cfg.prazo_producao = val;
+    S.cfg.ultimo_prazo_producao = val;
     S.cfg.prazo_definido_em = hojeLocalYMD();
     await sb.from('configuracoes').upsert(JSON.parse(JSON.stringify({id:'cfg_geral', valor:S.cfg})));
     var sv = document.getElementById('cfgPrazoSaved');
