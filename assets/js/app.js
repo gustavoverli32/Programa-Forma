@@ -52,7 +52,7 @@ var TRILHAS = {
     topicos:[
       {tema:'181 a 210 dias — Construindo o Próximo Nível',obj:'Criar o PDI e ampliar horizontes.',
        acoes:['Criar seu Plano de Desenvolvimento Individual','Ampliar conhecimentos sobre novos produtos','Definir objetivos de crescimento','Planejar os próximos passos da sua jornada'],
-       tutora:'Apoiar o PDI. Conectar com metas da agência.',
+       tutora:'Apoiar o PDI. Conectar com alvos da agência.',
        checks:['PDI criado e alinhado','Conhece novos produtos','Objetivos de crescimento definidos','Próximos passos planejados']},
       {tema:'+210 dias — Estagiário Referência',obj:'Multiplicar, inspirar e construir carreira.',
        acoes:['Apoiar ativamente a formação de novos estagiários','Atuar como multiplicador e mentor','Analisar sua curva de resultados e evolução','Refletir sobre carreira: onde quero chegar?'],
@@ -164,7 +164,7 @@ function mesFechado(eid,tri,mesIdx){
 }
 function calcPctChecks(e){var tot=0,done=0;['iniciante','intermediario','avancado'].forEach(function(tk){if(TRILHAS[tk])TRILHAS[tk].topicos.forEach(function(tp,ti){var ck=tk+'_'+ti,chk=(e.trilhaChecks&&e.trilhaChecks[ck])||Array(tp.checks.length).fill(false);tot+=tp.checks.length;done+=chk.filter(Boolean).length;});});return tot>0?Math.round((done/tot)*100):0;}
 function faixaComp(p){if(p>=75)return{cor:'#16A34A',bg:'#DCFCE7',label:'Acima do esperado'};if(p>=40)return{cor:'#EC7000',bg:'#FFF3E8',label:'Esperado'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Precisa melhorar'};}
-function faixaRes(p){if(p>=85)return{cor:'#16A34A',bg:'#DCFCE7',label:'Meta atingida'};if(p>=50)return{cor:'#EC7000',bg:'#FFF3E8',label:'Em desenvolvimento'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Abaixo da meta'};}
+function faixaRes(p){if(p>=85)return{cor:'#16A34A',bg:'#DCFCE7',label:'Alvo atingido'};if(p>=50)return{cor:'#EC7000',bg:'#FFF3E8',label:'Em desenvolvimento'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Abaixo do alvo'};}
 
 async function hashSenha(senha) {
   var enc = new TextEncoder();
@@ -184,7 +184,7 @@ var TEXTOS_PROJETO_DEFAULT = {
   banner_desc: 'Programa estruturado de 6 meses para formar estagiários comerciais com excelência técnica, comportamental e comprometimento com o cliente. Acompanhamento contínuo, trilhas adaptadas e desenvolvimento orientado por dados.',
   sec_objetivo: 'Formar estagiários comerciais alinhados à cultura Itaú, com base técnica sólida, postura profissional e capacidade de gerar resultado com consistência.',
   sec_estrutura: '6 meses de jornada divididos em 3 trilhas progressivas:\n• Iniciante (0-90 dias): Acolhimento, cultura e fundamentos.\n• Intermediária (91-180 dias): Protagonismo com apoio e ajustes de rota.\n• Avançada (+181 dias): PDI, autonomia e papel de referência.',
-  sec_avaliacao: 'A nota final (0-10) é composta por:\n• 40% Comportamental: baseado no avanço da trilha de aprendizado.\n• 60% Resultados: percentual de meta atingida no trimestre.',
+  sec_avaliacao: 'A nota final (0-10) é composta por:\n• 40% Comportamental: baseado no avanço da trilha de aprendizado.\n• 60% Resultados: percentual de alvo atingido no trimestre.',
   sec_participa: 'Tutora regional (Kamilla) — conduz o programa, valida trilhas e avalia. Gestores — acompanham o dia a dia operacional e registram feedbacks. Estagiários — protagonistas do próprio desenvolvimento.',
   sec_acomp: 'Feedbacks frequentes, checklist de aprendizado por etapa de 30 dias, métricas de produção trimestrais e snapshots históricos garantem visibilidade completa da evolução de cada estagiário.'
 };
@@ -528,7 +528,7 @@ function calcScore(e, triRef){
   var notaCredito = pctCredito * 6;
   
   // Produtos (Seguros, PIC, Combinaqui, Consórcios) — 40% (0-4 pts)
-  // Meta de produtos não existe explicitamente; usamos 20% da meta de crédito como meta de produtos
+  // O alvo de produtos não existe explicitamente; usamos 20% do alvo de crédito como alvo de produtos
   var metaProdutos = meta * 0.2;
   var producaoProdutos = getTotalTrimestreOutros(e.id, triRef);
   var pctProdutos = metaProdutos>0 ? Math.min(producaoProdutos/metaProdutos, 1) : 0;
@@ -913,13 +913,13 @@ function renderAvaliacao(idx){
       +'<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:'+fCredito.bg+';color:'+fCredito.cor+';">● '+fCredito.label+'</span>'
     +'</div>'
     +'<div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:3px;"><div style="width:'+Math.min(pctCredito,100)+'%;height:100%;background:'+fCredito.cor+';"></div></div>'
-    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:12px;">'+(meta>0 ? fmtMilhar(producaoCredito)+' / '+fmtMilhar(meta)+' ('+pctCredito+'%)' : 'Meta não definida')+'</div>'
+    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:12px;">'+(meta>0 ? fmtMilhar(producaoCredito)+' / '+fmtMilhar(meta)+' ('+pctCredito+'%)' : 'Alvo não definido')+'</div>'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
       +'<span style="font-size:12px;color:var(--ink2);">Produtos <span style="font-size:10px;color:var(--ink3);">(40%)</span></span>'
       +'<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:'+fProdutos.bg+';color:'+fProdutos.cor+';">● '+fProdutos.label+'</span>'
     +'</div>'
     +'<div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:3px;"><div style="width:'+Math.min(pctProdutos,100)+'%;height:100%;background:'+fProdutos.cor+';"></div></div>'
-    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:12px;">'+(metaProdutos>0 ? fmtMilhar(producaoProdutos)+' / '+fmtMilhar(metaProdutos)+' ('+pctProdutos+'%)' : 'Meta de produtos: 20% da meta de crédito')+'</div>'
+    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:12px;">'+(metaProdutos>0 ? fmtMilhar(producaoProdutos)+' / '+fmtMilhar(metaProdutos)+' ('+pctProdutos+'%)' : 'Alvo de produtos: 20% do alvo de crédito')+'</div>'
     +'<div style="border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;justify-content:space-between;">'
       +'<span style="font-size:12px;color:var(--ink2);">Nota final</span>'
       +'<span style="font-size:22px;font-weight:500;color:'+nc+';">'+nota+'<span style="font-size:13px;color:var(--ink3);">/10</span></span>'
@@ -1115,7 +1115,7 @@ function renderContatosCard(idx){
   
   var canEdit = (editor || (modoGestor && gestorLogado));
   var meta = getMetaContatos(e.id);
-  var metaSemanal = meta * 5; // meta diária × 5 dias
+  var metaSemanal = meta * 5; // alvo diário × 5 dias
   
   var dias = getDiasDaSemana(contatosSelectedWeek);
   var totalSemana = 0;
@@ -1141,16 +1141,16 @@ function renderContatosCard(idx){
         +'<button class="btnContSemProx" style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-size:11px;color:var(--or);" '+(isSemanaAtual?'disabled':'')+'>→</button>'
       +'</div>'
     +'</div>'
-    // Meta diária
+    // Alvo diário
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:8px;">'
       +'<div style="display:flex;flex-direction:column;">'
-        +'<span style="font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Meta diária</span>'
+        +'<span style="font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Alvo diário</span>'
         +(canEdit 
           ? '<input class="fieldContMeta" type="text" value="'+(meta||'')+'" placeholder="0" inputmode="numeric" style="margin-top:4px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);width:80px;background:var(--surface);">' 
           : '<span style="margin-top:4px;font-size:13px;font-weight:600;color:var(--ink);">'+(meta||'—')+'</span>')
       +'</div>'
       +'<div style="text-align:right;">'
-        +'<span style="font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Meta semanal</span>'
+        +'<span style="font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Alvo semanal</span>'
         +'<div style="margin-top:4px;font-size:13px;font-weight:600;color:var(--ink2);">'+(metaSemanal||'—')+'</div>'
       +'</div>'
     +'</div>'
@@ -1221,7 +1221,7 @@ function renderContatosCard(idx){
   // Salvar
   var btnSv = document.getElementById('btnSalvarContatos');
   if(btnSv) btnSv.addEventListener('click', async function(){
-    // Salvar meta
+    // Salvar alvo
     var novaMeta = parseInt((el.querySelector('.fieldContMeta')||{}).value) || 0;
     await saveMetaContatos(e.id, novaMeta);
     // Salvar dias
@@ -1437,7 +1437,7 @@ function renderResultadosForTri(idx, tri){
   
   // KPI cards
   var h = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">'
-    +'<div style="background:var(--bg);border-radius:var(--r2);padding:10px;text-align:center;"><div style="font-size:9px;color:var(--ink3);margin-bottom:3px;">Meta trimestral</div><div style="font-size:14px;font-weight:500;">'+fmtMilhar(meta)+'</div></div>'
+    +'<div style="background:var(--bg);border-radius:var(--r2);padding:10px;text-align:center;"><div style="font-size:9px;color:var(--ink3);margin-bottom:3px;">Alvo trimestral</div><div style="font-size:14px;font-weight:500;">'+fmtMilhar(meta)+'</div></div>'
     +'<div style="background:var(--bg);border-radius:var(--r2);padding:10px;text-align:center;"><div style="font-size:9px;color:var(--ink3);margin-bottom:3px;">Total produzido</div><div style="font-size:14px;font-weight:500;color:'+(totalProd>0?fr.cor:'var(--ink3)')+';">'+fmtMilhar(totalProd)+'</div></div>'
     +'<div style="background:'+fr.bg+';border-radius:var(--r2);padding:10px;text-align:center;"><div style="font-size:9px;color:'+fr.cor+';margin-bottom:3px;">Atingido</div><div style="font-size:14px;font-weight:500;color:'+fr.cor+';">'+(meta>0?pct+'%':'—')+'</div></div>'
     +'</div>'
@@ -1456,9 +1456,9 @@ function renderResultadosForTri(idx, tri){
     +'<button id="btnMesProximo" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:500;color:var(--or);">Próximo →</button>'
     +'</div>';
 
-  // Meta input (apenas se for mês vigente)
+  // Campo de alvo (apenas se for mês vigente)
   if(canEdit){
-    h += '<div class="field-grp" style="margin-bottom:14px;"><div class="field-lbl">Meta do trimestre</div><input class="field-in" type="text" id="pMetaInput" value="'+(meta?fmtMilhar(meta):'')+'" placeholder="0" inputmode="numeric" style="font-size:13px;"></div>';
+    h += '<div class="field-grp" style="margin-bottom:14px;"><div class="field-lbl">Alvo do trimestre</div><input class="field-in" type="text" id="pMetaInput" value="'+(meta?fmtMilhar(meta):'')+'" placeholder="0" inputmode="numeric" style="font-size:13px;"></div>';
   }
   
   // Card do mês
@@ -1816,7 +1816,7 @@ function renderIndicadoresModalidades(idx, tri){
       +'<div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:4px;">'
       +'<div style="width:'+pctFill+'%;height:100%;background:'+cor+';transition:width .3s;"></div>'
       +'</div>'
-      +'<div style="font-size:10px;color:var(--ink3);">'+pct+'% da meta</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+pct+'% do alvo</div>'
       +'</div>';
   });
   
@@ -1849,7 +1849,7 @@ function renderIndicadoresModalidadesFromInputs(idx, tri, valores){
       +'<div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:4px;">'
       +'<div style="width:'+pctFill+'%;height:100%;background:'+cor+';transition:width .3s;"></div>'
       +'</div>'
-      +'<div style="font-size:10px;color:var(--ink3);">'+pct+'% da meta</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+pct+'% do alvo</div>'
       +'</div>';
   });
   
@@ -2904,11 +2904,11 @@ function exportToExcelSync(){
   // ═══════════════════════════════════════════════════════════
   // ABA 1: RESUMO GERAL (dados cadastrais + nota + totais)
   // ═══════════════════════════════════════════════════════════
-  var headerResumo = ['Nome','Funcional','Agência','Data início','Tempo no programa','Trilha','Certificação','Meta contatos/dia'];
+  var headerResumo = ['Nome','Funcional','Agência','Data início','Tempo no programa','Trilha','Certificação','Alvo contatos/dia'];
   checkedTris.forEach(function(tri){
     var label = fmtTrimestre(tri);
     headerResumo.push(
-      'Meta '+label,
+      'Alvo '+label,
       'Crédito '+label,
       '% Crédito '+label,
       'Produtos '+label,
@@ -3032,7 +3032,7 @@ function exportToExcelSync(){
   // ═══════════════════════════════════════════════════════════
   // ABA 4: CONTATOS (histórico semanal por estagiário)
   // ═══════════════════════════════════════════════════════════
-  var headerCont = ['Nome','Funcional','Agência','Meta/dia','Semana','Seg','Ter','Qua','Qui','Sex','Total semana','% da meta'];
+  var headerCont = ['Nome','Funcional','Agência','Alvo/dia','Semana','Seg','Ter','Qua','Qui','Sex','Total semana','% do alvo'];
   var rowsCont = [];
   lista.forEach(function(e){
     var meta = getMetaContatos(e.id);
@@ -3045,7 +3045,7 @@ function exportToExcelSync(){
     });
     var listaSemanas = Object.keys(semanas).sort();
     if(listaSemanas.length === 0){
-      // Sem registros; se tem meta, mostra ao menos uma linha
+      // Sem registros; se tem alvo, mostra ao menos uma linha
       if(meta > 0){
         rowsCont.push([e.nome, (e.perfil&&e.perfil.funcional)||'—', (e.perfil&&e.perfil.agencia)||'—', meta, '(sem registros)', 0,0,0,0,0, 0, '0%']);
       }
@@ -3288,7 +3288,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // Panel
   document.getElementById('overlay').addEventListener('click', closePanel);
   document.getElementById('panelClose').addEventListener('click', closePanel);
-  // Meta save handled by renderResultados
+  // Salvamento do alvo tratado por renderResultados
 
   // Atenção button
   document.getElementById('btnAtencao').addEventListener('click', function(){
@@ -4358,13 +4358,13 @@ function gerarContextoIA(){
     return t;
   }
   
-  // Meta do trimestre
+  // Alvo do trimestre
   function _metaTri(eid){
     var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === tri; });
     return row ? (parseFloat(row.meta) || 0) : 0;
   }
   
-  // Meta diária de contatos
+  // Alvo diário de contatos
   function _metaContatos(eid){
     var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === 'CONTATO-META'; });
     return row ? (parseFloat(row.meta) || 0) : 0;
