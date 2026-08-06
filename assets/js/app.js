@@ -128,10 +128,28 @@ function getMesesTrimestre(tri){
   return [{nome:meses[start],idx:1},{nome:meses[start+1],idx:2},{nome:meses[start+2],idx:3}];
 }
 
+function getAnoMesDoTrimestre(tri, mesIdx){
+  var parts = tri.split('-');
+  var ano = parseInt(parts[0], 10);
+  var trimestre = parseInt(parts[1].replace('Q','').replace('T',''), 10);
+  return {ano:ano, mes:(trimestre-1)*3+mesIdx};
+}
+
+function quantidadeSemanasMes(tri, mesIdx){
+  var ref = getAnoMesDoTrimestre(tri, mesIdx);
+  var inicioMes = new Date(ref.ano, ref.mes-1, 1);
+  var inicioMesAtual = new Date();
+  inicioMesAtual = new Date(inicioMesAtual.getFullYear(), inicioMesAtual.getMonth(), 1);
+  // Meses já concluídos preservam o histórico de quatro semanas.
+  if(inicioMes < inicioMesAtual) return 4;
+  var diasNoMes = new Date(ref.ano, ref.mes, 0).getDate();
+  return Math.ceil(diasNoMes / 7);
+}
+
 function getProducaoMensal(eid,tri,mesIdx){
-  // Soma as 4 semanas do mês
+  // Soma as semanas disponíveis no mês.
   var total = 0;
-  for(var s=1;s<=4;s++) total += getProducaoSemanal(eid,tri,mesIdx,s);
+  for(var s=1;s<=quantidadeSemanasMes(tri,mesIdx);s++) total += getProducaoSemanal(eid,tri,mesIdx,s);
   return total;
 }
 
@@ -156,8 +174,8 @@ async function saveProducaoSemanal(eid,tri,mesIdx,semIdx,valor){
 }
 
 function mesFechado(eid,tri,mesIdx){
-  // Mês está fechado quando todas as 4 semanas têm valor > 0
-  for(var s=1;s<=4;s++){
+  // Mês está fechado quando todas as semanas disponíveis têm valor > 0.
+  for(var s=1;s<=quantidadeSemanasMes(tri,mesIdx);s++){
     if(getProducaoSemanal(eid,tri,mesIdx,s) === 0) return false;
   }
   return true;
@@ -316,15 +334,17 @@ async function saveEstagiario(est){
   try {
     if(est.id){
       var r = await sb.from('estagiarios').update(data).eq('id', est.id);
-      if(r.error){ console.error('saveEstagiario UPDATE error:', JSON.stringify(r.error)); alert('Erro ao salvar: ' + (r.error.message||JSON.stringify(r.error))); return; }
+      if(r.error){ console.error('saveEstagiario UPDATE error:', JSON.stringify(r.error)); alert('Erro ao salvar: ' + (r.error.message||JSON.stringify(r.error))); return false; }
     } else {
       var r = await sb.from('estagiarios').insert(data).select().single();
-      if(r.error){ console.error('saveEstagiario INSERT error:', JSON.stringify(r.error)); alert('Erro ao salvar: ' + (r.error.message||JSON.stringify(r.error))); return; }
+      if(r.error){ console.error('saveEstagiario INSERT error:', JSON.stringify(r.error)); alert('Erro ao salvar: ' + (r.error.message||JSON.stringify(r.error))); return false; }
       if(r.data) est.id = r.data.id;
     }
+    return true;
   } catch(e) {
     console.error('saveEstagiario EXCEPTION:', e);
     alert('Erro ao salvar: ' + (e.message||e));
+    return false;
   }
 }
 
@@ -370,18 +390,18 @@ async function deleteGestor(id){
 async function saveMetaTri(eid,tri,meta){
   var ex = getProducaoTri(eid,tri);
   var dataToSave = JSON.parse(JSON.stringify({estagiario_id:eid,tri_ref:tri,meta:parseFloat(meta)||0,producao:parseFloat(ex.producao)||0}));var r = await sb.from('producao_trimestral').upsert(dataToSave,{onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i = S.producao.findIndex(function(p){return p.estagiario_id===eid && p.tri_ref===tri;});
-    if(i>=0) S.producao[i] = r.data; else S.producao.push(r.data);
-  }
+  if(r.error || !r.data) return false;
+  var i = S.producao.findIndex(function(p){return p.estagiario_id===eid && p.tri_ref===tri;});
+  if(i>=0) S.producao[i] = r.data; else S.producao.push(r.data);
+  return true;
 }
 async function saveProducaoTri(eid,tri,prod){
   var ex = getProducaoTri(eid,tri);
   var r = await sb.from('producao_trimestral').upsert({estagiario_id:eid,tri_ref:tri,meta:ex.meta||0,producao:prod},{onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i = S.producao.findIndex(function(p){return p.estagiario_id===eid && p.tri_ref===tri;});
-    if(i>=0) S.producao[i] = r.data; else S.producao.push(r.data);
-  }
+  if(r.error || !r.data) return false;
+  var i = S.producao.findIndex(function(p){return p.estagiario_id===eid && p.tri_ref===tri;});
+  if(i>=0) S.producao[i] = r.data; else S.producao.push(r.data);
+  return true;
 }
 
 async function saveTimeline(){
@@ -592,21 +612,60 @@ function hojeLocalYMD(){
   return y+'-'+m+'-'+dia;
 }
 
-function statusAtualizacao(e){
-  if(!S.cfg || !S.cfg.prazo_producao) return 'ok';
-  var definidoEm = S.cfg.prazo_definido_em || '2000-01-01';
+function ymdLocal(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function inicioSemanaAtualYMD(){
+  var d = new Date();
+  var dia = d.getDay();
+  var ajuste = dia === 0 ? -6 : 1-dia;
+  d.setDate(d.getDate()+ajuste);
+  return ymdLocal(d);
+}
+
+function sextaDaSemanaAtualYMD(){
+  var d = new Date();
+  var dia = d.getDay();
+  var ajuste = dia === 0 ? -2 : 5-dia;
+  d.setDate(d.getDate()+ajuste);
+  return ymdLocal(d);
+}
+
+function getPrazoProducaoAtual(){
+  var cfg = S.cfg || {};
+  var semanaAtual = inicioSemanaAtualYMD();
+  if(cfg.prazo_producao_manual && cfg.prazo_producao_manual_semana === semanaAtual){
+    return cfg.prazo_producao_manual;
+  }
+  return sextaDaSemanaAtualYMD();
+}
+
+function producaoConfirmadaNoPrazo(e, prazo){
+  return !!(e.perfil && e.perfil.producao_verificada_prazo === prazo);
+}
+
+function registrarProducaoVerificada(e){
+  var prazo = getPrazoProducaoAtual();
   var hoje = hojeLocalYMD();
-  var prazo = S.cfg.prazo_producao; // YYYY-MM-DD
-  // Se já atualizou produção DEPOIS que o prazo foi definido → ok
-  if(e.perfil && e.perfil.ultima_atualizacao_prod && e.perfil.ultima_atualizacao_prod >= definidoEm) return 'ok';
+  if(!e.perfil) e.perfil = {};
+  e.perfil.ultima_atualizacao_prod = hoje;
+  if(hoje > prazo) return false;
+  e.perfil.producao_verificada_prazo = prazo;
+  return true;
+}
+
+function statusAtualizacao(e){
+  var prazo = getPrazoProducaoAtual();
+  var hoje = hojeLocalYMD();
+  // Cada sexta-feira é um ciclo novo: a confirmação de uma semana não libera a próxima.
+  if(producaoConfirmadaNoPrazo(e, prazo)) return 'ok';
   // Calcular dias até o prazo (comparação por string de data)
   var prazoDt = new Date(prazo+'T00:00:00');
   var hojeDt = new Date(hoje+'T00:00:00');
   var diffDias = Math.round((prazoDt - hojeDt) / 86400000);
-  if(diffDias < 0) return 'atrasado'; // prazo já passou (mantém vermelho até atualizar)
-  if(diffDias === 0) return 'atrasado'; // é hoje, prazo vencendo
-  if(diffDias <= 2) return 'alerta'; // faltam 1-2 dias
-  return 'ok'; // ainda tem tempo
+  if(diffDias <= 0) return 'atrasado'; // na sexta e depois dela, mantém vermelho até atualizar
+  return 'alerta'; // permanece amarelo enquanto a semana não for confirmada
 }
 
 
@@ -772,13 +831,12 @@ function renderRanking(){
   var el = document.getElementById('rankingList');
   if(!el) return;
   var tri = trimestreRef();
-  var filtro = (document.getElementById('filtroRanking')||{}).value || 'nota';
+  var filtro = (document.getElementById('filtroRanking')||{}).value || 'credito';
   
   var lista = S.ests.filter(function(e){ return e.perfil && e.perfil.funcional && e.perfil.inicio; });
   
   // Mapear filtro para função de valor + config visual
   var configFiltros = {
-    nota: {label: 'Nota final', unidade: '/10', getValor: function(e){ return calcScore(e, tri); }, isNota: true},
     credito: {label: 'Crédito total', unidade: '', getValor: function(e){ return getTotalTrimestreModalidades(e.id, tri); }},
     produtos: {label: 'Produtos total', unidade: '', getValor: function(e){ return getTotalTrimestreOutros(e.id, tri); }},
     cred_INSS: {label: 'INSS', unidade: '', getValor: function(e){ return getTotalTrimestreModalidade(e.id, tri, 0); }, cor: '#2196F3'},
@@ -792,7 +850,7 @@ function renderRanking(){
     out_Engajamento: {label: 'Engajamento', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 4); }, cor: '#EC4899'}
   };
   
-  var config = configFiltros[filtro] || configFiltros.nota;
+  var config = configFiltros[filtro] || configFiltros.credito;
   
   var ranked = lista.map(function(e){ return {e:e, valor: config.getValor(e)}; })
                     .filter(function(r){ return r.valor > 0; }) // esconde quem não vendeu nada
@@ -853,7 +911,7 @@ async function salvarSnapshot(eid, tri){
   
   var scoreFinal = Math.min(Math.round((scoreCredito + scoreProdutos) * 10) / 10, 10);
   
-  await sb.from('snapshots').upsert(JSON.parse(JSON.stringify({
+  var r = await sb.from('snapshots').upsert(JSON.parse(JSON.stringify({
     estagiario_id: eid,
     tri_ref: tri,
     score: scoreFinal,
@@ -862,6 +920,7 @@ async function salvarSnapshot(eid, tri){
     total_producao: producaoCredito + producaoProdutos,
     meta: meta
   })), {onConflict:'estagiario_id,tri_ref'});
+  return !r.error;
 }
 
 async function loadSnapshotsHistory(eid){
@@ -1277,11 +1336,11 @@ async function saveProducaoOutroProduto(eid, tri, mesIdx, semanaIdx, prodIdx, va
     meta: 0,
     producao: valor
   })), {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-    if(i >= 0) S.producao[i] = r.data;
-    else S.producao.push(r.data);
-  }
+  if(r.error || !r.data) return false;
+  var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
+  if(i >= 0) S.producao[i] = r.data;
+  else S.producao.push(r.data);
+  return true;
 }
 
 // Total de um produto em uma semana (soma todos os prodIdx da semana)
@@ -1293,10 +1352,10 @@ function getTotalSemanaOutros(eid, tri, mesIdx, semanaIdx){
   return total;
 }
 
-// Total de um produto no mês (soma as 4 semanas)
+// Total de um produto no mês (soma as semanas disponíveis)
 function getTotalMesOutroProduto(eid, tri, mesIdx, prodIdx){
   var total = 0;
-  for(var s = 1; s <= 4; s++){
+  for(var s = 1; s <= quantidadeSemanasMes(tri, mesIdx); s++){
     total += getProducaoOutroProduto(eid, tri, mesIdx, s, prodIdx);
   }
   return total;
@@ -1304,7 +1363,7 @@ function getTotalMesOutroProduto(eid, tri, mesIdx, prodIdx){
 
 function getTotalMesOutros(eid, tri, mesIdx){
   var total = 0;
-  for(var s = 1; s <= 4; s++){
+  for(var s = 1; s <= quantidadeSemanasMes(tri, mesIdx); s++){
     total += getTotalSemanaOutros(eid, tri, mesIdx, s);
   }
   return total;
@@ -1343,11 +1402,11 @@ async function saveProducaoSemanalModalidade(eid, tri, mesIdx, semIdx, modIdx, v
     meta: 0,
     producao: valor
   }, {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-    if(i >= 0) S.producao[i] = r.data;
-    else S.producao.push(r.data);
-  }
+  if(r.error || !r.data) return false;
+  var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
+  if(i >= 0) S.producao[i] = r.data;
+  else S.producao.push(r.data);
+  return true;
 }
 
 // Soma de uma semana (todas as 4 modalidades)
@@ -1362,7 +1421,7 @@ function getTotalSemanaModalidades(eid, tri, mesIdx, semIdx){
 // Soma do mês (todas as semanas, todas as modalidades)
 function getTotalMesModalidades(eid, tri, mesIdx){
   var total = 0;
-  for(var s = 1; s <= 4; s++){
+  for(var s = 1; s <= quantidadeSemanasMes(tri, mesIdx); s++){
     total += getTotalSemanaModalidades(eid, tri, mesIdx, s);
   }
   return total;
@@ -1372,7 +1431,7 @@ function getTotalMesModalidades(eid, tri, mesIdx){
 function getTotalTrimestreModalidade(eid, tri, modIdx){
   var total = 0;
   for(var mi = 1; mi <= 3; mi++){
-    for(var s = 1; s <= 4; s++){
+    for(var s = 1; s <= quantidadeSemanasMes(tri, mi); s++){
       total += getProducaoSemanalModalidade(eid, tri, mi, s, modIdx);
     }
   }
@@ -1417,11 +1476,12 @@ function renderResultadosForTri(idx, tri){
   
   var mesIdx = pSelectedMesIdx; // Mês selecionado para exibição (1, 2 ou 3)
   var mesNome = meses[mesIdx-1].nome;
+  var numSemanasMes = quantidadeSemanasMes(tri, mesIdx);
   var totalMes = getTotalMesModalidades(e.id, tri, mesIdx);
   
   // Verificar se mês está fechado
   var fechado = true;
-  for(var s = 1; s <= 4; s++){
+  for(var s = 1; s <= numSemanasMes; s++){
     if(getTotalSemanaModalidades(e.id, tri, mesIdx, s) === 0){ fechado = false; break; }
   }
   
@@ -1478,12 +1538,11 @@ function renderResultadosForTri(idx, tri){
     +'<div style="overflow-x:auto;">'
     +'<table style="width:100%;border-collapse:collapse;font-size:11px;background:var(--surface);border-radius:6px;overflow:hidden;">'
     +'<thead><tr style="background:var(--bg);">'
-    +'<th style="padding:6px 4px;text-align:left;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--border);">Modalidade</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem 1</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem 2</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem 3</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem 4</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);background:var(--bg);">Total</th>'
+    +'<th style="padding:6px 4px;text-align:left;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--border);">Modalidade</th>';
+  for(var cabSem = 1; cabSem <= numSemanasMes; cabSem++){
+    h += '<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem '+cabSem+'</th>';
+  }
+  h += '<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);background:var(--bg);">Total</th>'
     +'</tr></thead>'
     +'<tbody>';
   
@@ -1493,7 +1552,7 @@ function renderResultadosForTri(idx, tri){
     h += '<tr>'
       +'<td style="padding:6px;border:1px solid var(--border);font-weight:600;color:'+CORES_MODALIDADES[mod]+';font-size:11px;">'+mod+'</td>';
     
-    for(var si = 1; si <= 4; si++){
+    for(var si = 1; si <= numSemanasMes; si++){
       var semVal = getProducaoSemanalModalidade(e.id, tri, mesIdx, si, modIdx);
       totalMod += semVal;
       var inputDisabled = !canEdit ? 'disabled' : '';
@@ -1510,7 +1569,7 @@ function renderResultadosForTri(idx, tri){
   // Linha de totais
   h += '<tr style="background:var(--bg);font-weight:700;">'
     +'<td style="padding:6px;border:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--ink);letter-spacing:.04em;">Total</td>';
-  for(var si2 = 1; si2 <= 4; si2++){
+  for(var si2 = 1; si2 <= numSemanasMes; si2++){
     var semTotal = getTotalSemanaModalidades(e.id, tri, mesIdx, si2);
     h += '<td class="pModTotalSem-'+mesIdx+'-'+si2+'" style="padding:6px;border:1px solid var(--border);text-align:center;font-size:11px;">'+fmtMilhar(semTotal)+'</td>';
   }
@@ -1522,7 +1581,7 @@ function renderResultadosForTri(idx, tri){
   if(canEdit){
     h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
       +'<button class="btn-obs" id="btnSalvarResultado">Salvar</button>'
-      +'<span class="obs-saved" id="resultadoSaved">✓ Salvo</span>'
+      +'<span class="obs-saved" id="resultadoSaved">✓ Dados salvos</span>'
       +'</div>';
   }
   
@@ -1537,12 +1596,11 @@ function renderResultadosForTri(idx, tri){
     +'<div style="overflow-x:auto;">'
     +'<table style="width:100%;border-collapse:collapse;font-size:11px;background:var(--surface);border-radius:6px;overflow:hidden;">'
     +'<thead><tr style="background:var(--bg);">'
-    +'<th style="padding:6px 4px;text-align:left;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--border);">Produto</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem 1</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem 2</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem 3</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem 4</th>'
-    +'<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);background:var(--bg);">Total</th>'
+    +'<th style="padding:6px 4px;text-align:left;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--border);">Produto</th>';
+  for(var cabSemOutro = 1; cabSemOutro <= numSemanasMes; cabSemOutro++){
+    h += '<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);">Sem '+cabSemOutro+'</th>';
+  }
+  h += '<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);background:var(--bg);">Total</th>'
     +'</tr></thead>'
     +'<tbody>';
   
@@ -1551,7 +1609,7 @@ function renderResultadosForTri(idx, tri){
     h += '<tr>'
       +'<td style="padding:6px;border:1px solid var(--border);font-weight:600;color:'+CORES_OUTROS[prod]+';font-size:11px;">'+prod+'</td>';
     
-    for(var si = 1; si <= 4; si++){
+    for(var si = 1; si <= numSemanasMes; si++){
       var semVal = getProducaoOutroProduto(e.id, tri, mesIdx, si, prodIdx);
       totalProd += semVal;
       var inputDis = !canEdit ? 'disabled' : '';
@@ -1568,7 +1626,7 @@ function renderResultadosForTri(idx, tri){
   // Linha de totais por semana
   h += '<tr style="background:var(--bg);font-weight:700;">'
     +'<td style="padding:6px;border:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--ink);letter-spacing:.04em;">Total</td>';
-  for(var siO = 1; siO <= 4; siO++){
+  for(var siO = 1; siO <= numSemanasMes; siO++){
     var semTotO = getTotalSemanaOutros(e.id, tri, mesIdx, siO);
     h += '<td class="pOutroTotalSem-'+mesIdx+'-'+siO+'" style="padding:6px;border:1px solid var(--border);text-align:center;font-size:11px;">'+fmtMilhar(semTotO)+'</td>';
   }
@@ -1651,43 +1709,54 @@ function renderResultadosForTri(idx, tri){
   var btn = document.getElementById('btnSalvarResultado');
   if(btn){
     btn.addEventListener('click', async function(){
-      var newMeta = parseMilhar((document.getElementById('pMetaInput')||{}).value)||0;
-      await saveMetaTri(e.id, tri, newMeta);
-      
-      var modInputs = document.querySelectorAll('.pModInput');
-      var totalGeral = 0;
-      for(var i = 0; i < modInputs.length; i++){
-        var val = parseMilhar(modInputs[i].value) || 0;
-        var mesI = parseInt(modInputs[i].getAttribute('data-mes'));
-        var semI = parseInt(modInputs[i].getAttribute('data-sem'));
-        var modI = parseInt(modInputs[i].getAttribute('data-mod'));
-        await saveProducaoSemanalModalidade(e.id, tri, mesI, semI, modI, val);
-        totalGeral += val;
-      }
-      
-      // Salvar Outros Produtos (com semana)
-      var outroInputs = document.querySelectorAll('.pOutroInput');
-      for(var j = 0; j < outroInputs.length; j++){
-        var outVal = parseMilhar(outroInputs[j].value) || 0;
-        var outMes = parseInt(outroInputs[j].getAttribute('data-mes'));
-        var outSem = parseInt(outroInputs[j].getAttribute('data-sem'));
-        var outProd = parseInt(outroInputs[j].getAttribute('data-prod'));
-        await saveProducaoOutroProduto(e.id, tri, outMes, outSem, outProd, outVal);
-      }
-      
-      await saveProducaoTri(e.id, tri, totalGeral);
-      
-      if(!e.perfil) e.perfil = {};
-      e.perfil.ultima_atualizacao_prod = hojeLocalYMD();
-      await saveEstagiario(e);
-      await salvarSnapshot(e.id, tri);
-      
+      btn.disabled = true;
+      btn.textContent = 'Salvando...';
+      try {
+        var newMeta = parseMilhar((document.getElementById('pMetaInput')||{}).value)||0;
+        if(!(await saveMetaTri(e.id, tri, newMeta))) throw new Error('Não foi possível salvar o alvo.');
+
+        var modInputs = document.querySelectorAll('.pModInput');
+        var totalGeral = 0;
+        for(var i = 0; i < modInputs.length; i++){
+          var val = parseMilhar(modInputs[i].value) || 0;
+          var mesI = parseInt(modInputs[i].getAttribute('data-mes'));
+          var semI = parseInt(modInputs[i].getAttribute('data-sem'));
+          var modI = parseInt(modInputs[i].getAttribute('data-mod'));
+          if(!(await saveProducaoSemanalModalidade(e.id, tri, mesI, semI, modI, val))) throw new Error('Não foi possível salvar uma modalidade.');
+          totalGeral += val;
+        }
+
+        // Salvar Outros Produtos (com semana)
+        var outroInputs = document.querySelectorAll('.pOutroInput');
+        for(var j = 0; j < outroInputs.length; j++){
+          var outVal = parseMilhar(outroInputs[j].value) || 0;
+          var outMes = parseInt(outroInputs[j].getAttribute('data-mes'));
+          var outSem = parseInt(outroInputs[j].getAttribute('data-sem'));
+          var outProd = parseInt(outroInputs[j].getAttribute('data-prod'));
+          if(!(await saveProducaoOutroProduto(e.id, tri, outMes, outSem, outProd, outVal))) throw new Error('Não foi possível salvar um produto.');
+        }
+
+        if(!(await saveProducaoTri(e.id, tri, totalGeral))) throw new Error('Não foi possível salvar o total produzido.');
+        registrarProducaoVerificada(e);
+        if(!(await saveEstagiario(e))) throw new Error('Não foi possível confirmar a atualização.');
+        if(!(await salvarSnapshot(e.id, tri))) throw new Error('Não foi possível atualizar o resumo trimestral.');
+
       var sv = document.getElementById('resultadoSaved');
-      if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
-      
+
       renderAvaliacao(idx);
-      renderResultadosForTri(idx, tri);
       renderCards();
+      if(sv){
+        sv.classList.add('show');
+        setTimeout(function(){ renderResultadosForTri(idx, tri); }, 2000);
+      } else {
+        renderResultadosForTri(idx, tri);
+      }
+      } catch(err) {
+        console.error('Salvar resultados:', err);
+        alert('Os dados não foram salvos por completo. Tente novamente.');
+        btn.disabled = false;
+        btn.textContent = 'Salvar';
+      }
     });
   }
 }
@@ -1700,7 +1769,7 @@ function atualizarTotaisModalidades(idx, tri){
   var valores = {}; // valores[mesIdx][semIdx][modIdx] = valor
   for(var mi = 1; mi <= 3; mi++){
     valores[mi] = {};
-    for(var si = 1; si <= 4; si++){
+    for(var si = 1; si <= quantidadeSemanasMes(tri, mi); si++){
       valores[mi][si] = {};
       for(var modI = 0; modI < 4; modI++){
         var inp = document.querySelector('.pModInput[data-mes="'+mi+'"][data-sem="'+si+'"][data-mod="'+modI+'"]');
@@ -1713,7 +1782,7 @@ function atualizarTotaisModalidades(idx, tri){
   for(var mi2 = 1; mi2 <= 3; mi2++){
     for(var modI2 = 0; modI2 < 4; modI2++){
       var totalMod = 0;
-      for(var si2 = 1; si2 <= 4; si2++){
+      for(var si2 = 1; si2 <= quantidadeSemanasMes(tri, mi2); si2++){
         totalMod += valores[mi2][si2][modI2];
       }
       var elTot = document.querySelector('.pModTotalMod-'+mi2+'-'+modI2);
@@ -1723,7 +1792,7 @@ function atualizarTotaisModalidades(idx, tri){
   
   // Atualizar totais por semana
   for(var mi3 = 1; mi3 <= 3; mi3++){
-    for(var si3 = 1; si3 <= 4; si3++){
+    for(var si3 = 1; si3 <= quantidadeSemanasMes(tri, mi3); si3++){
       var totalSem = 0;
       for(var modI3 = 0; modI3 < 4; modI3++){
         totalSem += valores[mi3][si3][modI3];
@@ -1736,7 +1805,7 @@ function atualizarTotaisModalidades(idx, tri){
   // Atualizar total do mês
   for(var mi4 = 1; mi4 <= 3; mi4++){
     var totalMes = 0;
-    for(var si4 = 1; si4 <= 4; si4++){
+    for(var si4 = 1; si4 <= quantidadeSemanasMes(tri, mi4); si4++){
       for(var modI4 = 0; modI4 < 4; modI4++){
         totalMes += valores[mi4][si4][modI4];
       }
@@ -1753,10 +1822,11 @@ function atualizarTotaisModalidades(idx, tri){
 function atualizarTotaisOutrosProdutos(idx, tri){
   var mesIdx = pSelectedMesIdx || 1;
   var numProdutos = OUTROS_PRODUTOS.length;
+  var numSemanasMes = quantidadeSemanasMes(tri, mesIdx);
   
   // Coletar valores dos inputs
   var valores = {}; // valores[semIdx][prodIdx] = valor
-  for(var si = 1; si <= 4; si++){
+  for(var si = 1; si <= numSemanasMes; si++){
     valores[si] = {};
     for(var pi = 0; pi < numProdutos; pi++){
       var inp = document.querySelector('.pOutroInput[data-mes="'+mesIdx+'"][data-sem="'+si+'"][data-prod="'+pi+'"]');
@@ -1767,7 +1837,7 @@ function atualizarTotaisOutrosProdutos(idx, tri){
   // Total por produto no mês
   for(var p = 0; p < numProdutos; p++){
     var totalProd = 0;
-    for(var s = 1; s <= 4; s++){
+    for(var s = 1; s <= numSemanasMes; s++){
       totalProd += valores[s][p];
     }
     var elP = document.querySelector('.pOutroTotalProd-'+mesIdx+'-'+p);
@@ -1775,7 +1845,7 @@ function atualizarTotaisOutrosProdutos(idx, tri){
   }
   
   // Total por semana
-  for(var s2 = 1; s2 <= 4; s2++){
+  for(var s2 = 1; s2 <= numSemanasMes; s2++){
     var totalSem = 0;
     for(var p2 = 0; p2 < numProdutos; p2++){
       totalSem += valores[s2][p2];
@@ -1786,7 +1856,7 @@ function atualizarTotaisOutrosProdutos(idx, tri){
   
   // Total do mês
   var totalMes = 0;
-  for(var s3 = 1; s3 <= 4; s3++){
+  for(var s3 = 1; s3 <= numSemanasMes; s3++){
     for(var p3 = 0; p3 < numProdutos; p3++){
       totalMes += valores[s3][p3];
     }
@@ -1835,7 +1905,7 @@ function renderIndicadoresModalidadesFromInputs(idx, tri, valores){
   MODALIDADES.forEach(function(mod, modIdx){
     var totalMod = 0;
     for(var mi = 1; mi <= 3; mi++){
-      for(var si = 1; si <= 4; si++){
+      for(var si = 1; si <= quantidadeSemanasMes(tri, mi); si++){
         totalMod += valores[mi][si][modIdx] || 0;
       }
     }
@@ -1889,7 +1959,7 @@ function renderGraficoPizzaModalidadesFromInputs(idx, tri, valores){
   var totais = MODALIDADES.map(function(mod, modIdx){
     var total = 0;
     for(var mi = 1; mi <= 3; mi++){
-      for(var si = 1; si <= 4; si++){
+      for(var si = 1; si <= quantidadeSemanasMes(tri, mi); si++){
         total += valores[mi][si][modIdx] || 0;
       }
     }
@@ -2278,7 +2348,7 @@ function openPanel(idx){
       var corSt = st==='atrasado'?'#DC2626':(st==='alerta'?'#F59E0B':'#16A34A');
       var lblSt = st==='atrasado'?' (prazo vencido)':(st==='alerta'?' (prazo próximo)':' (em dia)');
       updEl.innerHTML = fmtDate(updVal)+' <span style="color:'+corSt+';font-size:11px;font-weight:600;">'+lblSt+'</span>';
-    } else if(S.cfg && S.cfg.prazo_producao){
+    } else if(getPrazoProducaoAtual()){
       var corSt2 = st==='atrasado'?'#DC2626':(st==='alerta'?'#F59E0B':'var(--ink3)');
       updEl.innerHTML = '<span style="color:'+corSt2+';font-size:12px;">Ainda não atualizada</span>';
     } else { updEl.textContent = '—'; }
@@ -2286,7 +2356,7 @@ function openPanel(idx){
   // Botão "Marcar como atualizado" (só se tem prazo definido e usuário pode editar)
   var wrapMarcar = document.getElementById('pMarcarAtualizadoWrap');
   if(wrapMarcar){
-    var podeMarcar = (editor || (modoGestor && gestorLogado)) && S.cfg && S.cfg.prazo_producao;
+    var podeMarcar = (editor || (modoGestor && gestorLogado));
     wrapMarcar.style.display = podeMarcar ? 'block' : 'none';
   }
   renderPanelTrilha(idx);
@@ -2968,7 +3038,7 @@ function exportToExcelSync(){
   // ═══════════════════════════════════════════════════════════
   // ABA 2: CRÉDITO DETALHADO (INSS, OP, EP, Creditário por semana)
   // ═══════════════════════════════════════════════════════════
-  var headerCredito = ['Nome','Funcional','Agência','Trimestre','Mês','Modalidade','Sem 1','Sem 2','Sem 3','Sem 4','Total mês'];
+  var headerCredito = ['Nome','Funcional','Agência','Trimestre','Mês','Modalidade','Sem 1','Sem 2','Sem 3','Sem 4','Sem 5','Total mês'];
   var rowsCredito = [];
   lista.forEach(function(e){
     checkedTris.forEach(function(tri){
@@ -2979,11 +3049,12 @@ function exportToExcelSync(){
           var s2 = getProducaoSemanalModalidade(e.id, tri, mi, 2, modIdx);
           var s3 = getProducaoSemanalModalidade(e.id, tri, mi, 3, modIdx);
           var s4 = getProducaoSemanalModalidade(e.id, tri, mi, 4, modIdx);
-          var tot = s1+s2+s3+s4;
+          var s5 = quantidadeSemanasMes(tri, mi) >= 5 ? getProducaoSemanalModalidade(e.id, tri, mi, 5, modIdx) : 0;
+          var tot = s1+s2+s3+s4+s5;
           if(tot > 0){ // só inclui linhas com valores
             rowsCredito.push([
               e.nome, (e.perfil&&e.perfil.funcional)||'—', (e.perfil&&e.perfil.agencia)||'—',
-              fmtTrimestre(tri), meses[mi-1].nome, mod, s1, s2, s3, s4, tot
+              fmtTrimestre(tri), meses[mi-1].nome, mod, s1, s2, s3, s4, s5, tot
             ]);
           }
         });
@@ -2991,16 +3062,16 @@ function exportToExcelSync(){
     });
   });
   if(rowsCredito.length === 0){
-    rowsCredito.push(['Sem dados de crédito no período selecionado','','','','','','','','','','']);
+    rowsCredito.push(['Sem dados de crédito no período selecionado','','','','','','','','','','','']);
   }
   var wsCredito = XLSX.utils.aoa_to_sheet([headerCredito].concat(rowsCredito));
-  wsCredito['!cols'] = [{wch:25},{wch:12},{wch:10},{wch:10},{wch:8},{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12}];
+  wsCredito['!cols'] = [{wch:25},{wch:12},{wch:10},{wch:10},{wch:8},{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12}];
   XLSX.utils.book_append_sheet(wb, wsCredito, 'Crédito Detalhado');
   
   // ═══════════════════════════════════════════════════════════
   // ABA 3: OUTROS PRODUTOS DETALHADO (Seguros, PIC, etc por semana)
   // ═══════════════════════════════════════════════════════════
-  var headerProd = ['Nome','Funcional','Agência','Trimestre','Mês','Produto','Sem 1','Sem 2','Sem 3','Sem 4','Total mês'];
+  var headerProd = ['Nome','Funcional','Agência','Trimestre','Mês','Produto','Sem 1','Sem 2','Sem 3','Sem 4','Sem 5','Total mês'];
   var rowsProd = [];
   lista.forEach(function(e){
     checkedTris.forEach(function(tri){
@@ -3011,11 +3082,12 @@ function exportToExcelSync(){
           var s2 = getProducaoOutroProduto(e.id, tri, mi, 2, prodIdx);
           var s3 = getProducaoOutroProduto(e.id, tri, mi, 3, prodIdx);
           var s4 = getProducaoOutroProduto(e.id, tri, mi, 4, prodIdx);
-          var tot = s1+s2+s3+s4;
+          var s5 = quantidadeSemanasMes(tri, mi) >= 5 ? getProducaoOutroProduto(e.id, tri, mi, 5, prodIdx) : 0;
+          var tot = s1+s2+s3+s4+s5;
           if(tot > 0){
             rowsProd.push([
               e.nome, (e.perfil&&e.perfil.funcional)||'—', (e.perfil&&e.perfil.agencia)||'—',
-              fmtTrimestre(tri), meses[mi-1].nome, prod, s1, s2, s3, s4, tot
+              fmtTrimestre(tri), meses[mi-1].nome, prod, s1, s2, s3, s4, s5, tot
             ]);
           }
         });
@@ -3023,10 +3095,10 @@ function exportToExcelSync(){
     });
   });
   if(rowsProd.length === 0){
-    rowsProd.push(['Sem dados de outros produtos no período selecionado','','','','','','','','','','']);
+    rowsProd.push(['Sem dados de outros produtos no período selecionado','','','','','','','','','','','']);
   }
   var wsProd = XLSX.utils.aoa_to_sheet([headerProd].concat(rowsProd));
-  wsProd['!cols'] = [{wch:25},{wch:12},{wch:10},{wch:10},{wch:8},{wch:14},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12}];
+  wsProd['!cols'] = [{wch:25},{wch:12},{wch:10},{wch:10},{wch:8},{wch:14},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12}];
   XLSX.utils.book_append_sheet(wb, wsProd, 'Outros Produtos');
   
   // ═══════════════════════════════════════════════════════════
@@ -3316,19 +3388,18 @@ if(btnMarcarAtz){
     if(_pIdx < 0) return;
     if(!editor && !(modoGestor && gestorLogado)) return;
     var e = S.ests[_pIdx];
-    if(!e.perfil) e.perfil = {};
-    e.perfil.ultima_atualizacao_prod = hojeLocalYMD();
-    await saveEstagiario(e);
+    var confirmouNoPrazo = registrarProducaoVerificada(e);
+    if(!(await saveEstagiario(e))) return;
     
     // Feedback visual: pisca o botão em verde
     var original = this.innerHTML;
     var originalBg = this.style.background;
     var originalColor = this.style.color;
     var originalBorder = this.style.borderColor;
-    this.innerHTML = '✓ Marcado como verificado!';
-    this.style.background = '#16A34A';
+    this.innerHTML = confirmouNoPrazo ? '✓ Marcado como verificado!' : 'Prazo desta semana vencido';
+    this.style.background = confirmouNoPrazo ? '#16A34A' : '#DC2626';
     this.style.color = '#fff';
-    this.style.borderColor = '#16A34A';
+    this.style.borderColor = confirmouNoPrazo ? '#16A34A' : '#DC2626';
     var self = this;
     setTimeout(function(){
       self.innerHTML = original;
@@ -3345,7 +3416,8 @@ if(btnMarcarAtz){
         // Re-preencher só a linha (sem fechar o painel)
         var updEl = document.getElementById('pUltimaAtualizacao');
         if(updEl){
-          updEl.innerHTML = fmtDate(e.perfil.ultima_atualizacao_prod) + ' <span style="color:#16A34A;font-size:11px;font-weight:600;"> (em dia)</span>';
+          var statusTexto = confirmouNoPrazo ? '<span style="color:#16A34A;font-size:11px;font-weight:600;"> (em dia)</span>' : '<span style="color:#DC2626;font-size:11px;font-weight:600;"> (prazo vencido)</span>';
+          updEl.innerHTML = fmtDate(e.perfil.ultima_atualizacao_prod) + ' ' + statusTexto;
         }
       }
     }, 100);
@@ -3403,9 +3475,9 @@ if(btnMarcarAtz){
     document.getElementById('projetoOv').classList.remove('open');
   });
 
-  // Configurações — prazo de produção por data
+  // Configurações — prazo semanal de produção (sexta-feira por padrão)
   var cfgPrazoInput = document.getElementById('cfgPrazoData');
-  if(cfgPrazoInput && S.cfg && S.cfg.prazo_producao) cfgPrazoInput.value = S.cfg.prazo_producao;
+  if(cfgPrazoInput) cfgPrazoInput.value = getPrazoProducaoAtual();
   
   // Renderiza o estado da UI (com prazo definido = mostra card, sem = mostra form)
   function renderPrazoAtual(){
@@ -3415,32 +3487,25 @@ if(btnMarcarAtz){
     var statusEl = document.getElementById('cfgPrazoStatus');
     var btnFecharForm = document.getElementById('btnCfgFecharForm');
     
-    var prazoAtual = S.cfg && (S.cfg.ultimo_prazo_producao || S.cfg.prazo_producao);
-    if(prazoAtual){
-      // Mostra o card e esconde o form
-      if(cardEl) cardEl.style.display = 'block';
-      if(formEl) formEl.style.display = 'none';
-      if(btnFecharForm) btnFecharForm.style.display = 'none';
-      
-      if(displayEl) displayEl.textContent = '📅 ' + fmtDate(prazoAtual);
-      
-      if(statusEl){
-        var d = new Date(prazoAtual+'T12:00:00');
-        var hoje = new Date();
-        var diff = Math.ceil((d - hoje) / 86400000);
-        var status, cor;
-        if(diff > 2){ status = '🟢 Dentro do prazo ('+diff+' dias restantes)'; cor = '#16A34A'; }
-        else if(diff > 0){ status = '🟡 Prazo próximo ('+diff+' '+(diff===1?'dia':'dias')+')'; cor = '#F59E0B'; }
-        else if(diff === 0){ status = '🟠 Vence hoje!'; cor = '#EA580C'; }
-        else { status = '🔴 Prazo vencido há '+Math.abs(diff)+' '+(Math.abs(diff)===1?'dia':'dias'); cor = '#DC2626'; }
-        statusEl.textContent = status;
-        statusEl.style.color = cor;
-      }
-    } else {
-      // Sem prazo: mostra o form
-      if(cardEl) cardEl.style.display = 'none';
-      if(formEl) formEl.style.display = 'flex';
-      if(btnFecharForm) btnFecharForm.style.display = 'none';
+    var prazoAtual = getPrazoProducaoAtual();
+    var usaDataManual = S.cfg && S.cfg.prazo_producao_manual && S.cfg.prazo_producao_manual_semana === inicioSemanaAtualYMD();
+    if(cardEl) cardEl.style.display = 'block';
+    if(formEl) formEl.style.display = 'none';
+    if(btnFecharForm) btnFecharForm.style.display = 'none';
+    if(cfgPrazoInput) cfgPrazoInput.value = prazoAtual;
+    if(displayEl) displayEl.textContent = '📅 ' + fmtDate(prazoAtual);
+
+    if(statusEl){
+      var d = new Date(prazoAtual+'T12:00:00');
+      var hoje = new Date();
+      var diff = Math.ceil((d - hoje) / 86400000);
+      var status, cor;
+      if(diff > 2){ status = (usaDataManual ? '📌 Data personalizada desta semana' : '🟢 Sexta-feira programada')+' ('+diff+' dias restantes)'; cor = '#16A34A'; }
+      else if(diff > 0){ status = '🟡 Prazo próximo ('+diff+' '+(diff===1?'dia':'dias')+')'; cor = '#F59E0B'; }
+      else if(diff === 0){ status = '🟠 Vence hoje!'; cor = '#EA580C'; }
+      else { status = '🔴 Prazo vencido há '+Math.abs(diff)+' '+(Math.abs(diff)===1?'dia':'dias'); cor = '#DC2626'; }
+      statusEl.textContent = status;
+      statusEl.style.color = cor;
     }
   }
   renderPrazoAtual();
@@ -3450,9 +3515,10 @@ if(btnMarcarAtz){
     var val = document.getElementById('cfgPrazoData').value;
     if(!val){ alert('Selecione uma data.'); return; }
     S.cfg = S.cfg || {};
+    S.cfg.prazo_producao_manual = val;
+    S.cfg.prazo_producao_manual_semana = inicioSemanaAtualYMD();
     S.cfg.prazo_producao = val;
     S.cfg.ultimo_prazo_producao = val;
-    S.cfg.prazo_definido_em = hojeLocalYMD();
     await sb.from('configuracoes').upsert(JSON.parse(JSON.stringify({id:'cfg_geral', valor:S.cfg})));
     var sv = document.getElementById('cfgPrazoSaved');
     if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
@@ -3469,7 +3535,7 @@ if(btnMarcarAtz){
     if(cardEl) cardEl.style.display = 'none';
     if(formEl) formEl.style.display = 'flex';
     if(btnFecharForm) btnFecharForm.style.display = 'inline-flex';
-    if(cfgPrazoInput && S.cfg && S.cfg.prazo_producao) cfgPrazoInput.value = S.cfg.prazo_producao;
+    if(cfgPrazoInput) cfgPrazoInput.value = getPrazoProducaoAtual();
   });
   
   // Botão "Cancelar edição" - fecha o form sem salvar
@@ -4327,11 +4393,11 @@ function gerarContextoIA(){
     return row ? (parseFloat(row.producao) || 0) : 0;
   }
   
-  // Total de uma modalidade no trimestre (soma 3 meses × 4 semanas)
+  // Total de uma modalidade no trimestre (inclui a quinta semana quando aplicável)
   function _totCredMod(eid, modIdx){
     var t = 0;
     for(var m = 1; m <= 3; m++){
-      for(var s = 1; s <= 4; s++){
+      for(var s = 1; s <= quantidadeSemanasMes(tri, m); s++){
         t += _prod(eid, tri+'-M'+m+'-S'+s+'-MOD'+modIdx);
       }
     }
@@ -4347,7 +4413,7 @@ function gerarContextoIA(){
   function _totOutProd(eid, prodIdx){
     var t = 0;
     for(var m = 1; m <= 3; m++){
-      for(var s = 1; s <= 4; s++){
+      for(var s = 1; s <= quantidadeSemanasMes(tri, m); s++){
         t += _prod(eid, tri+'-M'+m+'-S'+s+'-OUT'+prodIdx);
       }
     }
@@ -4398,20 +4464,7 @@ function gerarContextoIA(){
   
   // Status de atualização
   function _statusAtz(e){
-    if(!S_.cfg || !S_.cfg.prazo_producao) return 'ok';
-    var definidoEm = S_.cfg.prazo_definido_em || '2000-01-01';
-    var hoje = new Date();
-    var y = hoje.getFullYear();
-    var m = String(hoje.getMonth()+1).padStart(2,'0');
-    var d = String(hoje.getDate()).padStart(2,'0');
-    var hojeStr = y+'-'+m+'-'+d;
-    if(e.perfil && e.perfil.ultima_atualizacao_prod && e.perfil.ultima_atualizacao_prod >= definidoEm) return 'ok';
-    var prazoDt = new Date(S_.cfg.prazo_producao+'T00:00:00');
-    var hojeDt = new Date(hojeStr+'T00:00:00');
-    var diff = Math.round((prazoDt - hojeDt)/86400000);
-    if(diff < 1) return 'atrasado';
-    if(diff <= 2) return 'alerta';
-    return 'ok';
+    return statusAtualizacao(e);
   }
   
   // Tempo no programa
@@ -4432,7 +4485,7 @@ function gerarContextoIA(){
     data_atual: hojeYMD,
     total_estagiarios: (S_.ests||[]).length,
     trimestre_atual: tri,
-    prazo_producao: (S_.cfg && S_.cfg.prazo_producao) || null,
+    prazo_producao: getPrazoProducaoAtual(),
     estagiarios: [],
     agendamentos: []
   };

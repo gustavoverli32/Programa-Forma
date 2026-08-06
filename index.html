@@ -169,8 +169,7 @@
         <div style="display:flex;align-items:center;gap:6px;">
           <select id="filtroRanking" style="font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
             <optgroup label="Geral">
-              <option value="nota">🏆 Nota (Crédito + Produtos)</option>
-              <option value="credito">💳 Crédito total (INSS+OP+EP+Creditário)</option>
+              <option value="credito" selected>💳 Crédito total (INSS+OP+EP+Creditário)</option>
               <option value="produtos">📦 Produtos total (Seg+PIC+Comb+Cons+Eng)</option>
             </optgroup>
             <optgroup label="Crédito (por modalidade)">
@@ -379,31 +378,31 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:18px;">⏰</span>
-          <h3 style="font-size:15px;font-weight:600;color:var(--ink);margin:0;">Prazo para atualização de produção</h3>
+          <h3 style="font-size:15px;font-weight:600;color:var(--ink);margin:0;">Atualização semanal de produção</h3>
         </div>
-        <p style="font-size:12px;color:var(--ink3);margin:8px 0 14px;">Defina a data limite para os gestores atualizarem a produção dos estagiários. Quando o prazo se aproximar (2 dias antes), os cards ficarão amarelos. No dia do vencimento, ficarão vermelhos.</p>
+        <p style="font-size:12px;color:var(--ink3);margin:8px 0 14px;">O prazo padrão é toda sexta-feira. A data abaixo é a referência da semana atual; enquanto a produção não for confirmada, os cards ficam amarelos e, no vencimento, vermelhos.</p>
         
         <!-- Card do prazo atual (aparece quando há prazo definido) -->
         <div id="cfgPrazoCardAtual" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
             <div>
-              <div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Último prazo definido</div>
+              <div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Data utilizada nesta semana</div>
               <div id="cfgPrazoDataDisplay" style="font-size:18px;font-weight:600;color:var(--ink);"></div>
               <div id="cfgPrazoStatus" style="font-size:12px;color:var(--ink3);margin-top:4px;"></div>
             </div>
             <div style="display:flex;gap:8px;">
-              <button class="btn-sm" id="btnCfgAlterarPrazo" style="background:#3B82F6;color:white;border-color:#3B82F6;">Alterar prazo</button>
+              <button class="btn-sm" id="btnCfgAlterarPrazo" style="background:#3B82F6;color:white;border-color:#3B82F6;">Alterar data</button>
             </div>
           </div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3);line-height:1.4;">
-            💡 O prazo permanece ativo até você definir um novo. Isso garante que os estagiários pendentes continuem sinalizados.
+            💡 A alteração vale apenas para a semana atual. Na semana seguinte, o prazo volta automaticamente para a sexta-feira.
           </div>
         </div>
         
         <!-- Formulário de definir/alterar -->
         <div id="cfgPrazoForm" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <input type="date" id="cfgPrazoData" style="font-size:13px;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;background:var(--surface);color:var(--ink);cursor:pointer;">
-          <button class="btn-obs" id="btnCfgSalvarPrazo">Definir prazo</button>
+          <button class="btn-obs" id="btnCfgSalvarPrazo">Salvar data da semana</button>
           <button class="btn-sm" id="btnCfgFecharForm" style="display:none;">Cancelar edição</button>
           <span class="obs-saved" id="cfgPrazoSaved">✓ Salvo</span>
         </div>
@@ -652,7 +651,7 @@
         <input type="checkbox" id="permRanking" style="width:18px;height:18px;accent-color:var(--or);flex-shrink:0;">
         <div style="flex:1;">
           <div style="font-size:13.5px;font-weight:500;color:var(--ink);">🏆 Ranking</div>
-          <div style="font-size:11.5px;color:var(--ink3);">Ver o ranking de notas do trimestre na página inicial</div>
+          <div style="font-size:11.5px;color:var(--ink3);">Ver os rankings de produção do trimestre na página inicial</div>
         </div>
       </label>
       <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;">
@@ -862,7 +861,7 @@
 
 <div class="toast"  id="toast"><span class="tdot"></span>Salvo com sucesso</div>
 
-<script src="./assets/js/app.js?v=alvo2"></script>
+<script src="./assets/js/app.js?v=semanal1"></script>
 <!-- ═══════════════════════════════════════════ -->
 <!-- ═══════ ASSISTENTE IA - BOTÃO FLUTUANTE ═══ -->
 <!-- ═══════════════════════════════════════════ -->
