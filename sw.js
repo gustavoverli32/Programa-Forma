@@ -1,11 +1,11 @@
-const CACHE_NAME = 'nextuber-v3-ai';
+const CACHE_NAME = 'nextuber-v4-semanal';
 const APP_SHELL = [
   './',
   './index.html',
   './formaplus_2_0.html',
   './manifest.json',
   './assets/css/app.css',
-  './assets/js/app.js',
+  './assets/js/app.js?v=semanal2',
   './assets/js/pwa.js',
   './pwa-icons/icon-192x192.png',
   './pwa-icons/icon-512x512.png'
@@ -42,7 +42,7 @@ self.addEventListener('fetch', function (event) {
   }
 
   event.respondWith(
-    fetch(request).then(function (response) {
+    fetch(request, { cache: 'no-store' }).then(function (response) {
       if (response.ok) {
         var copy = response.clone();
         caches.open(CACHE_NAME).then(function (cache) {
