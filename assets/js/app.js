@@ -1717,6 +1717,7 @@ function renderResultadosForTri(idx, tri){
 
         var modInputs = document.querySelectorAll('.pModInput');
         var totalGeral = 0;
+        var houveProducaoInformada = false;
         for(var i = 0; i < modInputs.length; i++){
           var val = parseMilhar(modInputs[i].value) || 0;
           var mesI = parseInt(modInputs[i].getAttribute('data-mes'));
@@ -1724,6 +1725,7 @@ function renderResultadosForTri(idx, tri){
           var modI = parseInt(modInputs[i].getAttribute('data-mod'));
           if(!(await saveProducaoSemanalModalidade(e.id, tri, mesI, semI, modI, val))) throw new Error('Não foi possível salvar uma modalidade.');
           totalGeral += val;
+          if(val > 0) houveProducaoInformada = true;
         }
 
         // Salvar Outros Produtos (com semana)
@@ -1734,12 +1736,19 @@ function renderResultadosForTri(idx, tri){
           var outSem = parseInt(outroInputs[j].getAttribute('data-sem'));
           var outProd = parseInt(outroInputs[j].getAttribute('data-prod'));
           if(!(await saveProducaoOutroProduto(e.id, tri, outMes, outSem, outProd, outVal))) throw new Error('Não foi possível salvar um produto.');
+          if(outVal > 0) houveProducaoInformada = true;
         }
 
         if(!(await saveProducaoTri(e.id, tri, totalGeral))) throw new Error('Não foi possível salvar o total produzido.');
-        registrarProducaoVerificada(e);
-        if(!(await saveEstagiario(e))) throw new Error('Não foi possível confirmar a atualização.');
         if(!(await salvarSnapshot(e.id, tri))) throw new Error('Não foi possível atualizar o resumo trimestral.');
+
+        // Produção zerada exige a confirmação explícita no botão "Marcar produção como verificada hoje".
+        var perfilAntesDaConfirmacao = JSON.parse(JSON.stringify(e.perfil || {}));
+        if(houveProducaoInformada) registrarProducaoVerificada(e);
+        if(!(await saveEstagiario(e))){
+          e.perfil = perfilAntesDaConfirmacao;
+          throw new Error('Não foi possível confirmar a atualização.');
+        }
 
       var sv = document.getElementById('resultadoSaved');
 
@@ -3497,8 +3506,8 @@ if(btnMarcarAtz){
 
     if(statusEl){
       var d = new Date(prazoAtual+'T12:00:00');
-      var hoje = new Date();
-      var diff = Math.ceil((d - hoje) / 86400000);
+      var hoje = new Date(hojeLocalYMD()+'T12:00:00');
+      var diff = Math.round((d - hoje) / 86400000);
       var status, cor;
       if(diff > 2){ status = (usaDataManual ? '📌 Data personalizada desta semana' : '🟢 Sexta-feira programada')+' ('+diff+' dias restantes)'; cor = '#16A34A'; }
       else if(diff > 0){ status = '🟡 Prazo próximo ('+diff+' '+(diff===1?'dia':'dias')+')'; cor = '#F59E0B'; }
