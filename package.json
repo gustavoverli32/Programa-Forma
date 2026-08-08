@@ -2,6 +2,7 @@
   "name": "nextuber",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=20.9.0"
   },
@@ -10,8 +11,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --test --experimental-strip-types src/domain/*.test.ts",
     "sync:legacy": "node scripts/sync-legacy-shell.mjs",
-    "check": "npm run lint && npm run build"
+    "check": "npm run test && npm run lint && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",

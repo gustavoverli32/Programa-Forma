@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  nextuberProductionBridge,
+  type NextuberProductionBridge,
+} from "@/services/production-client";
 
 declare global {
   interface Window {
@@ -11,6 +15,7 @@ declare global {
       supabasePublishableKey: string;
     };
     loadNextuberXLSX?: () => Promise<typeof import("xlsx")>;
+    nextuberProduction?: NextuberProductionBridge;
   }
 }
 
@@ -46,6 +51,7 @@ export function LegacyRuntime() {
         supabaseUrl,
         supabasePublishableKey,
       };
+      window.nextuberProduction = nextuberProductionBridge;
 
       if (document.querySelector('script[data-nextuber-legacy="true"]')) return;
 

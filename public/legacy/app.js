@@ -142,6 +142,9 @@ function getAnoMesDoTrimestre(tri, mesIdx){
 }
 
 function quantidadeSemanasMes(tri, mesIdx){
+  if(window.nextuberProduction){
+    return window.nextuberProduction.quantityWeeksInMonth(tri, mesIdx);
+  }
   var ref = getAnoMesDoTrimestre(tri, mesIdx);
   var inicioMes = new Date(ref.ano, ref.mes-1, 1);
   var inicioMesAtual = new Date();
@@ -172,11 +175,7 @@ function getTotalMensal(eid,tri){
 
 async function saveProducaoSemanal(eid,tri,mesIdx,semIdx,valor){
   var ref=tri+'-M'+mesIdx+'-S'+semIdx;
-  var r=await sb.from('producao_trimestral').upsert({estagiario_id:eid,tri_ref:ref,meta:0,producao:valor},{onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i=S.producao.findIndex(function(p){return p.estagiario_id===eid&&p.tri_ref===ref;});
-    if(i>=0) S.producao[i]=r.data; else S.producao.push(r.data);
-  }
+  return salvarProducaoSegura(eid, tri, [{ref:ref, value:parseFloat(valor)||0}]);
 }
 
 function mesFechado(eid,tri,mesIdx){
@@ -201,6 +200,35 @@ async function hashSenha(senha) {
 var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{} };
 window.S = S; // exposto pra IA e outros escopos
 var DB_LOADED = false;
+
+function aplicarRetornoProducao(eid, tri, result){
+  var sid = String(eid);
+  var rows = (result && result.productionRows) || [];
+  S.producao = (S.producao || []).filter(function(row){
+    return !(String(row.estagiario_id) === sid && String(row.tri_ref).indexOf(tri) === 0);
+  }).concat(rows);
+  var est = S.ests.find(function(item){ return String(item.id) === sid; });
+  if(est && result && result.profile) est.perfil = result.profile;
+}
+
+async function salvarProducaoSegura(eid, tri, entries, target){
+  if(!window.nextuberProduction) return false;
+  var alvo = target;
+  if(alvo === undefined || alvo === null) alvo = parseFloat(getProducaoTri(eid, tri).meta)||0;
+  try {
+    var result = await window.nextuberProduction.saveBatch({
+      studentId: String(eid),
+      quarterRef: tri,
+      target: parseFloat(alvo)||0,
+      entries: entries || []
+    });
+    aplicarRetornoProducao(eid, tri, result);
+    return true;
+  } catch(error) {
+    console.error('Salvar producao segura:', error);
+    return false;
+  }
+}
 
 var TEXTOS_PROJETO_DEFAULT = {
   banner_over: 'Nextuber · A próxima geração de Itubers',
@@ -394,20 +422,11 @@ async function deleteGestor(id){
 
 
 async function saveMetaTri(eid,tri,meta){
-  var ex = getProducaoTri(eid,tri);
-  var dataToSave = JSON.parse(JSON.stringify({estagiario_id:eid,tri_ref:tri,meta:parseFloat(meta)||0,producao:parseFloat(ex.producao)||0}));var r = await sb.from('producao_trimestral').upsert(dataToSave,{onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(r.error || !r.data) return false;
-  var i = S.producao.findIndex(function(p){return p.estagiario_id===eid && p.tri_ref===tri;});
-  if(i>=0) S.producao[i] = r.data; else S.producao.push(r.data);
-  return true;
+  return salvarProducaoSegura(eid, tri, [], parseFloat(meta)||0);
 }
 async function saveProducaoTri(eid,tri,prod){
-  var ex = getProducaoTri(eid,tri);
-  var r = await sb.from('producao_trimestral').upsert({estagiario_id:eid,tri_ref:tri,meta:ex.meta||0,producao:prod},{onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(r.error || !r.data) return false;
-  var i = S.producao.findIndex(function(p){return p.estagiario_id===eid && p.tri_ref===tri;});
-  if(i>=0) S.producao[i] = r.data; else S.producao.push(r.data);
-  return true;
+  void prod;
+  return salvarProducaoSegura(eid, tri, []);
 }
 
 async function saveTimeline(){
@@ -623,6 +642,7 @@ function ymdLocal(d){
 }
 
 function inicioSemanaAtualYMD(){
+  if(window.nextuberProduction) return window.nextuberProduction.getWeekStartYmd();
   var d = new Date();
   var dia = d.getDay();
   var ajuste = dia === 0 ? -6 : 1-dia;
@@ -640,6 +660,7 @@ function sextaDaSemanaAtualYMD(){
 
 function getPrazoProducaoAtual(){
   var cfg = S.cfg || {};
+  if(window.nextuberProduction) return window.nextuberProduction.getCurrentDeadline(cfg);
   var semanaAtual = inicioSemanaAtualYMD();
   if(cfg.prazo_producao_manual && cfg.prazo_producao_manual_semana === semanaAtual){
     return cfg.prazo_producao_manual;
@@ -652,6 +673,11 @@ function producaoConfirmadaNoPrazo(e, prazo){
 }
 
 function registrarProducaoVerificada(e){
+  if(window.nextuberProduction){
+    var verificacao = window.nextuberProduction.markVerified(e.perfil || {}, S.cfg || {});
+    e.perfil = verificacao.profile;
+    return verificacao.confirmed;
+  }
   var prazo = getPrazoProducaoAtual();
   var hoje = hojeLocalYMD();
   if(!e.perfil) e.perfil = {};
@@ -662,6 +688,9 @@ function registrarProducaoVerificada(e){
 }
 
 function statusAtualizacao(e){
+  if(window.nextuberProduction){
+    return window.nextuberProduction.getUpdateStatus(e.perfil || {}, S.cfg || {});
+  }
   var prazo = getPrazoProducaoAtual();
   var hoje = hojeLocalYMD();
   // Cada sexta-feira é um ciclo novo: a confirmação de uma semana não libera a próxima.
@@ -894,39 +923,7 @@ function renderRanking(){
 
 async function salvarSnapshot(eid, tri){
   tri = tri || trimestreRef();
-  var e = S.ests.find(function(x){ return x.id === eid; });
-  if(!e) return;
-
-  var prod = getProducaoTri(eid, tri);
-  var meta = parseFloat(prod.meta) || 0;
-
-  // Crédito (60% da nota)
-  var producaoCredito = getTotalTrimestreModalidades(eid, tri);
-  if(producaoCredito === 0){
-    var totalMes = getTotalMensal(eid, tri);
-    producaoCredito = totalMes > 0 ? totalMes : (parseFloat(prod.producao)||0);
-  }
-  var pctCredito = meta>0 ? Math.min(producaoCredito/meta, 1) : 0;
-  var scoreCredito = Math.round(pctCredito * 6 * 10) / 10;
-
-  // Produtos (40% da nota)
-  var metaProdutos = meta * 0.2;
-  var producaoProdutos = getTotalTrimestreOutros(eid, tri);
-  var pctProdutos = metaProdutos>0 ? Math.min(producaoProdutos/metaProdutos, 1) : 0;
-  var scoreProdutos = Math.round(pctProdutos * 4 * 10) / 10;
-
-  var scoreFinal = Math.min(Math.round((scoreCredito + scoreProdutos) * 10) / 10, 10);
-
-  var r = await sb.from('snapshots').upsert(JSON.parse(JSON.stringify({
-    estagiario_id: eid,
-    tri_ref: tri,
-    score: scoreFinal,
-    score_producao: scoreCredito,     // reaproveita coluna: agora é crédito
-    score_trilha: scoreProdutos,       // reaproveita coluna: agora é produtos
-    total_producao: producaoCredito + producaoProdutos,
-    meta: meta
-  })), {onConflict:'estagiario_id,tri_ref'});
-  return !r.error;
+  return salvarProducaoSegura(eid, tri, []);
 }
 
 async function loadSnapshotsHistory(eid){
@@ -1336,17 +1333,7 @@ function getProducaoOutroProduto(eid, tri, mesIdx, semanaIdx, prodIdx){
 
 async function saveProducaoOutroProduto(eid, tri, mesIdx, semanaIdx, prodIdx, valor){
   var ref = tri + '-M' + mesIdx + '-S' + semanaIdx + '-OUT' + prodIdx;
-  var r = await sb.from('producao_trimestral').upsert(JSON.parse(JSON.stringify({
-    estagiario_id: eid,
-    tri_ref: ref,
-    meta: 0,
-    producao: valor
-  })), {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(r.error || !r.data) return false;
-  var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-  if(i >= 0) S.producao[i] = r.data;
-  else S.producao.push(r.data);
-  return true;
+  return salvarProducaoSegura(eid, tri, [{ref:ref, value:parseFloat(valor)||0}]);
 }
 
 // Total de um produto em uma semana (soma todos os prodIdx da semana)
@@ -1402,17 +1389,7 @@ function getProducaoSemanalModalidade(eid, tri, mesIdx, semIdx, modIdx){
 // Salva o valor produzido de uma semana específica para uma modalidade
 async function saveProducaoSemanalModalidade(eid, tri, mesIdx, semIdx, modIdx, valor){
   var ref = tri + '-M' + mesIdx + '-S' + semIdx + '-MOD' + modIdx;
-  var r = await sb.from('producao_trimestral').upsert({
-    estagiario_id: eid,
-    tri_ref: ref,
-    meta: 0,
-    producao: valor
-  }, {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(r.error || !r.data) return false;
-  var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-  if(i >= 0) S.producao[i] = r.data;
-  else S.producao.push(r.data);
-  return true;
+  return salvarProducaoSegura(eid, tri, [{ref:ref, value:parseFloat(valor)||0}]);
 }
 
 // Soma de uma semana (todas as 4 modalidades)
@@ -1719,42 +1696,33 @@ function renderResultadosForTri(idx, tri){
       btn.textContent = 'Salvando...';
       try {
         var newMeta = parseMilhar((document.getElementById('pMetaInput')||{}).value)||0;
-        if(!(await saveMetaTri(e.id, tri, newMeta))) throw new Error('Não foi possível salvar o alvo.');
-
+        var entries = [];
         var modInputs = document.querySelectorAll('.pModInput');
-        var totalGeral = 0;
-        var houveProducaoInformada = false;
         for(var i = 0; i < modInputs.length; i++){
           var val = parseMilhar(modInputs[i].value) || 0;
           var mesI = parseInt(modInputs[i].getAttribute('data-mes'));
           var semI = parseInt(modInputs[i].getAttribute('data-sem'));
           var modI = parseInt(modInputs[i].getAttribute('data-mod'));
-          if(!(await saveProducaoSemanalModalidade(e.id, tri, mesI, semI, modI, val))) throw new Error('Não foi possível salvar uma modalidade.');
-          totalGeral += val;
-          if(val > 0) houveProducaoInformada = true;
+          entries.push({ref:tri+'-M'+mesI+'-S'+semI+'-MOD'+modI, value:val});
         }
 
-        // Salvar Outros Produtos (com semana)
         var outroInputs = document.querySelectorAll('.pOutroInput');
         for(var j = 0; j < outroInputs.length; j++){
           var outVal = parseMilhar(outroInputs[j].value) || 0;
           var outMes = parseInt(outroInputs[j].getAttribute('data-mes'));
           var outSem = parseInt(outroInputs[j].getAttribute('data-sem'));
           var outProd = parseInt(outroInputs[j].getAttribute('data-prod'));
-          if(!(await saveProducaoOutroProduto(e.id, tri, outMes, outSem, outProd, outVal))) throw new Error('Não foi possível salvar um produto.');
-          if(outVal > 0) houveProducaoInformada = true;
+          entries.push({ref:tri+'-M'+outMes+'-S'+outSem+'-OUT'+outProd, value:outVal});
         }
 
-        if(!(await saveProducaoTri(e.id, tri, totalGeral))) throw new Error('Não foi possível salvar o total produzido.');
-        if(!(await salvarSnapshot(e.id, tri))) throw new Error('Não foi possível atualizar o resumo trimestral.');
-
-        // Produção zerada exige a confirmação explícita no botão "Marcar produção como verificada hoje".
-        var perfilAntesDaConfirmacao = JSON.parse(JSON.stringify(e.perfil || {}));
-        if(houveProducaoInformada) registrarProducaoVerificada(e);
-        if(!(await saveEstagiario(e))){
-          e.perfil = perfilAntesDaConfirmacao;
-          throw new Error('Não foi possível confirmar a atualização.');
-        }
+        if(!window.nextuberProduction) throw new Error('Serviço de produção indisponível.');
+        var saveResult = await window.nextuberProduction.saveBatch({
+          studentId:String(e.id),
+          quarterRef:tri,
+          target:newMeta,
+          entries:entries
+        });
+        aplicarRetornoProducao(e.id, tri, saveResult);
 
       var sv = document.getElementById('resultadoSaved');
 
@@ -1768,7 +1736,7 @@ function renderResultadosForTri(idx, tri){
       }
       } catch(err) {
         console.error('Salvar resultados:', err);
-        alert('Os dados não foram salvos por completo. Tente novamente.');
+        alert((err && err.message) || 'Os dados não foram salvos. Tente novamente.');
         btn.disabled = false;
         btn.textContent = 'Salvar';
       }
@@ -3426,8 +3394,17 @@ if(btnMarcarAtz){
     if(_pIdx < 0) return;
     if(!editor && !(modoGestor && gestorLogado)) return;
     var e = S.ests[_pIdx];
-    var confirmouNoPrazo = registrarProducaoVerificada(e);
-    if(!(await saveEstagiario(e))) return;
+    if(!window.nextuberProduction) return;
+    var verificacao;
+    try {
+      verificacao = await window.nextuberProduction.verifyToday(String(e.id));
+      e.perfil = verificacao.profile;
+    } catch(error) {
+      console.error('Confirmar producao:', error);
+      alert((error && error.message) || 'Não foi possível confirmar a produção.');
+      return;
+    }
+    var confirmouNoPrazo = verificacao.confirmed;
 
     // Feedback visual: pisca o botão em verde
     var original = this.innerHTML;
@@ -3552,12 +3529,15 @@ if(btnMarcarAtz){
   if(btnCfgPrazo) btnCfgPrazo.addEventListener('click', async function(){
     var val = document.getElementById('cfgPrazoData').value;
     if(!val){ alert('Selecione uma data.'); return; }
-    S.cfg = S.cfg || {};
-    S.cfg.prazo_producao_manual = val;
-    S.cfg.prazo_producao_manual_semana = inicioSemanaAtualYMD();
-    S.cfg.prazo_producao = val;
-    S.cfg.ultimo_prazo_producao = val;
-    await sb.from('configuracoes').upsert(JSON.parse(JSON.stringify({id:'cfg_geral', valor:S.cfg})));
+    if(!window.nextuberProduction) return;
+    try {
+      var prazoResult = await window.nextuberProduction.saveDeadline(val);
+      S.cfg = prazoResult.config;
+    } catch(error) {
+      console.error('Alterar prazo:', error);
+      alert((error && error.message) || 'Não foi possível alterar o prazo.');
+      return;
+    }
     var sv = document.getElementById('cfgPrazoSaved');
     if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
     renderPrazoAtual();

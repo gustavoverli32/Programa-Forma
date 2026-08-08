@@ -24,11 +24,16 @@ Ordem dos módulos:
 - Variáveis sensíveis separadas das variáveis públicas.
 - PWA mantido com manifesto, ícones e service worker próprios.
 - Cabeçalhos básicos de segurança habilitados.
+- Regra de prazo semanal centralizada em TypeScript e coberta por testes.
+- Gravações de produção, confirmação sem produção e alteração de prazo movidas para rotas autenticadas.
+- Permissão do gestor validada novamente no servidor antes de qualquer gravação.
+- Salvamento da tabela consolidado em uma única requisição do navegador.
+- Proteção de origem aplicada às novas operações de escrita.
 
 ## Pendências de segurança antes da produção
 
 - Auditar e ativar RLS em todas as tabelas do Supabase.
-- Migrar todas as gravações do navegador para Server Actions ou Route Handlers autenticados.
+- Migrar as gravações restantes de cadastro, trilhas, contatos e agendamentos para Route Handlers autenticados.
 - Trocar o hash legado de gestores por autenticação Supabase Auth ou Argon2/bcrypt com salt.
 - Adicionar limitação de tentativas de login e de chamadas ao assistente.
 - Configurar logs de auditoria para alterações de produção, perfis e permissões.
