@@ -1,13 +1,13 @@
 const CACHE_PREFIX = 'nextuber-github-';
-const CACHE_NAME = CACHE_PREFIX + 'v5-security-pwa';
+const CACHE_NAME = CACHE_PREFIX + 'v6-nextuber-live-news-final';
 const APP_SHELL = [
   './',
   './index.html',
   './formaplus_2_0.html',
   './manifest.json',
-  './assets/css/app.css',
+  './assets/css/app.css?v=nextuber_v6_live',
   './assets/js/security.js?v=1',
-  './assets/js/app.js?v=seguranca1',
+  './assets/js/app.js?v=nextuber_v6_live',
   './assets/js/pwa.js?v=pwa5',
   './pwa-icons/icon-192x192.png',
   './pwa-icons/icon-512x512.png'

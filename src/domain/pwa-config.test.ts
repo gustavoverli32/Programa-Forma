@@ -62,6 +62,6 @@ test("GitHub Pages fallback also installs the security layer before the applicat
 
   const worker = readFileSync(`${projectRoot}/sw.js`, "utf8");
   assert.match(worker, /assets\/js\/security\.js\?v=1/);
-  assert.match(worker, /assets\/js\/app\.js\?v=seguranca1/);
+  assert.match(worker, /assets\/js\/app\.js\?v=/);
   assert.match(worker, /CACHE_PREFIX = 'nextuber-github-'/);
 });
