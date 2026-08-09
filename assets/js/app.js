@@ -306,8 +306,8 @@ async function salvarProducaoSegura(eid, tri, entries, target){
 }
 
 var TEXTOS_PROJETO_DEFAULT = {
-  banner_over: 'Nextuber · A próxima geração de Itubers',
-  banner_titulo: 'A próxima geração de Itubers',
+  banner_over: 'PLATAFORMA NEXTUBER',
+  banner_titulo: 'Nextuber — Programa de Desenvolvimento Comercial',
   banner_desc: 'Programa estruturado de 6 meses para formar estagiários comerciais com excelência técnica, comportamental e comprometimento com o cliente. Acompanhamento contínuo, trilhas adaptadas e desenvolvimento orientado por dados.',
   sec_objetivo: 'Formar estagiários comerciais alinhados à cultura Itaú, com base técnica sólida, postura profissional e capacidade de gerar resultado com consistência.',
   sec_estrutura: '6 meses de jornada divididos em 3 trilhas progressivas:\n• Iniciante (0-90 dias): Acolhimento, cultura e fundamentos.\n• Intermediária (91-180 dias): Protagonismo com apoio e ajustes de rota.\n• Avançada (+181 dias): PDI, autonomia e papel de referência.',
@@ -974,6 +974,10 @@ function renderOverviewAll(){
   var regBar = document.getElementById('regionalSelectorBar');
   if(regBar) regBar.style.display = isAuthed ? 'flex' : 'none';
 
+  // Oculta o botão 'Ver mais' do banner antes do login para manter descrição expandida
+  var btnVerMais = document.getElementById('btnVerMaisProjeto');
+  if(btnVerMais) btnVerMais.style.display = isAuthed ? 'inline-block' : 'none';
+
   // KPIs da regional: só exibe se logado
   var kpisSection = document.getElementById('overviewKpisSection');
   if(kpisSection) kpisSection.style.display = isAuthed ? 'block' : 'none';
@@ -984,11 +988,14 @@ function renderOverviewAll(){
   if(trilhaCard) trilhaCard.style.display = isAuthed ? 'block' : 'none';
   if(isAuthed) renderOverviewTrilhaChart();
 
-  // Conteúdo institucional público: só exibe ANTES do login
+  // Card de encontros: só exibe se logado
+  var cardEnc = document.getElementById('cardEncontros');
+  if(cardEnc) cardEnc.style.display = isAuthed ? 'block' : 'none';
+  if(isAuthed) renderEncontros();
+
+  // Conteúdo institucional público (descrição expandida + notícias de crédito Itaú): só exibe ANTES do login
   var publicContent = document.getElementById('overviewPublicContent');
   if(publicContent) publicContent.style.display = isAuthed ? 'none' : 'block';
-
-  renderEncontros();
 }
 
 
