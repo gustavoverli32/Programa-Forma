@@ -4,19 +4,27 @@ import { useSyncExternalStore } from "react";
 import { AiAssistantModal } from "./AiAssistantModal";
 
 export function AiAssistantIsland() {
-  const isClient = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const isAuthed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  if (!isClient) return null;
+  if (!isAuthed) return null;
 
   return <AiAssistantModal />;
 }
 
-function subscribe() {
-  return () => {};
+function subscribe(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("nextuber-auth-changed", callback);
+  const interval = setInterval(callback, 1000);
+  return () => {
+    window.removeEventListener("nextuber-auth-changed", callback);
+    clearInterval(interval);
+  };
 }
 
 function getSnapshot() {
-  return true;
+  if (typeof window === "undefined") return false;
+  const w = window as unknown as { editor?: boolean; modoGestor?: boolean };
+  return !!(w.editor || w.modoGestor);
 }
 
 function getServerSnapshot() {

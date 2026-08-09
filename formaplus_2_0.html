@@ -100,6 +100,20 @@
 
   <!-- OVERVIEW -->
   <section id="page-overview" class="page active">
+    <!-- BARRA DE REGIONAL -->
+    <div id="regionalSelectorBar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;background:var(--surface,#fff);border:1px solid var(--border,#eee);border-radius:var(--r,14px);padding:14px 20px;box-shadow:0 2px 10px rgba(0,0,0,0.03);flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:18px;">📍</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink,#222);letter-spacing:0.02em;">REGIONAL SELECIONADA:</span>
+        <select id="regionalSelectDropdown" style="padding:8px 16px;font-size:13.5px;font-weight:700;border-radius:10px;border:1.5px solid var(--or,#EC7000);background:#FFF3E8;color:#EC7000;cursor:pointer;outline:none;box-shadow:0 2px 6px rgba(236,112,0,0.12);transition:all 0.2s ease;">
+          <option value="">Carregando regionais...</option>
+        </select>
+      </div>
+      <div id="regionalBadgeInfo" style="font-size:12px;font-weight:600;color:var(--ink2,#444);background:var(--bg,#f8f9fa);padding:6px 14px;border-radius:20px;border:1px solid var(--border,#eee);">
+        Visualizando Regional
+      </div>
+    </div>
+
     <!-- HEADER: descrição + data + trimestre -->
     <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:18px;">
       <!-- Card descrição -->
@@ -130,14 +144,60 @@
       </div>
     </div>
 
+    <!-- CONTEÚDO PÚBLICO (EXIBIDO ANTES DO LOGIN) -->
+    <div id="overviewPublicContent" style="display:none;margin-bottom:18px;">
+      <div style="background:var(--surface,#fff);border:1px solid var(--border,#eee);border-radius:var(--r,16px);padding:24px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+        <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--or,#EC7000);margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span>Nextuber</span>
+          <span style="font-size:11px;font-family:'DM Sans',sans-serif;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3,#666);background:var(--bg,#f4f4f4);padding:4px 10px;border-radius:20px;">PROGRAMA DE DESENVOLVIMENTO COMERCIAL</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px;font-size:14px;line-height:1.6;color:var(--ink2,#333);">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--ink,#111);margin-bottom:6px;display:flex;align-items:center;gap:6px;">🎯 Objetivo</div>
+            <p style="margin:0;color:var(--ink2,#444);">Formar estagiários comerciais alinhados à cultura Itaú, com base técnica sólida, postura profissional e capacidade de gerar resultado com consistência.</p>
+          </div>
+
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--ink,#111);margin-bottom:6px;display:flex;align-items:center;gap:6px;">📋 Estrutura</div>
+            <p style="margin:0 0 8px 0;color:var(--ink2,#444);">6 meses de jornada divididos em 3 trilhas progressivas:</p>
+            <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--ink2,#444);">
+              <li><strong>Iniciante (0–90 dias):</strong> Acolhimento, cultura e fundamentos.</li>
+              <li><strong>Intermediária (91–180 dias):</strong> Protagonismo com apoio e ajustes de rota.</li>
+              <li><strong>Avançada (+181 dias):</strong> PDI, autonomia e papel de referência.</li>
+            </ul>
+            <div style="margin-top:10px;color:var(--ink2,#444);">
+              <strong>Encontros:</strong><br>
+              • 1 encontro mensal com todos<br>
+              • 1 encontro mensal com os grupos iniciantes, intermediários e avançados.
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--ink,#111);margin-bottom:6px;display:flex;align-items:center;gap:6px;">⚖️ Avaliação</div>
+            <p style="margin:0 0 6px 0;color:var(--ink2,#444);">A nota final (0–10) é composta por:</p>
+            <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--ink2,#444);">
+              <li><strong>40% Comportamental:</strong> baseado no avanço da trilha de aprendizado.</li>
+              <li><strong>60% Resultados:</strong> percentual de alvo atingido no trimestre.</li>
+            </ul>
+          </div>
+
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--ink,#111);margin-bottom:6px;display:flex;align-items:center;gap:6px;">👥 Quem participa</div>
+            <p style="margin:0;color:var(--ink2,#444);"><strong>Tutora regional (Kamilla)</strong> — conduz o programa, valida trilhas e avalia. <strong>Líder (Gustavo)</strong> — Apoio aos estagiários com suporte a dúvidas e necessidades. <strong>Gestores</strong> — acompanham o dia a dia operacional e registram feedbacks. <strong>Estagiários</strong> — protagonistas do próprio desenvolvimento.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- KPIs / Cards de números -->
-    <div style="margin-bottom:18px;">
+    <div id="overviewKpisSection" style="margin-bottom:18px;">
       <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;">Visão consolidada</div>
       <div id="overviewKpis" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;"></div>
     </div>
 
     <!-- Distribuição por trilha (gráfico) -->
-    <div class="card" style="margin-bottom:16px;">
+    <div class="card" id="overviewTrilhaCard" style="margin-bottom:16px;">
       <div class="card-ttl">Distribuição por trilha</div>
       <div id="overviewTrilhaChart"></div>
     </div>
@@ -211,20 +271,20 @@
           <span style="font-size:16px;">📊</span> Exportar Excel
         </button>
       </div>
-      
+
       <!-- Barra de filtros -->
       <div id="filtrosBar" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;">
         <div style="display:flex;align-items:center;gap:6px;color:var(--ink3);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">
           <span style="font-size:14px;">🔍</span> Filtros
         </div>
-        
+
         <div style="display:flex;align-items:center;gap:6px;">
           <label style="font-size:12px;color:var(--ink2);">Agência:</label>
           <select id="filtroAgencia" style="font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
             <option value="todas">Todas</option>
           </select>
         </div>
-        
+
         <div style="display:flex;align-items:center;gap:6px;">
           <label style="font-size:12px;color:var(--ink2);">Certificação:</label>
           <select id="filtroCertificacao" style="font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
@@ -235,7 +295,7 @@
             <option value="C-PRO I">C-PRO I</option>
           </select>
         </div>
-        
+
         <div style="display:flex;align-items:center;gap:6px;">
           <label style="font-size:12px;color:var(--ink2);">Ordenar por:</label>
           <select id="filtroOrdem" style="font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
@@ -244,12 +304,12 @@
             <option value="menor_nota">Menor nota</option>
           </select>
         </div>
-        
+
         <button id="btnLimparFiltros" style="font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--ink2);cursor:pointer;font-weight:500;">Limpar</button>
-        
+
         <div id="filtroContador" style="margin-left:auto;font-size:12px;color:var(--ink3);font-weight:500;"></div>
       </div>
-      
+
       <div id="notionGrid"></div>
     </div>
 
@@ -372,7 +432,7 @@
   <!-- CONFIGURAÇÕES -->
   <section id="page-configuracoes" class="page">
     <div class="ph"><h1>Configurações</h1><p>Ajustes gerais do programa Nextuber.</p></div>
-    
+
     <div style="max-width:600px;">
       <!-- Recorrência de produção -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
@@ -381,7 +441,7 @@
           <h3 style="font-size:15px;font-weight:600;color:var(--ink);margin:0;">Atualização semanal de produção</h3>
         </div>
         <p style="font-size:12px;color:var(--ink3);margin:8px 0 14px;">O prazo padrão é toda sexta-feira. A data abaixo é a referência da semana atual; enquanto a produção não for confirmada, os cards ficam amarelos e, no vencimento, vermelhos.</p>
-        
+
         <!-- Card do prazo atual (aparece quando há prazo definido) -->
         <div id="cfgPrazoCardAtual" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
@@ -398,7 +458,7 @@
             💡 A alteração vale apenas para a semana atual. Na semana seguinte, o prazo volta automaticamente para a sexta-feira.
           </div>
         </div>
-        
+
         <!-- Formulário de definir/alterar -->
         <div id="cfgPrazoForm" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <input type="date" id="cfgPrazoData" style="font-size:13px;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;background:var(--surface);color:var(--ink);cursor:pointer;">
@@ -421,7 +481,7 @@
       <h1>Agendamentos</h1>
       <p>Registre aulas, treinamentos e eventos com os estagiários.</p>
     </div>
-    
+
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <select id="filtroAgendFase" style="font-size:13px;border:1px solid var(--border2);border-radius:8px;padding:8px 12px;background:var(--surface);color:var(--ink);cursor:pointer;">
@@ -441,7 +501,7 @@
       </div>
       <button class="btn-obs" id="btnNovoAgendamento" style="font-size:13px;">+ Novo Agendamento</button>
     </div>
-    
+
     <div id="agendamentosList" style="display:grid;gap:12px;">
       <div style="text-align:center;padding:40px;color:var(--ink3);">Carregando...</div>
     </div>
@@ -524,7 +584,7 @@
   <div class="login-box" style="max-width:680px;max-height:88vh;overflow-y:auto;">
     <h3 style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:4px;">Editar descrição do projeto</h3>
     <p style="font-size:12px;color:var(--ink3);margin-bottom:18px;">Edite os textos que aparecem na página inicial.</p>
-    
+
     <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:14px;">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:10px;">Banner principal</div>
       <div class="field-grp" style="margin-bottom:10px;">
@@ -544,7 +604,7 @@
     <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:14px;">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:10px;">Modal "Ver mais"</div>
       <p style="font-size:11.5px;color:var(--ink3);margin-bottom:10px;">Edite as 5 seções da descrição completa.</p>
-      
+
       <div class="field-grp" style="margin-bottom:10px;">
         <div class="field-lbl">🎯 Objetivo</div>
         <textarea class="field-in" id="edSecObjetivo" rows="3" style="resize:vertical;min-height:70px;"></textarea>
@@ -620,7 +680,7 @@
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;padding:14px;background:#F3F4F6;border-radius:8px;border:1px solid var(--border);">
       <div style="font-size:12px;font-weight:600;color:var(--ink);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">Tipo de gestor</div>
       <p style="font-size:11.5px;color:var(--ink3);margin-bottom:10px;">Escolha o nível de acesso deste gestor à plataforma.</p>
-      
+
       <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:white;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s;">
         <input type="radio" id="tipoGA" name="permTipoGestor" value="ga" style="width:16px;height:16px;accent-color:var(--or);flex-shrink:0;">
         <div style="flex:1;">
@@ -628,7 +688,7 @@
           <div style="font-size:10.5px;color:var(--ink3);">Acesso limitado aos seus estagiários e permissões específicas</div>
         </div>
       </label>
-      
+
       <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:white;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s;">
         <input type="radio" id="tipoGGA" name="permTipoGestor" value="gga" style="width:16px;height:16px;accent-color:var(--or);flex-shrink:0;">
         <div style="flex:1;">
@@ -685,7 +745,7 @@
   <div class="login-box">
     <h3 style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:4px;">Meu perfil</h3>
     <p style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Atualize seus dados de acesso.</p>
-    
+
     <div class="field-grp" style="margin-bottom:10px;">
       <div class="field-lbl">Nome</div>
       <input class="field-in" type="text" id="perfilNome" maxlength="60">
@@ -702,7 +762,7 @@
       <div class="field-lbl">Confirmar nova senha</div>
       <input class="field-in" type="password" id="perfilSenhaConfirma">
     </div>
-    
+
     <div class="lerr" id="perfilErr"></div>
     <button class="btn-login" id="btnSalvarPerfil">Salvar alterações</button>
     <button class="btn-cancel" id="btnFecharPerfil">Cancelar</button>
@@ -771,13 +831,13 @@
 <div class="modal-ov" id="modalAgendamento">
   <div class="modal-box" style="max-width:560px;width:95%;max-height:90vh;overflow-y:auto;">
     <h3 id="modalAgendTitulo" style="margin-bottom:14px;">Novo Agendamento</h3>
-    
+
     <div style="display:grid;gap:12px;">
       <div>
         <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Título *</label>
         <input class="field-in" type="text" id="agendTitulo" maxlength="120" placeholder="Ex: Aula sobre consignados de prefeituras" style="margin-bottom:0;">
       </div>
-      
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Data *</label>
@@ -794,7 +854,7 @@
           </select>
         </div>
       </div>
-      
+
       <div>
         <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Público-alvo</label>
         <select class="field-in" id="agendFaseAlvo" style="margin-bottom:0;">
@@ -804,18 +864,18 @@
           <option value="fase3">Apenas Fase 3 - Impactar (181+ dias)</option>
         </select>
       </div>
-      
+
       <div>
         <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Descrição</label>
         <textarea class="field-in" id="agendDescricao" rows="3" placeholder="Detalhes sobre o conteúdo abordado..." style="margin-bottom:0;resize:vertical;font-family:inherit;"></textarea>
       </div>
-      
+
       <div>
         <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Arquivo (opcional)</label>
         <input type="file" id="agendArquivo" style="font-size:13px;width:100%;padding:8px;border:1px dashed var(--border2);border-radius:8px;background:var(--bg);cursor:pointer;">
         <div id="agendArquivoAtual" style="margin-top:6px;font-size:11px;color:var(--ink3);"></div>
       </div>
-      
+
       <div style="border-top:1px solid var(--border);padding-top:12px;">
         <label style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:8px;">Presença dos estagiários</label>
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:13px;">
@@ -833,7 +893,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="modal-btns" style="margin-top:18px;">
       <button class="btn-sm" id="btnCancelAgend">Cancelar</button>
       <button class="btn-sm pr" id="btnSalvarAgend">Salvar</button>
@@ -881,15 +941,15 @@
     </div>
     <button class="ai-chat-close" id="aiChatClose">✕</button>
   </div>
-  
+
   <div class="ai-chat-messages" id="aiMessages">
     <div class="ai-msg assistant">
       Olá! 👋 Sou o assistente do Nextuber. Posso analisar os dados dos estagiários, mostrar rankings, comparar performance, sugerir ações de venda e muito mais.
-      
+
 Como posso ajudar?
     </div>
   </div>
-  
+
   <div class="ai-suggestions" id="aiSuggestions">
     <div class="ai-sug-chip" data-msg="Quais estagiários estão com produção abaixo do alvo neste trimestre?">📉 Abaixo do alvo</div>
     <div class="ai-sug-chip" data-msg="Quem lidera o ranking de crédito?">🏆 Top crédito</div>
@@ -897,7 +957,7 @@ Como posso ajudar?
     <div class="ai-sug-chip" data-msg="Me dê dicas de como vender mais seguros">💡 Dicas de seguros</div>
     <div class="ai-sug-chip" data-msg="Quais agendamentos aconteceram este mês?">📅 Agendamentos do mês</div>
   </div>
-  
+
   <div class="ai-chat-input">
     <textarea id="aiInput" placeholder="Pergunte qualquer coisa..." rows="1"></textarea>
     <button class="ai-send-btn" id="aiSendBtn">Enviar</button>

@@ -144,14 +144,60 @@
       </div>
     </div>
 
+    <!-- CONTEÚDO PÚBLICO (EXIBIDO ANTES DO LOGIN) -->
+    <div id="overviewPublicContent" style="display:none;margin-bottom:18px;">
+      <div style="background:var(--surface,#fff);border:1px solid var(--border,#eee);border-radius:var(--r,16px);padding:24px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+        <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--or,#EC7000);margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span>Nextuber</span>
+          <span style="font-size:11px;font-family:'DM Sans',sans-serif;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3,#666);background:var(--bg,#f4f4f4);padding:4px 10px;border-radius:20px;">PROGRAMA DE DESENVOLVIMENTO COMERCIAL</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px;font-size:14px;line-height:1.6;color:var(--ink2,#333);">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--ink,#111);margin-bottom:6px;display:flex;align-items:center;gap:6px;">🎯 Objetivo</div>
+            <p style="margin:0;color:var(--ink2,#444);">Formar estagiários comerciais alinhados à cultura Itaú, com base técnica sólida, postura profissional e capacidade de gerar resultado com consistência.</p>
+          </div>
+
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--ink,#111);margin-bottom:6px;display:flex;align-items:center;gap:6px;">📋 Estrutura</div>
+            <p style="margin:0 0 8px 0;color:var(--ink2,#444);">6 meses de jornada divididos em 3 trilhas progressivas:</p>
+            <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--ink2,#444);">
+              <li><strong>Iniciante (0–90 dias):</strong> Acolhimento, cultura e fundamentos.</li>
+              <li><strong>Intermediária (91–180 dias):</strong> Protagonismo com apoio e ajustes de rota.</li>
+              <li><strong>Avançada (+181 dias):</strong> PDI, autonomia e papel de referência.</li>
+            </ul>
+            <div style="margin-top:10px;color:var(--ink2,#444);">
+              <strong>Encontros:</strong><br>
+              • 1 encontro mensal com todos<br>
+              • 1 encontro mensal com os grupos iniciantes, intermediários e avançados.
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--ink,#111);margin-bottom:6px;display:flex;align-items:center;gap:6px;">⚖️ Avaliação</div>
+            <p style="margin:0 0 6px 0;color:var(--ink2,#444);">A nota final (0–10) é composta por:</p>
+            <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--ink2,#444);">
+              <li><strong>40% Comportamental:</strong> baseado no avanço da trilha de aprendizado.</li>
+              <li><strong>60% Resultados:</strong> percentual de alvo atingido no trimestre.</li>
+            </ul>
+          </div>
+
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--ink,#111);margin-bottom:6px;display:flex;align-items:center;gap:6px;">👥 Quem participa</div>
+            <p style="margin:0;color:var(--ink2,#444);"><strong>Tutora regional (Kamilla)</strong> — conduz o programa, valida trilhas e avalia. <strong>Líder (Gustavo)</strong> — Apoio aos estagiários com suporte a dúvidas e necessidades. <strong>Gestores</strong> — acompanham o dia a dia operacional e registram feedbacks. <strong>Estagiários</strong> — protagonistas do próprio desenvolvimento.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- KPIs / Cards de números -->
-    <div style="margin-bottom:18px;">
+    <div id="overviewKpisSection" style="margin-bottom:18px;">
       <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;">Visão consolidada</div>
       <div id="overviewKpis" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;"></div>
     </div>
 
     <!-- Distribuição por trilha (gráfico) -->
-    <div class="card" style="margin-bottom:16px;">
+    <div class="card" id="overviewTrilhaCard" style="margin-bottom:16px;">
       <div class="card-ttl">Distribuição por trilha</div>
       <div id="overviewTrilhaChart"></div>
     </div>

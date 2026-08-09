@@ -967,8 +967,27 @@ function renderEncontros(){
 
 function renderOverviewAll(){
   renderOverviewHeader();
-  renderOverviewKpis();
-  renderOverviewTrilhaChart();
+
+  var isAuthed = !!(editor || modoGestor);
+
+  // Barra de seleção de regional: só exibe se logado
+  var regBar = document.getElementById('regionalSelectorBar');
+  if(regBar) regBar.style.display = isAuthed ? 'flex' : 'none';
+
+  // KPIs da regional: só exibe se logado
+  var kpisSection = document.getElementById('overviewKpisSection');
+  if(kpisSection) kpisSection.style.display = isAuthed ? 'block' : 'none';
+  if(isAuthed) renderOverviewKpis();
+
+  // Gráfico de distribuição por trilha: só exibe se logado
+  var trilhaCard = document.getElementById('overviewTrilhaCard');
+  if(trilhaCard) trilhaCard.style.display = isAuthed ? 'block' : 'none';
+  if(isAuthed) renderOverviewTrilhaChart();
+
+  // Conteúdo institucional público: só exibe ANTES do login
+  var publicContent = document.getElementById('overviewPublicContent');
+  if(publicContent) publicContent.style.display = isAuthed ? 'none' : 'block';
+
   renderEncontros();
 }
 
