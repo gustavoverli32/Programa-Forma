@@ -209,10 +209,27 @@ function getGestoresAtivos(){
   });
 }
 
+function podeAlternarRegional(){
+  if(editor) return true;
+  if(modoGestor && gestorLogado){
+    var tipo = String(gestorLogado.tipo_gestor || '').toLowerCase();
+    if(tipo === 'diretor' || tipo === 'lider_regional' || tipo === 'tutor') {
+      return true;
+    }
+  }
+  return false;
+}
+
 function renderRegionalSelectorUI(){
+  var container = document.getElementById('regionalSelectorBar');
   var dropdown = document.getElementById('regionalSelectDropdown');
   var badge = document.getElementById('regionalBadgeInfo');
   if(!dropdown) return;
+
+  var canSwitch = podeAlternarRegional();
+  if(container){
+    container.style.display = canSwitch ? 'block' : 'none';
+  }
 
   var list = S.regionais || [];
   if(list.length === 0){
@@ -240,10 +257,8 @@ function renderRegionalSelectorUI(){
     }
   }
 
-  if(window.modoGestor && window.gestorLogado && window.gestorLogado.regional_id){
+  if(!canSwitch){
     dropdown.disabled = true;
-    dropdown.style.opacity = '0.7';
-    dropdown.style.cursor = 'not-allowed';
   } else {
     dropdown.disabled = false;
     dropdown.style.opacity = '1';
@@ -562,23 +577,26 @@ function currMonth(e){ for(var i=0;i<6;i++) if(e.meses[i].indexOf('Concluído')<
 // ── METRICS ────────────────────────────────────────────────────────────────
 function updateMetrics(){
   var done=0,active=0,warn=0;
-  S.ests.forEach(function(e){ e.meses.forEach(function(s){ if(s.indexOf('Concluído')>=0||s.indexOf('Renovado')>=0) done++; else if(s.indexOf('andamento')>=0) active++; else if(s.indexOf('Atenção')>=0) warn++; }); });
+  var estsAtivos = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
+  estsAtivos.forEach(function(e){ e.meses.forEach(function(s){ if(s.indexOf('Concluído')>=0||s.indexOf('Renovado')>=0) done++; else if(s.indexOf('andamento')>=0) active++; else if(s.indexOf('Atenção')>=0) warn++; }); });
   var elDone=document.getElementById('mDone'); if(elDone) elDone.textContent=done;
   var elActive=document.getElementById('mActive'); if(elActive) elActive.textContent=active;
   var elWarn=document.getElementById('mWarn'); if(elWarn) elWarn.textContent=warn;
 }
 function updateProgress(){
-  var all=S.ests.reduce(function(a,e){return a.concat(e.meses);},[]);
+  var estsAtivos = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
+  var all=estsAtivos.reduce(function(a,e){return a.concat(e.meses);},[]);
   var done=all.filter(function(s){return s.indexOf('Concluído')>=0||s.indexOf('Renovado')>=0;}).length;
-  var pct=Math.round(done/all.length*100);
-  document.getElementById('pctFill').style.width=pct+'%';
-  document.getElementById('pctLbl').textContent=pct+'%';
+  var pct=all.length ? Math.round(done/all.length*100) : 0;
+  var pctFill = document.getElementById('pctFill'); if(pctFill) pctFill.style.width=pct+'%';
+  var pctLbl = document.getElementById('pctLbl'); if(pctLbl) pctLbl.textContent=pct+'%';
 }
 function renderCiclos(){ if(!document.getElementById("ciclosBars")) return;
+  var estsAtivos = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
   var ciclos=[{n:'Ciclo 1 — Base & Segurança',m:[0,1],c:'#EC7000'},{n:'Ciclo 2 — Autonomia',m:[2,3],c:'#B45309'},{n:'Ciclo 3 — Protagonismo',m:[4,5],c:'#166534'}];
   document.getElementById('ciclosBars').innerHTML=ciclos.map(function(c){
-    var tot=S.ests.length*c.m.length;
-    var done=S.ests.reduce(function(a,e){return a+c.m.filter(function(mi){return e.meses[mi].indexOf('Concluído')>=0||e.meses[mi].indexOf('Renovado')>=0;}).length;},0);
+    var tot=estsAtivos.length*c.m.length;
+    var done=estsAtivos.reduce(function(a,e){return a+c.m.filter(function(mi){return e.meses[mi].indexOf('Concluído')>=0||e.meses[mi].indexOf('Renovado')>=0;}).length;},0);
     var pct=tot?Math.round(done/tot*100):0;
     return '<div class="cbar"><span class="cdot" style="background:'+c.c+'"></span><span class="cname">'+c.n+'</span><span class="ctrack"><span class="cfill" style="width:'+pct+'%;background:'+c.c+'"></span></span><span class="cpct">'+pct+'%</span></div>';
   }).join('');
@@ -803,12 +821,13 @@ function renderOverviewHeader(){
 function renderOverviewKpis(){
   var el = document.getElementById('overviewKpis');
   if(!el) return;
-  // Filtrar estagiários conforme acesso
-  var lista = S.ests;
+  // Filtrar estagiários conforme regional ativa e permissões
+  var baseList = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
+  var lista = baseList;
   if(modoGestor && gestorLogado){
     var p = gestorLogado.permissoes || {};
     if(!p.todos_estagiarios && !isGGA()){
-      lista = S.ests.filter(function(e){ return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional); });
+      lista = baseList.filter(function(e){ return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional); });
     }
   }
   // Calcular contagens
@@ -856,11 +875,12 @@ function renderOverviewKpis(){
 function renderOverviewTrilhaChart(){
   var el = document.getElementById('overviewTrilhaChart');
   if(!el) return;
-  var lista = S.ests;
+  var baseList = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
+  var lista = baseList;
   if(modoGestor && gestorLogado){
     var p = gestorLogado.permissoes || {};
     if(!p.todos_estagiarios && !isGGA()){
-      lista = S.ests.filter(function(e){ return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional); });
+      lista = baseList.filter(function(e){ return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional); });
     }
   }
   var counts = {iniciante:0, intermediario:0, avancado:0};
@@ -953,7 +973,8 @@ function renderRanking(){
   var tri = trimestreRef();
   var filtro = (document.getElementById('filtroRanking')||{}).value || 'credito';
 
-  var lista = S.ests.filter(function(e){ return e.perfil && e.perfil.funcional && e.perfil.inicio; });
+  var estsAtivos = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
+  var lista = estsAtivos.filter(function(e){ return e.perfil && e.perfil.funcional && e.perfil.inicio; });
 
   // Mapear filtro para função de valor + config visual
   var configFiltros = {
@@ -2283,16 +2304,17 @@ function atualizarOpcoesFiltroAgencia(lista){
 }
 
 function renderCards(){
-  var lista = S.ests;
+  var baseList = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
+  var lista = baseList;
   if(modoGestor && gestorLogado){
     var p = gestorLogado.permissoes || {};
     if(!p.todos_estagiarios && !isGGA()){
-      lista = S.ests.filter(function(e){
+      lista = baseList.filter(function(e){
         return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional);
       });
     }
     if(!lista.length){
-      document.getElementById('notionGrid').innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink3);font-size:14px;">Nenhum estagiário vinculado ao seu perfil.</div>';
+      document.getElementById('notionGrid').innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink3);font-size:14px;">Nenhum estagiário vinculado ao seu perfil nesta regional.</div>';
       return;
     }
   }
