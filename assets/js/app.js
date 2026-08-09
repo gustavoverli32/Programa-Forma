@@ -638,13 +638,15 @@ function sextaDaSemanaAtualYMD(){
 }
 
 function getPrazoProducaoAtual(){
-  var cfg = S.cfg || {};
-  var semanaAtual = inicioSemanaAtualYMD();
+  var cfg = (typeof S !== 'undefined' && S.cfg) || {};
+  if(window.nextuberProduction) return window.nextuberProduction.getCurrentDeadline(cfg);
+  var semanaAtual = typeof inicioSemanaAtualYMD === 'function' ? inicioSemanaAtualYMD() : '';
   if(cfg.prazo_producao_manual && cfg.prazo_producao_manual_semana === semanaAtual){
     return cfg.prazo_producao_manual;
   }
-  return sextaDaSemanaAtualYMD();
+  return typeof sextaDaSemanaAtualYMD === 'function' ? sextaDaSemanaAtualYMD() : null;
 }
+if(typeof window !== 'undefined') window.getPrazoProducaoAtual = getPrazoProducaoAtual;
 
 function producaoConfirmadaNoPrazo(e, prazo){
   return !!(e.perfil && e.perfil.producao_verificada_prazo === prazo);
@@ -4510,7 +4512,7 @@ function gerarContextoIA(){
     data_atual: hojeYMD,
     total_estagiarios: (S_.ests||[]).length,
     trimestre_atual: tri,
-    prazo_producao: getPrazoProducaoAtual(),
+    prazo_producao: (typeof getPrazoProducaoAtual === 'function') ? getPrazoProducaoAtual() : ((typeof window !== 'undefined' && typeof window.getPrazoProducaoAtual === 'function') ? window.getPrazoProducaoAtual() : null),
     estagiarios: [],
     agendamentos: []
   };
