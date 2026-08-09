@@ -1,19 +1,106 @@
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/session";
+import { createSupabaseAdminClient } from "@/lib/supabase-server";
 
 const MAX_REQUEST_SIZE = 160_000;
 const DEFAULT_AI_FUNCTION_URL =
   "https://hbebkripmytkknqydjpt.supabase.co/functions/v1/ai-assistant";
 const DEFAULT_SUPABASE_KEY = "sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH";
 
+async function buildPlatformContext() {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const [studentsRes, prodRes, meetingsRes] = await Promise.all([
+      supabase
+        .from("estagiarios")
+        .select("id,nome,perfil,atencao,obs")
+        .order("created_at"),
+      supabase
+        .from("producao_trimestral")
+        .select("id,estagiario_id,tri_ref,meta,producao"),
+      supabase
+        .from("encontros")
+        .select("id,titulo,descricao,data")
+        .order("data", { ascending: true }),
+    ]);
+
+    const students = studentsRes.data || [];
+    const prodRows = prodRes.data || [];
+    const meetings = meetingsRes.data || [];
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentQ = Math.floor(now.getMonth() / 3) + 1;
+    const currentQuarterRef = `${currentYear}-Q${currentQ}`;
+    const todayYMD = now.toISOString().split("T")[0];
+
+    const estagiariosFormatted = students.map((s) => {
+      const perfil = (s.perfil ?? {}) as Record<string, unknown>;
+      const studentProd = prodRows.filter(
+        (p) => String(p.estagiario_id) === String(s.id),
+      );
+
+      let creditTotal = 0;
+      let prodTotal = 0;
+      let target = 0;
+
+      studentProd.forEach((p) => {
+        const val = parseFloat(String(p.producao || 0)) || 0;
+        if (p.tri_ref === currentQuarterRef) {
+          target = parseFloat(String(p.meta || 0)) || 0;
+          creditTotal += val;
+        } else if (p.tri_ref && p.tri_ref.includes("-OUT")) {
+          prodTotal += val;
+        } else if (p.tri_ref && p.tri_ref.includes("-MOD")) {
+          creditTotal += val;
+        }
+      });
+
+      return {
+        id: s.id,
+        nome: s.nome,
+        agencia: perfil.agencia || null,
+        funcional: perfil.funcional || null,
+        inicio: perfil.inicio || null,
+        certificacao: perfil.certificacao || "sem certificação",
+        meta_trimestre: target,
+        producao_credito_total: creditTotal,
+        producao_produtos_total: prodTotal,
+        sinalizacao_atencao: s.atencao || false,
+      };
+    });
+
+    return {
+      data_atual: todayYMD,
+      total_estagiarios: students.length,
+      trimestre_atual: currentQuarterRef,
+      estagiarios: estagiariosFormatted,
+      agendamentos: meetings.map((m) => ({
+        id: m.id,
+        titulo: m.titulo,
+        descricao: m.descricao,
+        data: m.data,
+      })),
+    };
+  } catch (err) {
+    console.error("Erro ao gerar contexto para IA:", err);
+    return {};
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
-    const session = verifySessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+    const session = verifySessionToken(
+      cookieStore.get(SESSION_COOKIE_NAME)?.value,
+    );
 
     const contentLength = Number(request.headers.get("content-length") ?? 0);
     if (contentLength > MAX_REQUEST_SIZE) {
-      return Response.json({ error: "Solicitacao muito grande." }, { status: 413 });
+      return Response.json(
+        { error: "Solicitacao muito grande." },
+        { status: 413 },
+      );
     }
 
     const body = await request.text();
@@ -40,6 +127,13 @@ export async function POST(request: Request) {
       return Response.json({ error: "Pergunta obrigatoria." }, { status: 400 });
     }
 
+    const userContext =
+      parsedBody.contexto &&
+      typeof parsedBody.contexto === "object" &&
+      Object.keys(parsedBody.contexto).length > 0
+        ? parsedBody.contexto
+        : await buildPlatformContext();
+
     const functionUrl =
       process.env.SUPABASE_AI_FUNCTION_URL || DEFAULT_AI_FUNCTION_URL;
     const authorizationKey =
@@ -53,7 +147,7 @@ export async function POST(request: Request) {
       question: textQuery,
       message: textQuery,
       prompt: textQuery,
-      contexto: parsedBody.contexto || {},
+      contexto: userContext,
       historico: parsedBody.historico || [],
       user: session ? { role: session.role, subject: session.subject } : null,
     };
