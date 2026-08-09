@@ -1572,7 +1572,7 @@ function renderResultados(idx){
 function renderResultadosForTri(idx, tri){
   var el = document.getElementById('pResultados'); if(!el) return;
   var e = S.ests[idx];
-  if(abrirResultadosReact(idx, tri)) return;
+  // renderizar interface nativa 1:1 Pixel-Perfect no painel lateral do estagiario
   var prod = getProducaoTri(e.id, tri);
   var meta = parseFloat(prod.meta)||0;
   var meses = getMesesTrimestre(tri);
@@ -2492,6 +2492,12 @@ function closePanel(){
   document.getElementById('panel').classList.remove('open');
   renderCards();
 }
+
+function openPanelById(eid){
+  var idx = S.ests.findIndex(function(e){ return String(e.id) === String(eid); });
+  if(idx >= 0) openPanel(idx);
+}
+if(typeof window !== 'undefined') window.openPanelById = openPanelById;
 
 // ── CADASTRO ───────────────────────────────────────────────────────────────
 
