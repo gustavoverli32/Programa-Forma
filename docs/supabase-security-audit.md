@@ -8,7 +8,7 @@ Projeto analisado: banco atualmente utilizado pelo Nextuber em produção.
 
 O Row Level Security está habilitado nas tabelas principais, porém as políticas atuais concedem `ALL` ao papel `public` com condições sempre verdadeiras. Na prática, a chave pública usada pelo frontend permite leitura e escrita sem autenticação efetiva.
 
-As políticas não devem ser fechadas imediatamente porque o GitHub Pages atual ainda grava diretamente no Supabase. O fechamento será feito apenas no corte para a aplicação Next.js, depois que todos os módulos de escrita estiverem atrás de rotas autenticadas.
+As políticas não devem ser fechadas imediatamente porque o GitHub Pages atual ainda acessa o Supabase diretamente. O fechamento será feito apenas no corte para a aplicação Next.js, depois da validação final do Preview.
 
 ## Tabelas afetadas
 
@@ -39,13 +39,13 @@ As políticas não devem ser fechadas imediatamente porque o GitHub Pages atual 
 2. Migrar todas as escritas para Route Handlers autenticados do Next.js.
 3. Configurar os segredos privados apenas no Vercel e no ambiente local ignorado pelo Git.
 4. Validar todos os fluxos em um Preview isolado.
-5. Criar e revisar uma migração de corte que remova as políticas públicas de escrita.
-6. Ativar políticas mínimas de leitura e bloquear acesso direto a hashes, permissões e dados sensíveis.
+5. Criar e revisar uma migração de corte que remova todas as políticas públicas de leitura e escrita.
+6. Revogar os privilégios de tabela dos papéis `public`, `anon` e `authenticated`; somente as APIs do servidor usarão a chave privada.
 7. Publicar o Next.js, monitorar e só então retirar a versão antiga.
 
 Todas as gravações usadas pela interface — produção, confirmação, prazo, contatos, cadastro, trilhas, gestores, configurações, encontros, agendamentos e uploads — utilizam Route Handlers autenticados na branch de migração.
 
-As leituras da camada de compatibilidade ainda usam a chave pública. Por isso, o primeiro corte de RLS bloqueará toda escrita pública, limitará as colunas visíveis de `gestores` e manterá temporariamente políticas públicas somente de leitura. A segunda etapa fechará também essas leituras conforme cada módulo for convertido para React/Server Components.
+As leituras da camada de compatibilidade também foram migradas para Route Handlers. O navegador não recebe mais a chave pública do Supabase, e consultas de estagiários usam projeções explícitas que nunca incluem `senha_hash`. Sem login, a API entrega somente conteúdo institucional; dados pessoais e operacionais exigem sessão.
 
 ## Regra de segurança para o corte
 

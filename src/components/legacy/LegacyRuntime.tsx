@@ -9,18 +9,18 @@ import {
   nextuberMutationBridge,
   type NextuberMutationBridge,
 } from "@/services/admin-mutations-client";
+import {
+  nextuberReadBridge,
+  type NextuberReadBridge,
+} from "@/services/read-client";
 
 declare global {
   interface Window {
     XLSX?: typeof import("xlsx");
-    supabase?: typeof import("@supabase/supabase-js");
-    __NEXTUBER_CONFIG__?: {
-      supabaseUrl: string;
-      supabasePublishableKey: string;
-    };
     loadNextuberXLSX?: () => Promise<typeof import("xlsx")>;
     nextuberProduction?: NextuberProductionBridge;
     nextuberMutations?: NextuberMutationBridge;
+    nextuberReads?: NextuberReadBridge;
   }
 }
 
@@ -31,33 +31,17 @@ export function LegacyRuntime() {
     let cancelled = false;
 
     async function startLegacyApplication() {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-      const supabasePublishableKey =
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
-
-      if (!supabaseUrl || !supabasePublishableKey) {
-        throw new Error(
-          "Configuracao do Supabase ausente. Consulte o arquivo .env.example.",
-        );
-      }
-
-      const supabaseModule = await import("@supabase/supabase-js");
-
       if (cancelled) return;
 
-      window.supabase = supabaseModule;
       window.loadNextuberXLSX = async () => {
         if (window.XLSX) return window.XLSX;
         const xlsxModule = await import("xlsx");
         window.XLSX = xlsxModule;
         return xlsxModule;
       };
-      window.__NEXTUBER_CONFIG__ = {
-        supabaseUrl,
-        supabasePublishableKey,
-      };
       window.nextuberProduction = nextuberProductionBridge;
       window.nextuberMutations = nextuberMutationBridge;
+      window.nextuberReads = nextuberReadBridge;
 
       if (document.querySelector('script[data-nextuber-legacy="true"]')) return;
 

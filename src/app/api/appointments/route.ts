@@ -7,6 +7,28 @@ import {
   requireProductionSession,
 } from "@/server/production-access";
 
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    await requireProductionSession();
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("agendamentos")
+      .select(
+        "id,titulo,descricao,data,tipo,fase_alvo,gestor_id,gestor_nome,arquivo_url,arquivo_nome,presenca,created_at,updated_at",
+      )
+      .order("data", { ascending: false });
+    if (error) throw error;
+    return Response.json(
+      { appointments: data ?? [] },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
+  } catch (error) {
+    return productionErrorResponse(error);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);

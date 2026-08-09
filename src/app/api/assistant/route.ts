@@ -24,7 +24,9 @@ export async function POST(request: Request) {
   }
 
   const functionUrl = process.env.SUPABASE_AI_FUNCTION_URL;
-  const authorizationKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const authorizationKey =
+    process.env.SUPABASE_AI_FUNCTION_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!functionUrl || !authorizationKey) {
     return Response.json(
       { error: "Assistente nao configurado." },

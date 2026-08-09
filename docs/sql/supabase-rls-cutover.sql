@@ -1,7 +1,6 @@
 -- NEXTUBER: EXECUCAO MANUAL SOMENTE NA JANELA DE CORTE PARA O NEXT.JS.
 -- Nao execute enquanto o GitHub Pages ainda for a versao principal.
--- Este primeiro corte bloqueia escrita publica e preserva as leituras usadas
--- temporariamente pela camada de compatibilidade do frontend.
+-- O Next.js acessa estas tabelas no servidor com a chave privada.
 
 begin;
 
@@ -16,43 +15,23 @@ drop policy if exists acesso_gestores on public.gestores;
 drop policy if exists acesso_producao on public.producao_trimestral;
 drop policy if exists acesso_snapshots on public.snapshots;
 
-revoke insert, update, delete, truncate, references, trigger
-on public.agendamentos, public.configuracoes, public.conteudos,
+drop policy if exists nextuber_read_agendamentos on public.agendamentos;
+drop policy if exists nextuber_read_configuracoes on public.configuracoes;
+drop policy if exists nextuber_read_conteudos on public.conteudos;
+drop policy if exists nextuber_read_descricao on public.descricao_projeto;
+drop policy if exists nextuber_read_encontros on public.encontros;
+drop policy if exists nextuber_read_estagiarios on public.estagiarios;
+drop policy if exists nextuber_read_feedbacks on public.feedbacks;
+drop policy if exists nextuber_read_gestores on public.gestores;
+drop policy if exists nextuber_read_producao on public.producao_trimestral;
+drop policy if exists nextuber_read_snapshots on public.snapshots;
+
+revoke all privileges
+on table public.agendamentos, public.configuracoes, public.conteudos,
    public.descricao_projeto, public.encontros, public.estagiarios,
    public.feedbacks, public.gestores, public.producao_trimestral,
    public.snapshots
 from public, anon, authenticated;
-
-revoke select on public.gestores from public, anon, authenticated;
-grant select (id, nome, funcional, permissoes, tipo_gestor, created_at)
-on public.gestores to anon, authenticated;
-
-grant select
-on public.agendamentos, public.configuracoes, public.conteudos,
-   public.descricao_projeto, public.encontros, public.estagiarios,
-   public.feedbacks, public.producao_trimestral, public.snapshots
-to anon, authenticated;
-
-create policy nextuber_read_agendamentos on public.agendamentos
-  for select to anon, authenticated using (true);
-create policy nextuber_read_configuracoes on public.configuracoes
-  for select to anon, authenticated using (true);
-create policy nextuber_read_conteudos on public.conteudos
-  for select to anon, authenticated using (true);
-create policy nextuber_read_descricao on public.descricao_projeto
-  for select to anon, authenticated using (true);
-create policy nextuber_read_encontros on public.encontros
-  for select to anon, authenticated using (true);
-create policy nextuber_read_estagiarios on public.estagiarios
-  for select to anon, authenticated using (true);
-create policy nextuber_read_feedbacks on public.feedbacks
-  for select to anon, authenticated using (true);
-create policy nextuber_read_gestores on public.gestores
-  for select to anon, authenticated using (true);
-create policy nextuber_read_producao on public.producao_trimestral
-  for select to anon, authenticated using (true);
-create policy nextuber_read_snapshots on public.snapshots
-  for select to anon, authenticated using (true);
 
 create index if not exists feedbacks_estagiario_id_idx
   on public.feedbacks (estagiario_id);
@@ -60,8 +39,8 @@ create index if not exists feedbacks_estagiario_id_idx
 commit;
 
 -- Verificacoes obrigatorias apos o corte:
--- 1. anon consegue executar SELECT nas telas da plataforma;
--- 2. anon recebe permission denied em INSERT/UPDATE/DELETE;
--- 3. login de tutora e gestor funciona;
--- 4. producao, cadastro, trilhas, encontros e agendamentos salvam pelas APIs;
--- 5. nenhum hash de senha aparece nas respostas do navegador.
+-- 1. anon recebe permission denied em SELECT/INSERT/UPDATE/DELETE;
+-- 2. a pagina institucional abre sem login pelas APIs do Next.js;
+-- 3. login de tutora e gestor funciona e restaura a sessao ao recarregar;
+-- 4. producao, cadastro, trilhas, encontros e agendamentos carregam e salvam;
+-- 5. nenhum hash, chave privada ou funcional nao autorizado aparece no navegador.

@@ -2,12 +2,7 @@
 
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 console.log('🔶 NEXTUBER BUILD: 2026-06-17-v28 - IA acessa window.S');
-var runtimeConfig = window.__NEXTUBER_CONFIG__ || {};
-var SUPA_URL = runtimeConfig.supabaseUrl;
-var SUPA_KEY = runtimeConfig.supabasePublishableKey;
-if(!SUPA_URL || !SUPA_KEY) throw new Error('Configuracao publica do Supabase ausente.');
-var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
-window.sb = sb;
+if(!window.nextuberReads) throw new Error('Servico seguro de leitura indisponivel.');
 
 function onNextuberReady(callback){
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', callback, {once:true});
@@ -236,10 +231,6 @@ var TEXTOS_PROJETO_DEFAULT = {
 var S_textos = Object.assign({}, TEXTOS_PROJETO_DEFAULT);
 
 async function loadTextosProjeto(){
-  var r = await sb.from('configuracoes').select('*').eq('id','textos_projeto').maybeSingle();
-  if(r.data && r.data.valor){
-    S_textos = Object.assign({}, TEXTOS_PROJETO_DEFAULT, r.data.valor);
-  }
   aplicarTextosProjeto();
 }
 
@@ -281,33 +272,44 @@ async function loadFromDB(){
   showLoading(true);
   try {
     // Load estagiarios
-    var r1 = await sb.from('estagiarios').select('*').order('created_at');
-    if(r1.error) throw r1.error;
-    S.ests = (r1.data||[]).map(mkEstObj);
+    var payload = await window.nextuberReads.bootstrap();
+    S.ests = (payload.students||[]).map(mkEstObj);
 
     // Load timeline — use maybeSingle to avoid error when row doesn't exist
-    var r3 = await sb.from('configuracoes').select('*').eq('id','timeline').maybeSingle();
-    if(r3.data && r3.data.valor) S.tl = r3.data.valor;
+    S.tl = Array.isArray(payload.timeline) ? payload.timeline : Array(6).fill(false);
 
     // Load cfg (recorrência de produção)
-    var rCfg = await sb.from('configuracoes').select('*').eq('id','cfg_geral').maybeSingle();
-    if(rCfg.data && rCfg.data.valor) S.cfg = rCfg.data.valor;
+    S.cfg = payload.config || {};
 
     // Load gestores
-    var rG = await sb.from('gestores').select('id,nome,funcional,permissoes,tipo_gestor,created_at').order('nome');
-    if(!rG.error) S.gestores = rG.data || [];
+    S.gestores = payload.managers || [];
 
     // Load producao trimestral
-    var rP = await sb.from('producao_trimestral').select('*');
-    if(!rP.error) S.producao = rP.data || [];
+    S.producao = payload.production || [];
 
     // Load descricao
-    var rD = await sb.from('descricao_projeto').select('*').order('ordem');
-    if(!rD.error) S.descricao = rD.data || [];
+    S.descricao = payload.descriptions || [];
 
     // Load encontros
-    var rE = await sb.from('encontros').select('*').order('data',{ascending:true});
-    if(!rE.error) S.encontros = rE.data || [];
+    S.encontros = payload.meetings || [];
+    S_textos = Object.assign({}, TEXTOS_PROJETO_DEFAULT, payload.projectTexts || {});
+
+    if(payload.session && payload.session.role === 'tutora'){
+      editor = true;
+      modoGestor = false;
+      gestorLogado = null;
+    } else if(payload.session && payload.session.role === 'gestor'){
+      editor = false;
+      modoGestor = true;
+      gestorLogado = payload.session.manager || null;
+    } else {
+      editor = false;
+      modoGestor = false;
+      gestorLogado = null;
+    }
+    window.editor = editor;
+    window.modoGestor = modoGestor;
+    window.gestorLogado = gestorLogado;
 
     DB_LOADED = true;
   } catch(e) {
@@ -928,8 +930,10 @@ async function salvarSnapshot(eid, tri){
 async function loadSnapshotsHistory(eid){
   var el = document.getElementById('pHistoricoTri');
   if(!el) return;
-  var r = await sb.from('snapshots').select('*').eq('estagiario_id', eid).order('tri_ref', {ascending:true});
-  var snaps = r.data || [];
+  var r;
+  try { r = await window.nextuberReads.snapshots(String(eid)); }
+  catch(error){ console.error('Historico trimestral:', error); el.innerHTML = ''; return; }
+  var snaps = r.snapshots || [];
   if(!snaps.length){ el.innerHTML = ''; return; }
   el.innerHTML = '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:500;margin:14px 0 8px;">Histórico trimestral</div>'
     +snaps.map(function(s){
@@ -994,8 +998,10 @@ function renderAvaliacao(idx){
 async function loadEvolucaoChart(eid){
   var el = document.getElementById('pEvolucaoChart');
   if(!el) return;
-  var r = await sb.from('snapshots').select('*').eq('estagiario_id', eid).order('tri_ref', {ascending:true});
-  var snaps = r.data || [];
+  var r;
+  try { r = await window.nextuberReads.snapshots(String(eid)); }
+  catch(error){ console.error('Evolucao trimestral:', error); el.innerHTML = ''; return; }
+  var snaps = r.snapshots || [];
   if(snaps.length < 1){ el.innerHTML = ''; return; }
 
   // Build SVG chart (proporção 200x80 - mais largo, menos alto)
@@ -2770,7 +2776,7 @@ async function doLogin(){
       body:JSON.stringify({password:input.value})
     });
     if(!response.ok) throw new Error('Senha incorreta');
-    editor=true; window.editor=true; document.getElementById('loginOv').classList.remove('open'); applyMode();
+    editor=true; window.editor=true; document.getElementById('loginOv').classList.remove('open'); await loadFromDB();
   } catch(e) {
     errEl.classList.add('show');
     input.value='';
@@ -2821,14 +2827,14 @@ function applyModoGestor(){
   goPage('estagiarios');
 }
 
-function logoutGestor(){
-  fetch('/api/auth/logout', {method:'POST'}).catch(function(){});
+async function logoutGestor(){
+  await fetch('/api/auth/logout', {method:'POST'}).catch(function(){});
   modoGestor = false;
   gestorLogado = null;
   window.modoGestor = false;
   window.gestorLogado = null;
   window.editor = false;
-  applyMode();
+  await loadFromDB();
   goPage('overview');
 }
 
@@ -3206,9 +3212,9 @@ onNextuberReady(function(){
   });
 
   // Auth buttons
-  function handleMode(){
-    if(editor){ fetch('/api/auth/logout', {method:'POST'}).catch(function(){}); editor=false; window.editor=false; applyMode(); }
-    else if(modoGestor){ logoutGestor(); }
+  async function handleMode(){
+    if(editor){ await fetch('/api/auth/logout', {method:'POST'}).catch(function(){}); editor=false; window.editor=false; await loadFromDB(); goPage('overview'); }
+    else if(modoGestor){ await logoutGestor(); }
     else{ openLoginModal(); }
   }
   document.getElementById('modeBtn').addEventListener('click', handleMode);
@@ -3299,7 +3305,7 @@ onNextuberReady(function(){
       document.getElementById('loginOv').classList.remove('open');
       document.getElementById('loginGestorFunc').value = '';
       document.getElementById('loginGestorSenha').value = '';
-      applyModoGestor();
+      await loadFromDB();
     } else {
       errEl.textContent = 'Funcional ou senha incorretos.';
       errEl.classList.add('show');
@@ -3781,44 +3787,19 @@ var agendEditandoId = null;
 var agendVisualizandoId = null;
 
 async function carregarAgendamentos(){
-  // Resolver cliente Supabase (tenta escopo local e window)
-  var _sb = null;
-  try {
-    if(typeof sb !== 'undefined' && sb) _sb = sb;
-    else if(typeof window !== 'undefined' && window.sb) _sb = window.sb;
-  } catch(e){}
-
-  if(!_sb){
-    console.warn('Cliente Supabase ainda não inicializado');
+  if(!window.nextuberReads){
+    console.warn('Serviço de leitura ainda não inicializado');
     agendamentosCache = [];
     var el = document.getElementById('agendamentosList');
-    if(el) el.innerHTML = '<div style="background:#FEF2F2;border:1px solid #DC2626;border-radius:10px;padding:16px;color:#991B1B;font-size:13px;">⚠ Cliente Supabase não inicializado. Recarregue a página.</div>';
+    if(el) el.innerHTML = '<div style="background:#FEF2F2;border:1px solid #DC2626;border-radius:10px;padding:16px;color:#991B1B;font-size:13px;">⚠ Serviço de leitura indisponível. Recarregue a página.</div>';
     return;
   }
 
   try {
-    var r = await _sb.from('agendamentos').select('*').order('data', {ascending: false});
-    if(r.error){
-      // Se a tabela não existe, mostra mensagem amigável
-      if(r.error.message && r.error.message.indexOf('does not exist') >= 0){
-        console.warn('Tabela "agendamentos" não existe no Supabase. Execute o SQL para criá-la.');
-        agendamentosCache = [];
-        var el2 = document.getElementById('agendamentosList');
-        if(el2){
-          el2.innerHTML = '<div style="background:#FEF2F2;border:1px solid #DC2626;border-radius:10px;padding:16px;color:#991B1B;font-size:13px;">'
-            +'<strong>⚠ Tabela "agendamentos" não encontrada no Supabase.</strong><br><br>'
-            +'Acesse o painel do Supabase → SQL Editor e execute o comando CREATE TABLE fornecido pelo Claude.'
-            +'</div>';
-        }
-        return;
-      }
-      console.error('Erro carregando agendamentos:', r.error);
-      agendamentosCache = [];
-    } else {
-      agendamentosCache = r.data || [];
-    }
+    var r = await window.nextuberReads.appointments();
+    agendamentosCache = r.appointments || [];
   } catch(e){
-    console.error('Erro:', e);
+    if(!e || e.message !== 'Faca login novamente.') console.error('Erro:', e);
     agendamentosCache = [];
   }
 }

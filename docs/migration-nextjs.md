@@ -36,18 +36,22 @@ Ordem dos módulos:
 - Agendamentos e uploads protegidos por sessão, validação de arquivo e regra de propriedade.
 - Arquivos substituídos ou pertencentes a agendamentos excluídos são removidos do Storage.
 - O navegador não calcula nem envia mais hashes de senha e não grava diretamente no Supabase.
+- O navegador não recebe mais a chave pública do Supabase nem consulta tabelas diretamente.
+- A chave usada pela Edge Function da IA fica em `SUPABASE_AI_FUNCTION_KEY`, exclusiva do servidor; a variável pública antiga permanece apenas como fallback temporário de implantação.
+- Leituras pessoais e operacionais passam por APIs autenticadas com projeções explícitas de campos.
+- A página sem login recebe somente textos institucionais; rankings nominais, produção, encontros e agendamentos exigem sessão.
+- A sessão é restaurada no recarregamento da página sem reenviar credenciais.
 
 ## Pendências de segurança antes da produção
 
 - Substituir as políticas RLS públicas atuais por políticas mínimas no momento do corte.
-- Migrar as leituras públicas restantes para rotas do servidor antes da segunda etapa de restrição do RLS.
 - Trocar o hash legado de gestores por autenticação Supabase Auth ou Argon2/bcrypt com salt.
 - Adicionar limitação de tentativas de login e de chamadas ao assistente.
 - Configurar logs de auditoria para alterações de produção, perfis e permissões.
 - Rotacionar a senha antiga da tutora, pois ela existia no frontend publicado.
 
 O diagnóstico detalhado e o plano de corte estão em `docs/supabase-security-audit.md`.
-O SQL manual da primeira etapa do corte está em `docs/sql/supabase-rls-cutover.sql` e não deve ser executado enquanto o GitHub Pages estiver ativo.
+O SQL manual do corte está em `docs/sql/supabase-rls-cutover.sql` e não deve ser executado enquanto o GitHub Pages estiver ativo. Ele fecha leitura e escrita direta para os papéis públicos; o Next.js continua acessando o banco somente pelo servidor.
 
 ## Critério para remover a camada legada
 

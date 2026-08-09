@@ -18,10 +18,14 @@ export class ProductionHttpError extends Error {
 }
 
 export async function requireProductionSession() {
-  const cookieStore = await cookies();
-  const session = verifySessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const session = await getProductionSession();
   if (!session) throw new ProductionHttpError("Faca login novamente.", 401);
   return session;
+}
+
+export async function getProductionSession() {
+  const cookieStore = await cookies();
+  return verifySessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value);
 }
 
 export function requireTutorSession(session: SessionPayload) {
