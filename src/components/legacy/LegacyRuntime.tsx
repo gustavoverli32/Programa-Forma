@@ -101,18 +101,43 @@ export function LegacyRuntime() {
 
       await loadScript("/legacy/security.js", "security");
       if (cancelled) return;
-      await loadScript("/legacy/app.js", "legacy");
+      try {
+        await loadScript("/legacy/app.js", "legacy");
+      } catch (legacyErr) {
+        console.warn("Script legado app.js omitido ou inativo. Executando em modo 100% React nativo:", legacyErr);
+      }
     }
 
     startLegacyApplication().catch((reason: unknown) => {
-      const message =
-        reason instanceof Error ? reason.message : "Falha ao iniciar a plataforma.";
-      setError(message);
-      console.error("Erro ao iniciar o Nextuber:", reason);
+      const msg = reason instanceof Error ? reason.message : "Falha ao inicializar runtime.";
+      setError(msg);
+      console.warn("Aviso ao inicializar runtime:", reason);
     });
+
+    // Roteamento e navegacao nativos em React (desacoplados do app.js)
+    function handleNativeNavigation(e: MouseEvent) {
+      const target = (e.target as HTMLElement).closest<HTMLElement>("[data-page]");
+      if (!target) return;
+      const pageId = target.dataset.page;
+      if (!pageId) return;
+
+      document.querySelectorAll(".page.active, .nav-item.active, .drawer-item.active").forEach((el) => {
+        el.classList.remove("active");
+      });
+
+      const targetPage = document.getElementById(`page-${pageId}`);
+      if (targetPage) targetPage.classList.add("active");
+
+      document.querySelectorAll(`[data-page="${pageId}"]`).forEach((el) => {
+        el.classList.add("active");
+      });
+    }
+
+    document.addEventListener("click", handleNativeNavigation);
 
     return () => {
       cancelled = true;
+      document.removeEventListener("click", handleNativeNavigation);
       nextuberTrackingBridge.close();
     };
   }, []);

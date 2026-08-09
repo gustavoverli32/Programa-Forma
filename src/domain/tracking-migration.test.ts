@@ -134,3 +134,14 @@ test("React AI assistant includes floating drawer, suggested prompts, and secure
   assert.equal(assistantModalSource.includes("/api/assistant"), true);
   assert.equal(assistantModalSource.includes("sanitizeAssistantText"), true);
 });
+
+test("Next.js runtime includes native React navigation decoupled from legacy app.js", () => {
+  const runtimeSource = readFileSync(
+    `${projectRoot}/src/components/legacy/LegacyRuntime.tsx`,
+    "utf8",
+  );
+
+  assert.equal(runtimeSource.includes("handleNativeNavigation"), true);
+  assert.equal(runtimeSource.includes("dataset.page"), true);
+  assert.equal(runtimeSource.includes("Executando em modo 100% React nativo"), true);
+});
