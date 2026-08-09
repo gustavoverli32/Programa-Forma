@@ -3244,16 +3244,21 @@ document.addEventListener('DOMContentLoaded', function(){
     drawer.classList.add('open');
     drawerOverlay.style.display='block';
     hamburger.classList.add('open');
+    document.body.classList.add('drawer-is-open');
     setTimeout(function(){drawerOverlay.classList.add('open');},10);
   }
   function closeDrawer(){
     drawer.classList.remove('open');
     drawerOverlay.classList.remove('open');
     hamburger.classList.remove('open');
+    document.body.classList.remove('drawer-is-open');
     setTimeout(function(){drawerOverlay.style.display='none';},280);
   }
   hamburger.addEventListener('click',function(){ drawer.classList.contains('open')?closeDrawer():openDrawer(); });
   drawerOverlay.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function(event){
+    if(event.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+  });
 
   // Drawer nav items
   document.querySelectorAll('.drawer-item[data-page]').forEach(function(el){
