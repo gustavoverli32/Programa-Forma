@@ -71,3 +71,28 @@ test("React home overview section includes KPIs, rankings, and project details m
   assert.equal(modalSource.includes("Objetivo do Programa"), true);
   assert.equal(modalSource.includes("saveSetting"), true);
 });
+
+test("React registration section includes student card, manager card, and deletion actions", () => {
+  const regSectionSource = readFileSync(
+    `${projectRoot}/src/components/registration/RegistrationSection.tsx`,
+    "utf8",
+  );
+  const studentCardSource = readFileSync(
+    `${projectRoot}/src/components/registration/StudentRegistrationCard.tsx`,
+    "utf8",
+  );
+  const managerCardSource = readFileSync(
+    `${projectRoot}/src/components/registration/ManagerRegistrationCard.tsx`,
+    "utf8",
+  );
+
+  assert.equal(regSectionSource.includes("Cadastro de <em>estagiários e gestores</em>"), true);
+  assert.equal(regSectionSource.includes("handleDeleteStudent"), true);
+  assert.equal(regSectionSource.includes("handleDeleteManager"), true);
+
+  assert.equal(studentCardSource.includes("validateStudentRegistrationInput"), true);
+  assert.equal(studentCardSource.includes("createStudent"), true);
+
+  assert.equal(managerCardSource.includes("validateManagerRegistrationInput"), true);
+  assert.equal(managerCardSource.includes("createManager"), true);
+});
