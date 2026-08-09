@@ -18,7 +18,15 @@ export async function GET() {
     const supabase = createSupabaseAdminClient();
     const session = await getProductionSession();
 
-    const [settingsResult, descriptionsResult] = await Promise.all([
+    const [
+      settingsResult,
+      descriptionsResult,
+      studentsResult,
+      configResult,
+      managersResult,
+      productionResult,
+      meetingsResult,
+    ] = await Promise.all([
       supabase
         .from("configuracoes")
         .select("id,valor")
@@ -27,69 +35,63 @@ export async function GET() {
         .from("descricao_projeto")
         .select("id,titulo,conteudo,ordem,created_at")
         .order("ordem"),
+      supabase
+        .from("estagiarios")
+        .select(
+          "id,nome,meses,obs,atencao,perfil,trilha_checks,gestor_funcional,created_at",
+        )
+        .order("created_at"),
+      supabase
+        .from("configuracoes")
+        .select("valor")
+        .eq("id", "cfg_geral")
+        .maybeSingle(),
+      supabase
+        .from("gestores")
+        .select("id,nome,funcional,permissoes,tipo_gestor,created_at")
+        .order("nome"),
+      supabase
+        .from("producao_trimestral")
+        .select("id,estagiario_id,tri_ref,meta,producao,created_at"),
+      supabase
+        .from("encontros")
+        .select("id,titulo,descricao,data,created_at")
+        .order("data", { ascending: true }),
     ]);
+
     if (settingsResult.error) throw settingsResult.error;
     if (descriptionsResult.error) throw descriptionsResult.error;
+    if (studentsResult.error) throw studentsResult.error;
+    if (configResult.error) throw configResult.error;
+    if (managersResult.error) throw managersResult.error;
+    if (productionResult.error) throw productionResult.error;
+    if (meetingsResult.error) throw meetingsResult.error;
 
     const settings = new Map(
       (settingsResult.data ?? []).map((item) => [item.id, item.valor]),
     );
 
+    const rows = (studentsResult.data ?? []) as StudentReadRow[];
+
     if (!session) {
       return Response.json(
         {
-          students: [],
+          students: rows.map(publicStudent),
           timeline: settings.get("timeline") ?? null,
-          config: {},
+          config: configResult.data?.valor ?? {},
           projectTexts: sanitizeProjectTexts(
             settings.get("textos_projeto") ?? null,
           ),
           managers: [],
-          production: [],
+          production: productionResult.data ?? [],
           descriptions: descriptionsResult.data ?? [],
-          meetings: [],
+          meetings: meetingsResult.data ?? [],
           session: null,
         },
         { headers: { "Cache-Control": "private, no-store" } },
       );
     }
 
-    const [studentsResult, configResult, managersResult, productionResult, meetingsResult] =
-      await Promise.all([
-        supabase
-          .from("estagiarios")
-          .select(
-            "id,nome,meses,obs,atencao,perfil,trilha_checks,gestor_funcional,created_at",
-          )
-          .order("created_at"),
-        supabase
-          .from("configuracoes")
-          .select("valor")
-          .eq("id", "cfg_geral")
-          .maybeSingle(),
-        supabase
-          .from("gestores")
-          .select("id,nome,funcional,permissoes,tipo_gestor,created_at")
-          .order("nome"),
-        supabase
-          .from("producao_trimestral")
-          .select("id,estagiario_id,tri_ref,meta,producao,created_at"),
-        supabase
-          .from("encontros")
-          .select("id,titulo,descricao,data,created_at")
-          .order("data", { ascending: true }),
-      ]);
-
-    const firstError = [
-      studentsResult.error,
-      configResult.error,
-      managersResult.error,
-      productionResult.error,
-      meetingsResult.error,
-    ].find(Boolean);
-    if (firstError) throw firstError;
-
-    const rows = (studentsResult.data ?? []) as StudentReadRow[];
     const managers = managersResult.data ?? [];
     const currentManager =
       session.role === "gestor"
