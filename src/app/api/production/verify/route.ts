@@ -8,6 +8,7 @@ import {
   requireProductionSession,
 } from "@/server/production-access";
 import { loadProductionConfig } from "@/server/production-context";
+import type { Json } from "@/types/database";
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     );
     const { error } = await supabase
       .from("estagiarios")
-      .update({ perfil: verification.profile })
+      .update({ perfil: verification.profile as Json })
       .eq("id", studentId);
     if (error) throw error;
 

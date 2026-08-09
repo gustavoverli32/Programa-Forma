@@ -9,6 +9,7 @@ import {
   requireProductionSession,
 } from "@/server/production-access";
 import { loadProductionConfig } from "@/server/production-context";
+import type { Json } from "@/types/database";
 
 export async function POST(request: Request) {
   try {
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       confirmed = verification.confirmed;
       const { error: profileError } = await supabase
         .from("estagiarios")
-        .update({ perfil: profile })
+        .update({ perfil: profile as Json })
         .eq("id", input.studentId);
       if (profileError) throw profileError;
     }

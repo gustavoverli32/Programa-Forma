@@ -11,7 +11,7 @@ export type ProductionBatchInput = {
 };
 
 export type ProductionRow = {
-  estagiario_id: string | number;
+  estagiario_id: string | number | null;
   tri_ref: string;
   meta: number | string | null;
   producao: number | string | null;

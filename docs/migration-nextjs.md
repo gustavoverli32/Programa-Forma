@@ -32,12 +32,14 @@ Ordem dos módulos:
 
 ## Pendências de segurança antes da produção
 
-- Auditar e ativar RLS em todas as tabelas do Supabase.
+- Substituir as políticas RLS públicas atuais por políticas mínimas no momento do corte.
 - Migrar as gravações restantes de cadastro, trilhas, contatos e agendamentos para Route Handlers autenticados.
 - Trocar o hash legado de gestores por autenticação Supabase Auth ou Argon2/bcrypt com salt.
 - Adicionar limitação de tentativas de login e de chamadas ao assistente.
 - Configurar logs de auditoria para alterações de produção, perfis e permissões.
 - Rotacionar a senha antiga da tutora, pois ela existia no frontend publicado.
+
+O diagnóstico detalhado e o plano de corte estão em `docs/supabase-security-audit.md`.
 
 ## Critério para remover a camada legada
 

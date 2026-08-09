@@ -29,5 +29,6 @@ Aplicação de acompanhamento de estagiários comerciais, em migração incremen
 - `src/server`: autorização e serviços exclusivos do servidor.
 - `src/services`: ponte temporária entre a interface preservada e as APIs Next.js.
 - `docs/migration-nextjs.md`: plano, riscos e critérios da migração.
+- `docs/supabase-security-audit.md`: diagnóstico do RLS e plano seguro de corte.
 
 O shell legado é temporário. Ele garante fidelidade visual e funcional enquanto cada domínio é convertido para componentes React e serviços TypeScript, sem uma reescrita arriscada de uma só vez.
