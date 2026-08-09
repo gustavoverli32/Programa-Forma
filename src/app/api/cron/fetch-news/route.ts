@@ -37,15 +37,17 @@ const DEFAULT_ITAU_LOAN_NEWS: ItauNewsItem[] = [
   },
 ];
 
+export const revalidate = 86400; // Configuração do Agente: 1x por dia (24 horas)
+
 export async function GET() {
   try {
-    // Tenta raspar a página pública de imprensa do Itaú
+    // Tenta raspar a página pública de imprensa do Itaú (Revalidação 1x ao dia)
     const res = await fetch("https://www.itau.com.br/imprensa", {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },
-      next: { revalidate: 3600 }, // Revalida a cada 1 hora
+      next: { revalidate: 86400 }, // Revalida 1x a cada 24h
     });
 
     if (!res.ok) {
