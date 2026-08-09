@@ -1,0 +1,29 @@
+name: Nextuber CI/CD Pipeline
+
+on:
+  push:
+    branches: [ codex/nextjs-migration, main ]
+  pull_request:
+    branches: [ codex/nextjs-migration, main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests, linting, and Next.js build
+        run: npm run check
+        env:
+          NEXTUBER_SESSION_SECRET: "ci_test_session_secret_1234567890"
