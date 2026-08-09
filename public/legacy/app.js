@@ -711,9 +711,19 @@ function getTrilhaCor(key){
   return cores[key]||'#EC7000';
 }
 
+function normalizeTrilhaKey(key){
+  if(!key) return null;
+  var k = String(key).toLowerCase();
+  if(k.indexOf('decolar')>=0 || k.indexOf('iniciante')>=0) return 'iniciante';
+  if(k.indexOf('evoluir')>=0 || k.indexOf('intermediario')>=0) return 'intermediario';
+  if(k.indexOf('impactar')>=0 || k.indexOf('avancado')>=0) return 'avancado';
+  return 'iniciante';
+}
+
 function getEffectiveTrilhaKey(e){
-  if(e.perfil && e.perfil.trilha_manual) return e.perfil.trilha_manual;
-  return (e.perfil && e.perfil.inicio) ? getTrilhaKey(e.perfil.inicio) : null;
+  if(!e || !e.perfil) return null;
+  if(e.perfil.trilha_manual) return normalizeTrilhaKey(e.perfil.trilha_manual);
+  return (e.perfil && e.perfil.inicio) ? normalizeTrilhaKey(getTrilhaKey(e.perfil.inicio)) : null;
 }
 
 function isGGA(){
@@ -2165,6 +2175,8 @@ function renderPanelTrilha(idx){
     return;
   }
 
+  var key = getEffectiveTrilhaKey(e) || 'iniciante';
+  if(!TRILHAS[key]) key = 'iniciante';
   var t = TRILHAS[key];
   var cor = getTrilhaCor(key);
   var etapa = e.perfil && e.perfil.inicio ? etapaAtual(e.perfil.inicio) : 0;
