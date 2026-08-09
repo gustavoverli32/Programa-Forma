@@ -77,6 +77,15 @@ export function HomeOverviewIsland() {
     setMeetings((prev) => [newMeeting, ...prev]);
   }
 
+  useEffect(() => {
+    const el = document.getElementById("page-overview");
+    if (el) {
+      while (el.firstChild) {
+        el.removeChild(el.firstChild);
+      }
+    }
+  }, []);
+
   if (!container || !loaded) return null;
 
   return createPortal(
