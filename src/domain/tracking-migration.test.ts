@@ -54,3 +54,20 @@ test("React student monitoring section includes filters, excel export, and drawe
   assert.equal(drawerSource.includes("Marcar produção como verificada hoje"), true);
   assert.equal(drawerSource.includes("handleToggleAttention"), true);
 });
+
+test("React home overview section includes KPIs, rankings, and project details modal", () => {
+  const homeSource = readFileSync(
+    `${projectRoot}/src/components/overview/HomeOverviewSection.tsx`,
+    "utf8",
+  );
+  const modalSource = readFileSync(
+    `${projectRoot}/src/components/overview/ProjectDetailsModal.tsx`,
+    "utf8",
+  );
+
+  assert.equal(homeSource.includes("Desenvolvendo o futuro comercial do Itaú"), true);
+  assert.equal(homeSource.includes("Ranking do Trimestre"), true);
+  assert.equal(homeSource.includes("calculateConsolidatedKpis"), true);
+  assert.equal(modalSource.includes("Objetivo do Programa"), true);
+  assert.equal(modalSource.includes("saveSetting"), true);
+});

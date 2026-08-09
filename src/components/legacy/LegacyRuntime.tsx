@@ -23,6 +23,7 @@ import {
 } from "@/services/tracking-bridge";
 import { ProductionTrackingIsland } from "@/components/tracking/ProductionTrackingIsland";
 import { StudentMonitoringIsland } from "@/components/tracking/StudentMonitoringIsland";
+import { HomeOverviewIsland } from "@/components/overview/HomeOverviewIsland";
 
 declare global {
   interface Window {
@@ -113,6 +114,7 @@ export function LegacyRuntime() {
 
   return (
     <>
+      <HomeOverviewIsland />
       <ProductionTrackingIsland />
       <StudentMonitoringIsland />
       {error ? (
