@@ -6,12 +6,13 @@ var escapeAttr = window.NextuberSecurity.escapeAttr;
 var safeUrl = window.NextuberSecurity.safeUrl;
 
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
-var PWD = 'kamilla2025';
 console.log('🔶 NEXTUBER BUILD: 2026-06-17-v28 - IA acessa window.S');
-var SUPA_URL = 'https://hbebkripmytkknqydjpt.supabase.co';
-var SUPA_KEY = 'sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH';
-var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
-window.sb = sb;
+if(!window.nextuberReads) throw new Error('Servico seguro de leitura indisponivel.');
+
+function onNextuberReady(callback){
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', callback, {once:true});
+  else callback();
+}
 var SOPTS = ['⬜ Pendente','🔄 Em andamento','✅ Concluído','⚠️ Atenção','🔁 Renovado'];
 var ML = ['Mês 1','Mês 2','Mês 3','Mês 4','Mês 5','Mês 6'];
 
@@ -117,7 +118,7 @@ function getMesVigenteEmTrimestre(tri){
   if(!trimMatch) return 1;
   var trimNum = parseInt(trimMatch[1]);
   var mesInicioTri = (trimNum - 1) * 3 + 1;
-  
+
   if(mesVigente >= mesInicioTri && mesVigente < mesInicioTri + 3){
     return mesVigente - mesInicioTri + 1; // 1, 2 ou 3
   }
@@ -141,6 +142,9 @@ function getAnoMesDoTrimestre(tri, mesIdx){
 }
 
 function quantidadeSemanasMes(tri, mesIdx){
+  if(window.nextuberProduction){
+    return window.nextuberProduction.quantityWeeksInMonth(tri, mesIdx);
+  }
   var ref = getAnoMesDoTrimestre(tri, mesIdx);
   var inicioMes = new Date(ref.ano, ref.mes-1, 1);
   var inicioMesAtual = new Date();
@@ -171,11 +175,7 @@ function getTotalMensal(eid,tri){
 
 async function saveProducaoSemanal(eid,tri,mesIdx,semIdx,valor){
   var ref=tri+'-M'+mesIdx+'-S'+semIdx;
-  var r=await sb.from('producao_trimestral').upsert({estagiario_id:eid,tri_ref:ref,meta:0,producao:valor},{onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i=S.producao.findIndex(function(p){return p.estagiario_id===eid&&p.tri_ref===ref;});
-    if(i>=0) S.producao[i]=r.data; else S.producao.push(r.data);
-  }
+  return salvarProducaoSegura(eid, tri, [{ref:ref, value:parseFloat(valor)||0}]);
 }
 
 function mesFechado(eid,tri,mesIdx){
@@ -189,17 +189,106 @@ function calcPctChecks(e){var tot=0,done=0;['iniciante','intermediario','avancad
 function faixaComp(p){if(p>=75)return{cor:'#16A34A',bg:'#DCFCE7',label:'Acima do esperado'};if(p>=40)return{cor:'#EC7000',bg:'#FFF3E8',label:'Esperado'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Precisa melhorar'};}
 function faixaRes(p){if(p>=85)return{cor:'#16A34A',bg:'#DCFCE7',label:'Alvo atingido'};if(p>=50)return{cor:'#EC7000',bg:'#FFF3E8',label:'Em desenvolvimento'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Abaixo do alvo'};}
 
-async function hashSenha(senha) {
-  var enc = new TextEncoder();
-  var data = enc.encode(senha + 'itau_formacao_2025');
-  var buf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-}
-
 // ── STATE ──────────────────────────────────────────────────────────────────
-var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{} };
+var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{}, regionais:[], selectedRegionalId: null };
 window.S = S; // exposto pra IA e outros escopos
 var DB_LOADED = false;
+
+// ── HELPERS DE REGIONAL ──
+function getEstagiariosAtivos(){
+  if(!S.selectedRegionalId || S.selectedRegionalId === 'all') return S.ests || [];
+  return (S.ests || []).filter(function(e){
+    return String(e.regional_id || '') === String(S.selectedRegionalId);
+  });
+}
+
+function getGestoresAtivos(){
+  if(!S.selectedRegionalId || S.selectedRegionalId === 'all') return S.gestores || [];
+  return (S.gestores || []).filter(function(g){
+    return String(g.regional_id || '') === String(S.selectedRegionalId);
+  });
+}
+
+function renderRegionalSelectorUI(){
+  var dropdown = document.getElementById('regionalSelectDropdown');
+  var badge = document.getElementById('regionalBadgeInfo');
+  if(!dropdown) return;
+
+  var list = S.regionais || [];
+  if(list.length === 0){
+    dropdown.innerHTML = '<option value="all">Todas as Regionais</option>';
+    if(badge) badge.textContent = 'Visão Global';
+    return;
+  }
+
+  var html = '';
+  list.forEach(function(r){
+    var sel = String(r.id) === String(S.selectedRegionalId) ? 'selected' : '';
+    html += '<option value="'+escapeAttr(r.id)+'" '+sel+'>'+escapeHtml(r.nome)+'</option>';
+  });
+  html += '<option value="all" '+(S.selectedRegionalId === 'all' ? 'selected' : '')+'>🌐 Todas as Regionais (Consolidado)</option>';
+  dropdown.innerHTML = html;
+
+  var currentReg = list.find(function(r){ return String(r.id) === String(S.selectedRegionalId); });
+  if(badge){
+    if(currentReg){
+      badge.textContent = 'Regional: ' + currentReg.nome;
+    } else if(S.selectedRegionalId === 'all'){
+      badge.textContent = 'Visão Consolidada (Todas)';
+    } else {
+      badge.textContent = 'Regional Ativa';
+    }
+  }
+
+  if(window.modoGestor && window.gestorLogado && window.gestorLogado.regional_id){
+    dropdown.disabled = true;
+    dropdown.style.opacity = '0.7';
+    dropdown.style.cursor = 'not-allowed';
+  } else {
+    dropdown.disabled = false;
+    dropdown.style.opacity = '1';
+    dropdown.style.cursor = 'pointer';
+  }
+
+  if(!dropdown._bound){
+    dropdown._bound = true;
+    dropdown.addEventListener('change', function(evt){
+      S.selectedRegionalId = evt.target.value;
+      renderRegionalSelectorUI();
+      updateMetrics(); renderCiclos(); renderCards(); renderTrilha();
+      renderCadList(); renderTimeline(); renderGestoresList(); renderOverviewAll(); renderRanking(); updateProgress();
+    });
+  }
+}
+
+function aplicarRetornoProducao(eid, tri, result){
+  var sid = String(eid);
+  var rows = (result && result.productionRows) || [];
+  S.producao = (S.producao || []).filter(function(row){
+    return !(String(row.estagiario_id) === sid && String(row.tri_ref).indexOf(tri) === 0);
+  }).concat(rows);
+  var est = S.ests.find(function(item){ return String(item.id) === sid; });
+  if(est && result && result.profile) est.perfil = result.profile;
+}
+
+async function salvarProducaoSegura(eid, tri, entries, target){
+  if(!window.nextuberProduction) return false;
+  var alvo = target;
+  if(alvo === undefined || alvo === null) alvo = parseFloat(getProducaoTri(eid, tri).meta)||0;
+  try {
+    var result = await window.nextuberProduction.saveBatch({
+      studentId: String(eid),
+      quarterRef: tri,
+      target: parseFloat(alvo)||0,
+      entries: entries || []
+    });
+    aplicarRetornoProducao(eid, tri, result);
+    return true;
+  } catch(error) {
+    console.error('Salvar producao segura:', error);
+    return false;
+  }
+}
 
 var TEXTOS_PROJETO_DEFAULT = {
   banner_over: 'Nextuber · A próxima geração de Itubers',
@@ -214,10 +303,6 @@ var TEXTOS_PROJETO_DEFAULT = {
 var S_textos = Object.assign({}, TEXTOS_PROJETO_DEFAULT);
 
 async function loadTextosProjeto(){
-  var r = await sb.from('configuracoes').select('*').eq('id','textos_projeto').maybeSingle();
-  if(r.data && r.data.valor){
-    S_textos = Object.assign({}, TEXTOS_PROJETO_DEFAULT, r.data.valor);
-  }
   aplicarTextosProjeto();
 }
 
@@ -235,7 +320,8 @@ function aplicarTextosProjeto(){
 }
 
 async function salvarTextosProjeto(){
-  await sb.from('configuracoes').upsert({id:'textos_projeto', valor:JSON.parse(JSON.stringify(S_textos))});
+  if(!window.nextuberMutations) throw new Error('Serviço de configurações indisponível.');
+  await window.nextuberMutations.saveSetting('textos_projeto', JSON.parse(JSON.stringify(S_textos)));
 }
 
 
@@ -249,6 +335,7 @@ function mkEstObj(row){
     atencao:      row.atencao || false,
     perfil:       row.perfil || {idade:'',funcional:'',inicio:''},
     trilhaChecks: row.trilha_checks || {},
+    regional_id:  row.regional_id || null,
     meta:         (row.perfil && row.perfil.meta) ? row.perfil.meta : '',
     resultado:    (row.perfil && row.perfil.resultado) ? row.perfil.resultado : ''
   };
@@ -258,33 +345,53 @@ async function loadFromDB(){
   showLoading(true);
   try {
     // Load estagiarios
-    var r1 = await sb.from('estagiarios').select('*').order('created_at');
-    if(r1.error) throw r1.error;
-    S.ests = (r1.data||[]).map(mkEstObj);
+    var payload = await window.nextuberReads.bootstrap();
+    S.ests = (payload.students||[]).map(mkEstObj);
 
     // Load timeline — use maybeSingle to avoid error when row doesn't exist
-    var r3 = await sb.from('configuracoes').select('*').eq('id','timeline').maybeSingle();
-    if(r3.data && r3.data.valor) S.tl = r3.data.valor;
+    S.tl = Array.isArray(payload.timeline) ? payload.timeline : Array(6).fill(false);
 
     // Load cfg (recorrência de produção)
-    var rCfg = await sb.from('configuracoes').select('*').eq('id','cfg_geral').maybeSingle();
-    if(rCfg.data && rCfg.data.valor) S.cfg = rCfg.data.valor;
+    S.cfg = payload.config || {};
 
     // Load gestores
-    var rG = await sb.from('gestores').select('*').order('nome');
-    if(!rG.error) S.gestores = rG.data || [];
+    S.gestores = payload.managers || [];
+
+    // Load regionais
+    S.regionais = payload.regionais || [];
+    if(!S.selectedRegionalId && S.regionais.length > 0){
+      S.selectedRegionalId = S.regionais[0].id;
+    }
 
     // Load producao trimestral
-    var rP = await sb.from('producao_trimestral').select('*');
-    if(!rP.error) S.producao = rP.data || [];
+    S.producao = payload.production || [];
 
     // Load descricao
-    var rD = await sb.from('descricao_projeto').select('*').order('ordem');
-    if(!rD.error) S.descricao = rD.data || [];
+    S.descricao = payload.descriptions || [];
 
     // Load encontros
-    var rE = await sb.from('encontros').select('*').order('data',{ascending:true});
-    if(!rE.error) S.encontros = rE.data || [];
+    S.encontros = payload.meetings || [];
+    S_textos = Object.assign({}, TEXTOS_PROJETO_DEFAULT, payload.projectTexts || {});
+
+    if(payload.session && payload.session.role === 'tutora'){
+      editor = true;
+      modoGestor = false;
+      gestorLogado = null;
+    } else if(payload.session && payload.session.role === 'gestor'){
+      editor = false;
+      modoGestor = true;
+      gestorLogado = payload.session.manager || null;
+      if(gestorLogado && gestorLogado.regional_id){
+        S.selectedRegionalId = gestorLogado.regional_id;
+      }
+    } else {
+      editor = false;
+      modoGestor = false;
+      gestorLogado = null;
+    }
+    window.editor = editor;
+    window.modoGestor = modoGestor;
+    window.gestorLogado = gestorLogado;
 
     DB_LOADED = true;
   } catch(e) {
@@ -292,6 +399,7 @@ async function loadFromDB(){
     // Still render the page even if DB fails
   }
   showLoading(false);
+  renderRegionalSelectorUI();
   updateMetrics(); renderCiclos(); renderCards(); renderTrilha();
   renderCadList(); renderTimeline(); renderGestoresList(); renderOverviewAll(); renderRanking();  updateProgress();
   await loadTextosProjeto();
@@ -329,21 +437,20 @@ async function persistAsync(silent){
 async function saveEstagiario(est){
   // Serializar tudo via JSON para garantir dados puros (evita DataCloneError)
   var data = JSON.parse(JSON.stringify({
-    nome:          String(est.nome||''),
-    meses:         est.meses||[],
-    obs:           String(est.obs||''),
-    atencao:       !!est.atencao,
-    perfil:        est.perfil||{},
-    trilha_checks: est.trilhaChecks||{}
+    name:        String(est.nome||''),
+    months:      est.meses||[],
+    notes:       String(est.obs||''),
+    attention:   !!est.atencao,
+    profile:     est.perfil||{},
+    trailChecks: est.trilhaChecks||{}
   }));
   try {
+    if(!window.nextuberMutations) throw new Error('Serviço de cadastro indisponível.');
     if(est.id){
-      var r = await sb.from('estagiarios').update(data).eq('id', est.id);
-      if(r.error){ console.error('saveEstagiario UPDATE error:', JSON.stringify(r.error)); alert('Erro ao salvar: ' + (r.error.message||JSON.stringify(r.error))); return false; }
+      await window.nextuberMutations.updateStudent(String(est.id), data);
     } else {
-      var r = await sb.from('estagiarios').insert(data).select().single();
-      if(r.error){ console.error('saveEstagiario INSERT error:', JSON.stringify(r.error)); alert('Erro ao salvar: ' + (r.error.message||JSON.stringify(r.error))); return false; }
-      if(r.data) est.id = r.data.id;
+      var r = await window.nextuberMutations.createStudent(data);
+      if(r.student) est.id = r.student.id;
     }
     return true;
   } catch(e) {
@@ -354,63 +461,59 @@ async function saveEstagiario(est){
 }
 
 async function deleteEstagiario(id){
-  await sb.from('estagiarios').delete().eq('id', id);
+  if(!window.nextuberMutations) throw new Error('Serviço de cadastro indisponível.');
+  await window.nextuberMutations.deleteStudent(String(id));
 }
 
 
 
 async function updateMeuPerfil(nome, funcional, senha){
   if(!gestorLogado) return null;
-  var update = {nome: nome, funcional: funcional};
-  if(senha){
-    update.senha_hash = await hashSenha(senha.slice(0,4));
-  }
-  var r = await sb.from('gestores').update(JSON.parse(JSON.stringify(update))).eq('id', gestorLogado.id).select().single();
-  if(r.error){ console.error('updateMeuPerfil:', r.error); return null; }
-  if(r.data){
-    // Update local cache
-    var i = S.gestores.findIndex(function(g){ return g.id === gestorLogado.id; });
-    if(i >= 0) S.gestores[i] = r.data;
-    gestorLogado = r.data;
-    return r.data;
+  try {
+    if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+    var r = await window.nextuberMutations.updateMyManagerProfile({name:nome, employeeCode:funcional, password:senha||''});
+    if(r.manager){
+      var i = S.gestores.findIndex(function(g){ return g.id === gestorLogado.id; });
+      if(i >= 0) S.gestores[i] = r.manager;
+      gestorLogado = r.manager;
+      return r.manager;
+    }
+  } catch(error) {
+    console.error('updateMeuPerfil:', error);
   }
   return null;
 }
 
 async function saveGestor(nome, funcional){
-  var hash = await hashSenha(funcional.slice(0,4));
-  var r = await sb.from('gestores').insert({nome:nome, funcional:funcional, senha_hash:hash}).select().single();
-  if(r.error){ console.error('saveGestor error:', r.error); return null; }
-  if(r.data){ S.gestores.push(r.data); return r.data; }
+  try {
+    if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+    var r = await window.nextuberMutations.createManager({name:nome, employeeCode:funcional});
+    if(r.manager){ S.gestores.push(r.manager); return r.manager; }
+  } catch(error) {
+    console.error('saveGestor error:', error);
+  }
   return null;
 }
 
 async function deleteGestor(id){
-  await sb.from('gestores').delete().eq('id', id);
+  if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+  await window.nextuberMutations.deleteManager(String(id));
   S.gestores = S.gestores.filter(function(g){ return g.id !== id; });
 }
 
 
 
 async function saveMetaTri(eid,tri,meta){
-  var ex = getProducaoTri(eid,tri);
-  var dataToSave = JSON.parse(JSON.stringify({estagiario_id:eid,tri_ref:tri,meta:parseFloat(meta)||0,producao:parseFloat(ex.producao)||0}));var r = await sb.from('producao_trimestral').upsert(dataToSave,{onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(r.error || !r.data) return false;
-  var i = S.producao.findIndex(function(p){return p.estagiario_id===eid && p.tri_ref===tri;});
-  if(i>=0) S.producao[i] = r.data; else S.producao.push(r.data);
-  return true;
+  return salvarProducaoSegura(eid, tri, [], parseFloat(meta)||0);
 }
 async function saveProducaoTri(eid,tri,prod){
-  var ex = getProducaoTri(eid,tri);
-  var r = await sb.from('producao_trimestral').upsert({estagiario_id:eid,tri_ref:tri,meta:ex.meta||0,producao:prod},{onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(r.error || !r.data) return false;
-  var i = S.producao.findIndex(function(p){return p.estagiario_id===eid && p.tri_ref===tri;});
-  if(i>=0) S.producao[i] = r.data; else S.producao.push(r.data);
-  return true;
+  void prod;
+  return salvarProducaoSegura(eid, tri, []);
 }
 
 async function saveTimeline(){
-  await sb.from('configuracoes').upsert({id:'timeline', valor:JSON.parse(JSON.stringify(S.tl))});
+  if(!window.nextuberMutations) throw new Error('Serviço de configurações indisponível.');
+  await window.nextuberMutations.saveSetting('timeline', JSON.parse(JSON.stringify(S.tl)));
 }
 function showToast(){ var t=document.getElementById('toast'); t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2000); }
 
@@ -541,7 +644,7 @@ function calcScore(e, triRef){
   triRef = triRef || trimestreRef();
   var prod = getProducaoTri(e.id, triRef);
   var meta = parseFloat(prod.meta) || 0;
-  
+
   // Crédito (Equilíbrio) — 60% (0-6 pts)
   var producaoCredito = getTotalTrimestreModalidades(e.id, triRef);
   // fallback: se ainda usa o total mensal antigo
@@ -551,14 +654,14 @@ function calcScore(e, triRef){
   }
   var pctCredito = meta>0 ? Math.min(producaoCredito/meta, 1) : 0;
   var notaCredito = pctCredito * 6;
-  
+
   // Produtos (Seguros, PIC, Combinaqui, Consórcios) — 40% (0-4 pts)
   // O alvo de produtos não existe explicitamente; usamos 20% do alvo de crédito como alvo de produtos
   var metaProdutos = meta * 0.2;
   var producaoProdutos = getTotalTrimestreOutros(e.id, triRef);
   var pctProdutos = metaProdutos>0 ? Math.min(producaoProdutos/metaProdutos, 1) : 0;
   var notaProdutos = pctProdutos * 4;
-  
+
   return Math.min(Math.round((notaCredito+notaProdutos)*10)/10, 10);
 }
 
@@ -622,6 +725,7 @@ function ymdLocal(d){
 }
 
 function inicioSemanaAtualYMD(){
+  if(window.nextuberProduction) return window.nextuberProduction.getWeekStartYmd();
   var d = new Date();
   var dia = d.getDay();
   var ajuste = dia === 0 ? -6 : 1-dia;
@@ -653,6 +757,11 @@ function producaoConfirmadaNoPrazo(e, prazo){
 }
 
 function registrarProducaoVerificada(e){
+  if(window.nextuberProduction){
+    var verificacao = window.nextuberProduction.markVerified(e.perfil || {}, S.cfg || {});
+    e.perfil = verificacao.profile;
+    return verificacao.confirmed;
+  }
   var prazo = getPrazoProducaoAtual();
   var hoje = hojeLocalYMD();
   if(!e.perfil) e.perfil = {};
@@ -663,6 +772,9 @@ function registrarProducaoVerificada(e){
 }
 
 function statusAtualizacao(e){
+  if(window.nextuberProduction){
+    return window.nextuberProduction.getUpdateStatus(e.perfil || {}, S.cfg || {});
+  }
   var prazo = getPrazoProducaoAtual();
   var hoje = hojeLocalYMD();
   // Cada sexta-feira é um ciclo novo: a confirmação de uma semana não libera a próxima.
@@ -707,7 +819,7 @@ function renderOverviewKpis(){
   var totalSeguros = 0;
   var totalPIC = 0;
   var totalCombinaqui = 0;
-  
+
   lista.forEach(function(e){
     var p = getProducaoTri(e.id, tri);
     totalProducao += parseFloat(p.producao)||0;
@@ -718,7 +830,7 @@ function renderOverviewKpis(){
     totalPIC        += getTotalTrimestreOutroProduto(e.id, tri, 1);
     totalCombinaqui += getTotalTrimestreOutroProduto(e.id, tri, 2);
   });
-  
+
   var porTrilha = {iniciante:0, intermediario:0, avancado:0};
   lista.forEach(function(e){
       var k = getEffectiveTrilhaKey(e);
@@ -815,7 +927,8 @@ function renderEncontros(){
     btn.addEventListener('click', async function(){
       var id = this.dataset.delenc;
       if(!confirm('Excluir este encontro?')) return;
-      await sb.from('encontros').delete().eq('id', id);
+      if(!window.nextuberMutations) throw new Error('Serviço de encontros indisponível.');
+      await window.nextuberMutations.deleteMeeting(String(id));
       S.encontros = S.encontros.filter(function(e){ return e.id !== id; });
       renderEncontros();
     });
@@ -839,9 +952,9 @@ function renderRanking(){
   if(!el) return;
   var tri = trimestreRef();
   var filtro = (document.getElementById('filtroRanking')||{}).value || 'credito';
-  
+
   var lista = S.ests.filter(function(e){ return e.perfil && e.perfil.funcional && e.perfil.inicio; });
-  
+
   // Mapear filtro para função de valor + config visual
   var configFiltros = {
     credito: {label: 'Crédito total', unidade: '', getValor: function(e){ return getTotalTrimestreModalidades(e.id, tri); }},
@@ -856,25 +969,25 @@ function renderRanking(){
     out_Consorcios: {label: 'Consórcios', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 3); }, cor: '#10B981'},
     out_Engajamento: {label: 'Engajamento', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 4); }, cor: '#EC4899'}
   };
-  
+
   var config = configFiltros[filtro] || configFiltros.credito;
-  
+
   var ranked = lista.map(function(e){ return {e:e, valor: config.getValor(e)}; })
                     .filter(function(r){ return r.valor > 0; }) // esconde quem não vendeu nada
                     .sort(function(a,b){ return b.valor - a.valor; });
-  
+
   if(!ranked.length){
     el.innerHTML = '<div style="font-size:13px;color:var(--ink3);font-style:italic;">Nenhum estagiário com resultados de '+config.label+' neste trimestre.</div>';
     return;
   }
-  
+
   // Valor máximo para calcular barra de progresso proporcional
   var valorMax = ranked[0].valor;
-  
+
   el.innerHTML = ranked.map(function(r,i){
     var corPos = i===0?'var(--or)':i===1?'var(--ink2)':'var(--ink3)';
     var corBarra = config.cor || corPos;
-    
+
     var valorDisplay, pct;
     if(config.isNota){
       valorDisplay = r.valor + config.unidade;
@@ -883,7 +996,7 @@ function renderRanking(){
       valorDisplay = fmtMilhar(r.valor);
       pct = valorMax > 0 ? Math.round((r.valor / valorMax) * 100) : 0;
     }
-    
+
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">'
       +'<div style="width:22px;height:22px;border-radius:50%;background:'+(i<2?corPos:'var(--bg)')+';color:'+(i<2?'#fff':'var(--ink3)')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+(i+1)+'</div>'
       +'<div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(r.e.nome)+'</div>'
@@ -895,46 +1008,16 @@ function renderRanking(){
 
 async function salvarSnapshot(eid, tri){
   tri = tri || trimestreRef();
-  var e = S.ests.find(function(x){ return x.id === eid; });
-  if(!e) return;
-  
-  var prod = getProducaoTri(eid, tri);
-  var meta = parseFloat(prod.meta) || 0;
-  
-  // Crédito (60% da nota)
-  var producaoCredito = getTotalTrimestreModalidades(eid, tri);
-  if(producaoCredito === 0){
-    var totalMes = getTotalMensal(eid, tri);
-    producaoCredito = totalMes > 0 ? totalMes : (parseFloat(prod.producao)||0);
-  }
-  var pctCredito = meta>0 ? Math.min(producaoCredito/meta, 1) : 0;
-  var scoreCredito = Math.round(pctCredito * 6 * 10) / 10;
-  
-  // Produtos (40% da nota)
-  var metaProdutos = meta * 0.2;
-  var producaoProdutos = getTotalTrimestreOutros(eid, tri);
-  var pctProdutos = metaProdutos>0 ? Math.min(producaoProdutos/metaProdutos, 1) : 0;
-  var scoreProdutos = Math.round(pctProdutos * 4 * 10) / 10;
-  
-  var scoreFinal = Math.min(Math.round((scoreCredito + scoreProdutos) * 10) / 10, 10);
-  
-  var r = await sb.from('snapshots').upsert(JSON.parse(JSON.stringify({
-    estagiario_id: eid,
-    tri_ref: tri,
-    score: scoreFinal,
-    score_producao: scoreCredito,     // reaproveita coluna: agora é crédito
-    score_trilha: scoreProdutos,       // reaproveita coluna: agora é produtos
-    total_producao: producaoCredito + producaoProdutos,
-    meta: meta
-  })), {onConflict:'estagiario_id,tri_ref'});
-  return !r.error;
+  return salvarProducaoSegura(eid, tri, []);
 }
 
 async function loadSnapshotsHistory(eid){
   var el = document.getElementById('pHistoricoTri');
   if(!el) return;
-  var r = await sb.from('snapshots').select('*').eq('estagiario_id', eid).order('tri_ref', {ascending:true});
-  var snaps = r.data || [];
+  var r;
+  try { r = await window.nextuberReads.snapshots(String(eid)); }
+  catch(error){ console.error('Historico trimestral:', error); el.innerHTML = ''; return; }
+  var snaps = r.snapshots || [];
   if(!snaps.length){ el.innerHTML = ''; return; }
   el.innerHTML = '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:500;margin:14px 0 8px;">Histórico trimestral</div>'
     +snaps.map(function(s){
@@ -955,7 +1038,7 @@ function renderAvaliacao(idx){
   var e = S.ests[idx], tri = trimestreRef();
   var prod = getProducaoTri(e.id, tri);
   var meta = parseFloat(prod.meta)||0;
-  
+
   // Crédito
   var producaoCredito = getTotalTrimestreModalidades(e.id, tri);
   if(producaoCredito === 0){
@@ -964,13 +1047,13 @@ function renderAvaliacao(idx){
   }
   var pctCredito = meta>0 ? Math.round(Math.min(producaoCredito/meta, 1)*100) : 0;
   var fCredito = faixaRes(pctCredito);
-  
+
   // Produtos
   var metaProdutos = meta * 0.2;
   var producaoProdutos = getTotalTrimestreOutros(e.id, tri);
   var pctProdutos = metaProdutos>0 ? Math.round(Math.min(producaoProdutos/metaProdutos, 1)*100) : 0;
   var fProdutos = faixaRes(pctProdutos);
-  
+
   var nota = calcScore(e, tri), nc = scoreColor(nota);
 
   el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;">'
@@ -999,10 +1082,12 @@ function renderAvaliacao(idx){
 async function loadEvolucaoChart(eid){
   var el = document.getElementById('pEvolucaoChart');
   if(!el) return;
-  var r = await sb.from('snapshots').select('*').eq('estagiario_id', eid).order('tri_ref', {ascending:true});
-  var snaps = r.data || [];
+  var r;
+  try { r = await window.nextuberReads.snapshots(String(eid)); }
+  catch(error){ console.error('Evolucao trimestral:', error); el.innerHTML = ''; return; }
+  var snaps = r.snapshots || [];
   if(snaps.length < 1){ el.innerHTML = ''; return; }
-  
+
   // Build SVG chart (proporção 200x80 - mais largo, menos alto)
   var maxNota = 10;
   var w = 200;
@@ -1010,20 +1095,20 @@ async function loadEvolucaoChart(eid){
   var padL = 22, padR = 8, padT = 10, padB = 18;
   var innerW = w - padL - padR;
   var innerH = h - padT - padB;
-  
+
   var n = snaps.length;
   var stepX = n > 1 ? innerW / (n - 1) : 0;
-  
+
   var pts = snaps.map(function(s, i){
     var x = padL + (n > 1 ? i * stepX : innerW/2);
     var y = padT + innerH - (s.score / maxNota) * innerH;
     return {x:x, y:y, score:s.score, tri:s.tri_ref};
   });
-  
+
   // Build path
   var pathD = pts.map(function(p, i){ return (i===0?'M':'L') + p.x.toFixed(2) + ',' + p.y.toFixed(2); }).join(' ');
   var areaD = pathD + ' L' + pts[pts.length-1].x.toFixed(2) + ',' + (padT+innerH) + ' L' + pts[0].x.toFixed(2) + ',' + (padT+innerH) + ' Z';
-  
+
   // Grid lines (0, 2.5, 5, 7.5, 10)
   var grid = '';
   [0,2.5,5,7.5,10].forEach(function(v){
@@ -1031,21 +1116,21 @@ async function loadEvolucaoChart(eid){
     grid += '<line x1="'+padL+'" y1="'+y.toFixed(2)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(2)+'" stroke="#eee" stroke-width=".25"/>';
     grid += '<text x="'+(padL-2)+'" y="'+(y+1.3)+'" font-size="3.5" fill="#999" text-anchor="end">'+v+'</text>';
   });
-  
+
   // X labels
   var xLabels = '';
   pts.forEach(function(p, i){
     var lbl = p.tri.split('-')[1].replace('Q','T') + '/' + p.tri.split('-')[0].slice(2);
     xLabels += '<text x="'+p.x+'" y="'+(h-4)+'" font-size="3.5" fill="#999" text-anchor="middle">'+escapeHtml(lbl)+'</text>';
   });
-  
+
   // Dots and score labels
   var dots = pts.map(function(p){
     var cor = p.score>=8?'#16A34A':p.score>=5?'#EC7000':'#DC2626';
     return '<circle cx="'+p.x.toFixed(2)+'" cy="'+p.y.toFixed(2)+'" r="1.4" fill="'+cor+'" stroke="#fff" stroke-width=".6"/>'
       + '<text x="'+p.x+'" y="'+(p.y-2.5)+'" font-size="3.5" font-weight="600" fill="'+cor+'" text-anchor="middle">'+p.score+'</text>';
   }).join('');
-  
+
   el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">'
     +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:500;margin-bottom:6px;">Evolução da nota</div>'
     +'<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" style="width:100%;max-height:140px;display:block;">'
@@ -1117,41 +1202,11 @@ function getContatoDia(eid, semISO, diaIdx){
   return row ? (parseFloat(row.producao) || 0) : 0;
 }
 
-async function saveContatoDia(eid, semISO, diaIdx, valor){
-  var ref = 'CONTATO-' + semISO + '-D' + diaIdx;
-  var r = await sb.from('producao_trimestral').upsert(JSON.parse(JSON.stringify({
-    estagiario_id: eid,
-    tri_ref: ref,
-    meta: 0,
-    producao: valor
-  })), {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-    if(i >= 0) S.producao[i] = r.data;
-    else S.producao.push(r.data);
-  }
-}
-
 function getMetaContatos(eid){
   var ref = 'CONTATO-META';
   if(!S.producao) return 0;
   var row = S.producao.find(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
   return row ? (parseFloat(row.meta) || 0) : 0;
-}
-
-async function saveMetaContatos(eid, meta){
-  var ref = 'CONTATO-META';
-  var r = await sb.from('producao_trimestral').upsert(JSON.parse(JSON.stringify({
-    estagiario_id: eid,
-    tri_ref: ref,
-    meta: meta,
-    producao: 0
-  })), {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-    if(i >= 0) S.producao[i] = r.data;
-    else S.producao.push(r.data);
-  }
 }
 
 // Naviga entre semanas (delta = -1 para anterior, +1 para próxima)
@@ -1173,16 +1228,16 @@ function renderContatosCard(idx){
   var el = document.getElementById('pContatos');
   if(!el) return;
   var e = S.ests[idx];
-  
+
   // Inicializar semana selecionada se necessário
   if(!contatosSelectedWeek) contatosSelectedWeek = getSemanaAtualISO();
   var semanaAtualReal = getSemanaAtualISO();
   var isSemanaAtual = (contatosSelectedWeek === semanaAtualReal);
-  
+
   var canEdit = (editor || (modoGestor && gestorLogado));
   var meta = getMetaContatos(e.id);
   var metaSemanal = meta * 5; // alvo diário × 5 dias
-  
+
   var dias = getDiasDaSemana(contatosSelectedWeek);
   var totalSemana = 0;
   for(var d = 0; d < 5; d++){
@@ -1190,7 +1245,7 @@ function renderContatosCard(idx){
   }
   var pctSemana = metaSemanal > 0 ? Math.min(Math.round(totalSemana/metaSemanal*100), 100) : 0;
   var corProgresso = pctSemana >= 80 ? '#16A34A' : (pctSemana >= 50 ? '#F59E0B' : '#DC2626');
-  
+
   var h = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;">'
     // Cabeçalho
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'
@@ -1211,8 +1266,8 @@ function renderContatosCard(idx){
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:8px;">'
       +'<div style="display:flex;flex-direction:column;">'
         +'<span style="font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Alvo diário</span>'
-        +(canEdit 
-          ? '<input class="fieldContMeta" type="text" value="'+(meta||'')+'" placeholder="0" inputmode="numeric" style="margin-top:4px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);width:80px;background:var(--surface);">' 
+        +(canEdit
+          ? '<input class="fieldContMeta" type="text" value="'+(meta||'')+'" placeholder="0" inputmode="numeric" style="margin-top:4px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);width:80px;background:var(--surface);">'
           : '<span style="margin-top:4px;font-size:13px;font-weight:600;color:var(--ink);">'+(meta||'—')+'</span>')
       +'</div>'
       +'<div style="text-align:right;">'
@@ -1228,23 +1283,23 @@ function renderContatosCard(idx){
     +'<div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:14px;"><div style="width:'+pctSemana+'%;height:100%;background:'+corProgresso+';"></div></div>'
     // Grade dos 5 dias
     +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">';
-  
+
   for(var i = 0; i < 5; i++){
     var val = getContatoDia(e.id, contatosSelectedWeek, i);
     var atingiu = meta > 0 && val >= meta;
     var borderCor = atingiu ? '#16A34A' : 'var(--border)';
     var bgCor = atingiu ? '#DCFCE7' : 'var(--surface)';
     var inputDis = !canEdit ? 'disabled' : '';
-    
+
     h += '<div style="border:1px solid '+borderCor+';border-radius:6px;padding:6px;background:'+bgCor+';">'
       +'<div style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;font-weight:600;text-align:center;margin-bottom:4px;">'+formatarDiaCurto(dias[i])+'</div>'
       +'<input class="fieldContDia" data-dia="'+i+'" type="text" value="'+(val||'')+'" placeholder="0" inputmode="numeric" '+inputDis+' '
       +'style="width:100%;padding:4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;font-weight:600;text-align:center;color:'+(atingiu?'#16A34A':'var(--ink)')+';background:var(--surface);'+(inputDis?'opacity:.6;cursor:not-allowed;':'')+'">'
       +'</div>';
   }
-  
+
   h += '</div>';
-  
+
   // Botão salvar
   if(canEdit){
     h += '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;">'
@@ -1252,11 +1307,11 @@ function renderContatosCard(idx){
       +'<span class="obs-saved" id="contatosSaved">✓ Salvo</span>'
       +'</div>';
   }
-  
+
   h += '</div>';
-  
+
   el.innerHTML = h;
-  
+
   // Listeners de navegação
   var btnAnt = el.querySelector('.btnContSemAnt');
   if(btnAnt) btnAnt.addEventListener('click', function(){
@@ -1272,7 +1327,7 @@ function renderContatosCard(idx){
       renderContatosCard(idx);
     });
   }
-  
+
   // Listeners de input (só números)
   el.querySelectorAll('.fieldContDia').forEach(function(inp){
     inp.addEventListener('input', function(){
@@ -1283,29 +1338,47 @@ function renderContatosCard(idx){
   if(mIn) mIn.addEventListener('input', function(){
     this.value = this.value.replace(/[^0-9]/g,'').slice(0,4);
   });
-  
+
   // Salvar
   var btnSv = document.getElementById('btnSalvarContatos');
   if(btnSv) btnSv.addEventListener('click', async function(){
-    // Salvar alvo
-    var novaMeta = parseInt((el.querySelector('.fieldContMeta')||{}).value) || 0;
-    await saveMetaContatos(e.id, novaMeta);
-    // Salvar dias
-    var inputs = el.querySelectorAll('.fieldContDia');
-    for(var i = 0; i < inputs.length; i++){
-      var val = parseInt(inputs[i].value) || 0;
-      var diaIdx = parseInt(inputs[i].getAttribute('data-dia'));
-      await saveContatoDia(e.id, contatosSelectedWeek, diaIdx, val);
+    btnSv.disabled = true;
+    btnSv.textContent = 'Salvando...';
+    try {
+      if(!window.nextuberProduction) throw new Error('Serviço de contatos indisponível.');
+      var novaMeta = parseInt((el.querySelector('.fieldContMeta')||{}).value) || 0;
+      var inputs = el.querySelectorAll('.fieldContDia');
+      var days = [];
+      for(var i = 0; i < inputs.length; i++){
+        days.push({
+          dayIndex:parseInt(inputs[i].getAttribute('data-dia')),
+          value:parseInt(inputs[i].value) || 0
+        });
+      }
+      var result = await window.nextuberProduction.saveContacts({
+        studentId:String(e.id),
+        weekRef:contatosSelectedWeek,
+        dailyTarget:novaMeta,
+        days:days
+      });
+      var sid = String(e.id);
+      var refsSalvas = {};
+      (result.contactRows || []).forEach(function(row){ refsSalvas[row.tri_ref] = true; });
+      S.producao = (S.producao || []).filter(function(row){
+        return !(String(row.estagiario_id) === sid && refsSalvas[row.tri_ref]);
+      }).concat(result.contactRows || []);
+      e.perfil = result.profile;
+
+      renderContatosCard(idx);
+      renderCards();
+      var sv = document.getElementById('contatosSaved');
+      if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
+    } catch(error) {
+      console.error('Salvar contatos:', error);
+      alert((error && error.message) || 'Não foi possível salvar os contatos.');
+      btnSv.disabled = false;
+      btnSv.textContent = 'Salvar';
     }
-    // Marca estagiário como atualizado (contatos fazem parte da produção)
-    if(!e.perfil) e.perfil = {};
-    e.perfil.ultima_atualizacao_prod = hojeLocalYMD();
-    await saveEstagiario(e);
-    
-    var sv = document.getElementById('contatosSaved');
-    if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
-    renderContatosCard(idx);
-    renderCards();
   });
 }
 
@@ -1337,17 +1410,7 @@ function getProducaoOutroProduto(eid, tri, mesIdx, semanaIdx, prodIdx){
 
 async function saveProducaoOutroProduto(eid, tri, mesIdx, semanaIdx, prodIdx, valor){
   var ref = tri + '-M' + mesIdx + '-S' + semanaIdx + '-OUT' + prodIdx;
-  var r = await sb.from('producao_trimestral').upsert(JSON.parse(JSON.stringify({
-    estagiario_id: eid,
-    tri_ref: ref,
-    meta: 0,
-    producao: valor
-  })), {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(r.error || !r.data) return false;
-  var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-  if(i >= 0) S.producao[i] = r.data;
-  else S.producao.push(r.data);
-  return true;
+  return salvarProducaoSegura(eid, tri, [{ref:ref, value:parseFloat(valor)||0}]);
 }
 
 // Total de um produto em uma semana (soma todos os prodIdx da semana)
@@ -1403,17 +1466,7 @@ function getProducaoSemanalModalidade(eid, tri, mesIdx, semIdx, modIdx){
 // Salva o valor produzido de uma semana específica para uma modalidade
 async function saveProducaoSemanalModalidade(eid, tri, mesIdx, semIdx, modIdx, valor){
   var ref = tri + '-M' + mesIdx + '-S' + semIdx + '-MOD' + modIdx;
-  var r = await sb.from('producao_trimestral').upsert({
-    estagiario_id: eid,
-    tri_ref: ref,
-    meta: 0,
-    producao: valor
-  }, {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(r.error || !r.data) return false;
-  var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-  if(i >= 0) S.producao[i] = r.data;
-  else S.producao.push(r.data);
-  return true;
+  return salvarProducaoSegura(eid, tri, [{ref:ref, value:parseFloat(valor)||0}]);
 }
 
 // Soma de uma semana (todas as 4 modalidades)
@@ -1454,6 +1507,35 @@ function getTotalTrimestreModalidades(eid, tri){
   return total;
 }
 
+function abrirResultadosReact(idx, tri){
+  if(!window.nextuberTracking) return false;
+  var e = S.ests[idx];
+  if(!e) return false;
+  window.nextuberTracking.open({
+    student: { id: String(e.id), name: String(e.nome || '') },
+    quarterRef: tri,
+    productionRows: (S.producao || []).filter(function(p){
+      return String(p.estagiario_id) === String(e.id) && String(p.tri_ref || '').indexOf(tri) === 0;
+    }),
+    canEdit: !!(editor || (modoGestor && gestorLogado))
+  });
+  return true;
+}
+
+window.addEventListener('nextuber:production-saved', function(event){
+  var detail = event && event.detail;
+  if(!detail || !detail.studentId || !detail.quarterRef || !Array.isArray(detail.productionRows)) return;
+  S.producao = (S.producao || []).filter(function(row){
+    return !(String(row.estagiario_id) === String(detail.studentId) && String(row.tri_ref || '').indexOf(detail.quarterRef) === 0);
+  }).concat(detail.productionRows);
+  var est = S.ests.find(function(item){ return String(item.id) === String(detail.studentId); });
+  if(est && detail.profile) est.perfil = detail.profile;
+  updateMetrics();
+  renderCards();
+  renderOverviewAll();
+  renderRanking();
+});
+
 function renderResultados(idx){
   var el = document.getElementById('pResultados');
   var sel = document.getElementById('pTriSelect');
@@ -1469,39 +1551,40 @@ function renderResultados(idx){
 function renderResultadosForTri(idx, tri){
   var el = document.getElementById('pResultados'); if(!el) return;
   var e = S.ests[idx];
+  if(abrirResultadosReact(idx, tri)) return;
   var prod = getProducaoTri(e.id, tri);
   var meta = parseFloat(prod.meta)||0;
   var meses = getMesesTrimestre(tri);
-  
+
   // Detectar mês vigente
   var mesVigenteNoTri = getMesVigenteEmTrimestre(tri);
-  
+
   // Se pSelectedMesIdx nunca foi inicializado, usar mês vigente
   if(pSelectedMesIdx === undefined || pSelectedMesIdx < 1 || pSelectedMesIdx > 3){
     pSelectedMesIdx = mesVigenteNoTri;
   }
-  
+
   var mesIdx = pSelectedMesIdx; // Mês selecionado para exibição (1, 2 ou 3)
   var mesNome = meses[mesIdx-1].nome;
   var numSemanasMes = quantidadeSemanasMes(tri, mesIdx);
   var totalMes = getTotalMesModalidades(e.id, tri, mesIdx);
-  
+
   // Verificar se mês está fechado
   var fechado = true;
   for(var s = 1; s <= numSemanasMes; s++){
     if(getTotalSemanaModalidades(e.id, tri, mesIdx, s) === 0){ fechado = false; break; }
   }
-  
+
   var isVigente = (mesIdx === mesVigenteNoTri);
   var canEdit = (editor || (modoGestor && gestorLogado)); // Todos os meses editáveis
-  
+
   // Total produzido (compatibilidade)
   var totalModalidades = getTotalTrimestreModalidades(e.id, tri);
   var totalMensalAntigo = getTotalMensal(e.id, tri);
   var totalProd = totalModalidades > 0 ? totalModalidades : (totalMensalAntigo > 0 ? totalMensalAntigo : (parseFloat(prod.producao)||0));
   var pct = meta>0 ? Math.round(Math.min(totalProd/meta, 1)*100) : 0;
   var fr = faixaRes(pct);
-  
+
   // KPI cards
   var h = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">'
     +'<div style="background:var(--bg);border-radius:var(--r2);padding:10px;text-align:center;"><div style="font-size:9px;color:var(--ink3);margin-bottom:3px;">Alvo trimestral</div><div style="font-size:14px;font-weight:500;">'+fmtMilhar(meta)+'</div></div>'
@@ -1516,7 +1599,7 @@ function renderResultadosForTri(idx, tri){
     +'<div style="text-align:center;flex:1;">'
       +'<div style="font-size:16px;font-weight:700;color:var(--ink);">'+mesNome+'</div>'
       +'<div style="font-size:11px;color:var(--ink3);margin-top:2px;">'
-        +(isVigente ? '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:12px;font-weight:600;">● Mês vigente</span>' 
+        +(isVigente ? '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:12px;font-weight:600;">● Mês vigente</span>'
                    : '')
       +'</div>'
     +'</div>'
@@ -1527,13 +1610,13 @@ function renderResultadosForTri(idx, tri){
   if(canEdit){
     h += '<div class="field-grp" style="margin-bottom:14px;"><div class="field-lbl">Alvo do trimestre</div><input class="field-in" type="text" id="pMetaInput" value="'+(meta?fmtMilhar(meta):'')+'" placeholder="0" inputmode="numeric" style="font-size:13px;"></div>';
   }
-  
+
   // Card do mês
   var mesCorFundo = 'var(--bg)';
   var mesCorBorda = 'var(--border)';
-  var mesStatus = isVigente ? '<span style="color:var(--or);font-size:10px;font-weight:600;">● Mês vigente</span>' 
+  var mesStatus = isVigente ? '<span style="color:var(--or);font-size:10px;font-weight:600;">● Mês vigente</span>'
                              : '<span style="color:var(--or);font-size:10px;font-weight:600;">✎ Editável</span>';
-  
+
   h += '<div style="border:1px solid '+mesCorBorda+';border-radius:10px;padding:12px;background:'+mesCorFundo+';margin-bottom:10px;">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
       +'<span style="font-size:13px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;">'+mesNome+' - Modalidades</span>'
@@ -1552,13 +1635,13 @@ function renderResultadosForTri(idx, tri){
   h += '<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);background:var(--bg);">Total</th>'
     +'</tr></thead>'
     +'<tbody>';
-  
+
   // Linhas das modalidades
   MODALIDADES.forEach(function(mod, modIdx){
     var totalMod = 0;
     h += '<tr>'
       +'<td style="padding:6px;border:1px solid var(--border);font-weight:600;color:'+CORES_MODALIDADES[mod]+';font-size:11px;">'+mod+'</td>';
-    
+
     for(var si = 1; si <= numSemanasMes; si++){
       var semVal = getProducaoSemanalModalidade(e.id, tri, mesIdx, si, modIdx);
       totalMod += semVal;
@@ -1572,7 +1655,7 @@ function renderResultadosForTri(idx, tri){
     h += '<td class="pModTotalMod-'+mesIdx+'-'+modIdx+'" style="padding:6px;border:1px solid var(--border);background:var(--bg);font-weight:600;text-align:center;font-size:11px;">'+fmtMilhar(totalMod)+'</td>'
       +'</tr>';
   });
-  
+
   // Linha de totais
   h += '<tr style="background:var(--bg);font-weight:700;">'
     +'<td style="padding:6px;border:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--ink);letter-spacing:.04em;">Total</td>';
@@ -1583,7 +1666,7 @@ function renderResultadosForTri(idx, tri){
   h += '<td class="pModTotalMes-'+mesIdx+'" style="padding:6px;border:1px solid var(--border);background:var(--or-l);color:var(--or-d);text-align:center;font-size:12px;font-weight:700;">'+fmtMilhar(totalMes)+'</td>'
     +'</tr>'
     +'</tbody></table></div></div>';
-  
+
   // Botões de salvar (apenas mês vigente)
   if(canEdit){
     h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
@@ -1591,10 +1674,10 @@ function renderResultadosForTri(idx, tri){
       +'<span class="obs-saved" id="resultadoSaved">✓ Dados salvos</span>'
       +'</div>';
   }
-  
+
   // ── OUTROS PRODUTOS (semanal - mesmo formato do crédito) ──
   var totalOutrosMes = getTotalMesOutros(e.id, tri, mesIdx);
-  
+
   h += '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--bg);margin-bottom:14px;margin-top:8px;">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
       +'<span style="font-size:13px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;">'+mesNome+' - Outros Produtos</span>'
@@ -1610,12 +1693,12 @@ function renderResultadosForTri(idx, tri){
   h += '<th style="padding:6px 4px;font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;border:1px solid var(--border);background:var(--bg);">Total</th>'
     +'</tr></thead>'
     +'<tbody>';
-  
+
   OUTROS_PRODUTOS.forEach(function(prod, prodIdx){
     var totalProd = 0;
     h += '<tr>'
       +'<td style="padding:6px;border:1px solid var(--border);font-weight:600;color:'+CORES_OUTROS[prod]+';font-size:11px;">'+prod+'</td>';
-    
+
     for(var si = 1; si <= numSemanasMes; si++){
       var semVal = getProducaoOutroProduto(e.id, tri, mesIdx, si, prodIdx);
       totalProd += semVal;
@@ -1629,7 +1712,7 @@ function renderResultadosForTri(idx, tri){
     h += '<td class="pOutroTotalProd-'+mesIdx+'-'+prodIdx+'" style="padding:6px;border:1px solid var(--border);background:var(--bg);font-weight:600;text-align:center;font-size:11px;">'+fmtMilhar(totalProd)+'</td>'
       +'</tr>';
   });
-  
+
   // Linha de totais por semana
   h += '<tr style="background:var(--bg);font-weight:700;">'
     +'<td style="padding:6px;border:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--ink);letter-spacing:.04em;">Total</td>';
@@ -1640,27 +1723,27 @@ function renderResultadosForTri(idx, tri){
   h += '<td class="pOutroTotalMes-'+mesIdx+'" style="padding:6px;border:1px solid var(--border);background:var(--or-l);color:var(--or-d);text-align:center;font-size:12px;font-weight:700;">'+fmtMilhar(totalOutrosMes)+'</td>'
     +'</tr>'
     +'</tbody></table></div></div>';
-  
+
   // Gráfico de pizza (todos os produtos)
   h += '<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">'
     +'<div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">Equilíbrio (trimestre)</div>'
     +'<div id="pGraficoMod"></div>'
     +'</div>';
-  
+
   // Gráfico de pizza - Outros Produtos
   h += '<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">'
     +'<div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">Outros Produtos (trimestre)</div>'
     +'<div id="pGraficoOutros"></div>'
     +'</div>';
-  
+
   h += '<div id="pHistoricoTri"></div>';
-  
+
   el.innerHTML = h;
-  
+
   // Listeners de navegação
   var btnAnt = document.getElementById('btnMesAnterior');
   var btnProx = document.getElementById('btnMesProximo');
-  
+
   if(btnAnt){
     btnAnt.disabled = (mesIdx === 1);
     btnAnt.style.opacity = btnAnt.disabled ? '0.5' : '1';
@@ -1671,7 +1754,7 @@ function renderResultadosForTri(idx, tri){
       }
     });
   }
-  
+
   if(btnProx){
     btnProx.disabled = (mesIdx === 3);
     btnProx.style.opacity = btnProx.disabled ? '0.5' : '1';
@@ -1682,15 +1765,15 @@ function renderResultadosForTri(idx, tri){
       }
     });
   }
-  
+
   loadSnapshotsHistory(e.id);
-  
+
   var metaInp = document.getElementById('pMetaInput');
   if(metaInp) metaInp.addEventListener('input', function(){
     var v = this.value.replace(/[^0-9]/g,'');
     this.value = v ? parseInt(v).toLocaleString('pt-BR') : '';
   });
-  
+
   document.querySelectorAll('.pModInput').forEach(function(inp){
     inp.addEventListener('input', function(){
       var v = this.value.replace(/[^0-9]/g,'');
@@ -1698,7 +1781,7 @@ function renderResultadosForTri(idx, tri){
       atualizarTotaisModalidades(idx, tri);
     });
   });
-  
+
   // Listeners para Outros Produtos (atualiza totais em tempo real)
   document.querySelectorAll('.pOutroInput').forEach(function(inp){
     inp.addEventListener('input', function(){
@@ -1707,12 +1790,12 @@ function renderResultadosForTri(idx, tri){
       atualizarTotaisOutrosProdutos(idx, tri);
     });
   });
-  
+
   if(canEdit){
     renderGraficoPizzaModalidades(idx, tri);
     renderGraficoPizzaOutros(idx, tri);
   }
-  
+
   var btn = document.getElementById('btnSalvarResultado');
   if(btn){
     btn.addEventListener('click', async function(){
@@ -1720,42 +1803,33 @@ function renderResultadosForTri(idx, tri){
       btn.textContent = 'Salvando...';
       try {
         var newMeta = parseMilhar((document.getElementById('pMetaInput')||{}).value)||0;
-        if(!(await saveMetaTri(e.id, tri, newMeta))) throw new Error('Não foi possível salvar o alvo.');
-
+        var entries = [];
         var modInputs = document.querySelectorAll('.pModInput');
-        var totalGeral = 0;
-        var houveProducaoInformada = false;
         for(var i = 0; i < modInputs.length; i++){
           var val = parseMilhar(modInputs[i].value) || 0;
           var mesI = parseInt(modInputs[i].getAttribute('data-mes'));
           var semI = parseInt(modInputs[i].getAttribute('data-sem'));
           var modI = parseInt(modInputs[i].getAttribute('data-mod'));
-          if(!(await saveProducaoSemanalModalidade(e.id, tri, mesI, semI, modI, val))) throw new Error('Não foi possível salvar uma modalidade.');
-          totalGeral += val;
-          if(val > 0) houveProducaoInformada = true;
+          entries.push({ref:tri+'-M'+mesI+'-S'+semI+'-MOD'+modI, value:val});
         }
 
-        // Salvar Outros Produtos (com semana)
         var outroInputs = document.querySelectorAll('.pOutroInput');
         for(var j = 0; j < outroInputs.length; j++){
           var outVal = parseMilhar(outroInputs[j].value) || 0;
           var outMes = parseInt(outroInputs[j].getAttribute('data-mes'));
           var outSem = parseInt(outroInputs[j].getAttribute('data-sem'));
           var outProd = parseInt(outroInputs[j].getAttribute('data-prod'));
-          if(!(await saveProducaoOutroProduto(e.id, tri, outMes, outSem, outProd, outVal))) throw new Error('Não foi possível salvar um produto.');
-          if(outVal > 0) houveProducaoInformada = true;
+          entries.push({ref:tri+'-M'+outMes+'-S'+outSem+'-OUT'+outProd, value:outVal});
         }
 
-        if(!(await saveProducaoTri(e.id, tri, totalGeral))) throw new Error('Não foi possível salvar o total produzido.');
-        if(!(await salvarSnapshot(e.id, tri))) throw new Error('Não foi possível atualizar o resumo trimestral.');
-
-        // Produção zerada exige a confirmação explícita no botão "Marcar produção como verificada hoje".
-        var perfilAntesDaConfirmacao = JSON.parse(JSON.stringify(e.perfil || {}));
-        if(houveProducaoInformada) registrarProducaoVerificada(e);
-        if(!(await saveEstagiario(e))){
-          e.perfil = perfilAntesDaConfirmacao;
-          throw new Error('Não foi possível confirmar a atualização.');
-        }
+        if(!window.nextuberProduction) throw new Error('Serviço de produção indisponível.');
+        var saveResult = await window.nextuberProduction.saveBatch({
+          studentId:String(e.id),
+          quarterRef:tri,
+          target:newMeta,
+          entries:entries
+        });
+        aplicarRetornoProducao(e.id, tri, saveResult);
 
       var sv = document.getElementById('resultadoSaved');
 
@@ -1769,7 +1843,7 @@ function renderResultadosForTri(idx, tri){
       }
       } catch(err) {
         console.error('Salvar resultados:', err);
-        alert('Os dados não foram salvos por completo. Tente novamente.');
+        alert((err && err.message) || 'Os dados não foram salvos. Tente novamente.');
         btn.disabled = false;
         btn.textContent = 'Salvar';
       }
@@ -1780,7 +1854,7 @@ function renderResultadosForTri(idx, tri){
 // Atualiza totais (semanas, mês, modalidade) enquanto o gestor digita
 function atualizarTotaisModalidades(idx, tri){
   var e = S.ests[idx];
-  
+
   // Coletar todos os valores dos inputs em memória
   var valores = {}; // valores[mesIdx][semIdx][modIdx] = valor
   for(var mi = 1; mi <= 3; mi++){
@@ -1793,7 +1867,7 @@ function atualizarTotaisModalidades(idx, tri){
       }
     }
   }
-  
+
   // Atualizar totais por modalidade (por mês)
   for(var mi2 = 1; mi2 <= 3; mi2++){
     for(var modI2 = 0; modI2 < 4; modI2++){
@@ -1805,7 +1879,7 @@ function atualizarTotaisModalidades(idx, tri){
       if(elTot) elTot.textContent = fmtMilhar(totalMod);
     }
   }
-  
+
   // Atualizar totais por semana
   for(var mi3 = 1; mi3 <= 3; mi3++){
     for(var si3 = 1; si3 <= quantidadeSemanasMes(tri, mi3); si3++){
@@ -1817,7 +1891,7 @@ function atualizarTotaisModalidades(idx, tri){
       if(elSem) elSem.textContent = fmtMilhar(totalSem);
     }
   }
-  
+
   // Atualizar total do mês
   for(var mi4 = 1; mi4 <= 3; mi4++){
     var totalMes = 0;
@@ -1829,7 +1903,7 @@ function atualizarTotaisModalidades(idx, tri){
     var elMes = document.querySelector('.pModTotalMes-'+mi4);
     if(elMes) elMes.textContent = fmtMilhar(totalMes);
   }
-  
+
   // Atualizar indicadores e gráfico em tempo real
   // Pizza será atualizada ao salvar
 }
@@ -1839,7 +1913,7 @@ function atualizarTotaisOutrosProdutos(idx, tri){
   var mesIdx = pSelectedMesIdx || 1;
   var numProdutos = OUTROS_PRODUTOS.length;
   var numSemanasMes = quantidadeSemanasMes(tri, mesIdx);
-  
+
   // Coletar valores dos inputs
   var valores = {}; // valores[semIdx][prodIdx] = valor
   for(var si = 1; si <= numSemanasMes; si++){
@@ -1849,7 +1923,7 @@ function atualizarTotaisOutrosProdutos(idx, tri){
       valores[si][pi] = inp ? (parseMilhar(inp.value)||0) : 0;
     }
   }
-  
+
   // Total por produto no mês
   for(var p = 0; p < numProdutos; p++){
     var totalProd = 0;
@@ -1859,7 +1933,7 @@ function atualizarTotaisOutrosProdutos(idx, tri){
     var elP = document.querySelector('.pOutroTotalProd-'+mesIdx+'-'+p);
     if(elP) elP.textContent = fmtMilhar(totalProd);
   }
-  
+
   // Total por semana
   for(var s2 = 1; s2 <= numSemanasMes; s2++){
     var totalSem = 0;
@@ -1869,7 +1943,7 @@ function atualizarTotaisOutrosProdutos(idx, tri){
     var elS = document.querySelector('.pOutroTotalSem-'+mesIdx+'-'+s2);
     if(elS) elS.textContent = fmtMilhar(totalSem);
   }
-  
+
   // Total do mês
   var totalMes = 0;
   for(var s3 = 1; s3 <= numSemanasMes; s3++){
@@ -1888,14 +1962,14 @@ function renderIndicadoresModalidades(idx, tri){
   var e = S.ests[idx];
   var prod = getProducaoTri(e.id, tri);
   var meta = parseFloat(prod.meta) || 0;
-  
+
   var html = '';
   MODALIDADES.forEach(function(mod, modIdx){
     var totalMod = getTotalTrimestreModalidade(e.id, tri, modIdx);
     var pct = meta > 0 ? Math.round((totalMod / meta) * 100) : 0;
     var pctFill = Math.min(pct, 100);
     var cor = CORES_MODALIDADES[mod];
-    
+
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+cor+';border-radius:6px;padding:10px;">'
       +'<div style="font-size:10px;color:var(--ink3);font-weight:600;margin-bottom:4px;">'+mod+'</div>'
       +'<div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;">R$ '+fmtMilhar(totalMod)+'</div>'
@@ -1905,7 +1979,7 @@ function renderIndicadoresModalidades(idx, tri){
       +'<div style="font-size:10px;color:var(--ink3);">'+pct+'% do alvo</div>'
       +'</div>';
   });
-  
+
   el.innerHTML = html;
 }
 
@@ -1916,7 +1990,7 @@ function renderIndicadoresModalidadesFromInputs(idx, tri, valores){
   var e = S.ests[idx];
   var prod = getProducaoTri(e.id, tri);
   var meta = parseFloat(prod.meta) || 0;
-  
+
   var html = '';
   MODALIDADES.forEach(function(mod, modIdx){
     var totalMod = 0;
@@ -1928,7 +2002,7 @@ function renderIndicadoresModalidadesFromInputs(idx, tri, valores){
     var pct = meta > 0 ? Math.round((totalMod / meta) * 100) : 0;
     var pctFill = Math.min(pct, 100);
     var cor = CORES_MODALIDADES[mod];
-    
+
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+cor+';border-radius:6px;padding:10px;">'
       +'<div style="font-size:10px;color:var(--ink3);font-weight:600;margin-bottom:4px;">'+mod+'</div>'
       +'<div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;">R$ '+fmtMilhar(totalMod)+'</div>'
@@ -1938,7 +2012,7 @@ function renderIndicadoresModalidadesFromInputs(idx, tri, valores){
       +'<div style="font-size:10px;color:var(--ink3);">'+pct+'% do alvo</div>'
       +'</div>';
   });
-  
+
   el.innerHTML = html;
 }
 
@@ -1947,11 +2021,11 @@ function renderGraficoPizzaModalidades(idx, tri){
   var el = document.getElementById('pGraficoMod');
   if(!el) return;
   var e = S.ests[idx];
-  
+
   var totais = MODALIDADES.map(function(mod, modIdx){
     return {nome: mod, valor: getTotalTrimestreModalidade(e.id, tri, modIdx), cor: CORES_MODALIDADES[mod]};
   });
-  
+
   renderPizza(el, totais);
 }
 
@@ -1959,11 +2033,11 @@ function renderGraficoPizzaOutros(idx, tri){
   var el = document.getElementById('pGraficoOutros');
   if(!el) return;
   var e = S.ests[idx];
-  
+
   var totais = OUTROS_PRODUTOS.map(function(prod, prodIdx){
     return {nome: prod, valor: getTotalTrimestreOutroProduto(e.id, tri, prodIdx), cor: CORES_OUTROS[prod]};
   });
-  
+
   renderPizza(el, totais);
 }
 
@@ -1971,7 +2045,7 @@ function renderGraficoPizzaOutros(idx, tri){
 function renderGraficoPizzaModalidadesFromInputs(idx, tri, valores){
   var el = document.getElementById('pGraficoMod');
   if(!el) return;
-  
+
   var totais = MODALIDADES.map(function(mod, modIdx){
     var total = 0;
     for(var mi = 1; mi <= 3; mi++){
@@ -1981,30 +2055,30 @@ function renderGraficoPizzaModalidadesFromInputs(idx, tri, valores){
     }
     return {nome: mod, valor: total, cor: CORES_MODALIDADES[mod]};
   });
-  
+
   renderPizza(el, totais);
 }
 
 // Renderiza o SVG do gráfico de pizza
 function renderPizza(el, totais){
   var total = totais.reduce(function(sum, t){ return sum + t.valor; }, 0);
-  
+
   if(total === 0){
     el.innerHTML = '<div style="font-size:12px;color:var(--ink3);font-style:italic;padding:10px 0;">Sem vendas registradas ainda.</div>';
     return;
   }
-  
+
   // Calcular offsets do pizza chart
   var offset = 0;
   var circunferencia = 283; // 2 * π * 45 (aprox.)
-  
+
   var pieSegments = '';
   var legendItems = '';
-  
+
   totais.forEach(function(t){
     var pct = (t.valor / total) * 100;
     var arco = (pct / 100) * circunferencia;
-    
+
     if(arco > 0){
       pieSegments += '<circle cx="60" cy="60" r="45" fill="none" '
         +'stroke="'+t.cor+'" stroke-width="22" '
@@ -2012,16 +2086,16 @@ function renderPizza(el, totais){
         +'stroke-dashoffset="-'+offset.toFixed(2)+'" '
         +'transform="rotate(-90 60 60)"/>';
     }
-    
+
     legendItems += '<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;">'
       +'<div style="width:12px;height:12px;border-radius:3px;background:'+t.cor+';flex-shrink:0;"></div>'
       +'<div style="flex:1;"><div style="font-weight:500;color:var(--ink);">'+t.nome+'</div>'
       +'<div style="font-size:10px;color:var(--ink3);">R$ '+fmtMilhar(t.valor)+' ('+Math.round(pct)+'%)</div>'
       +'</div></div>';
-    
+
     offset += arco;
   });
-  
+
   el.innerHTML = '<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center;">'
     +'<svg viewBox="0 0 120 120" style="width:150px;height:150px;flex-shrink:0;">'
     + pieSegments
@@ -2078,7 +2152,7 @@ function renderPanelTrilha(idx){
   if(key==='iniciante') etapaLocal = etapa;            // 0,1,2
   else if(key==='intermediario') etapaLocal = etapa-3; // 0,1,2 (was 3,4,5)
   else etapaLocal = etapa-6;                           // 0,1 (was 6,7)
-  
+
   var canCheck = (editor || (modoGestor && gestorLogado));
   if(!e.trilhaChecks) e.trilhaChecks = {};
 
@@ -2185,21 +2259,21 @@ function atualizarOpcoesFiltroAgencia(lista){
   var sel = document.getElementById('filtroAgencia');
   if(!sel) return;
   var valorAtual = sel.value || 'todas';
-  
+
   // Coletar agências únicas
   var agencias = {};
   lista.forEach(function(e){
     if(e.perfil && e.perfil.agencia){ agencias[e.perfil.agencia] = true; }
   });
   var listaAg = Object.keys(agencias).sort();
-  
+
   // Reconstruir opções
   var h = '<option value="todas">Todas</option>';
   listaAg.forEach(function(ag){
     h += '<option value="'+escapeAttr(ag)+'">Ag '+escapeHtml(ag)+'</option>';
   });
   sel.innerHTML = h;
-  
+
   // Restaurar valor selecionado (se ainda válido)
   if(valorAtual === 'todas' || agencias[valorAtual]){
     sel.value = valorAtual;
@@ -2222,22 +2296,22 @@ function renderCards(){
       return;
     }
   }
-  
+
   // Preencher opções de agência (dinâmico)
   atualizarOpcoesFiltroAgencia(lista);
-  
+
   // Aplicar filtros
   var filtroAg = (document.getElementById('filtroAgencia')||{}).value || 'todas';
   var filtroCert = (document.getElementById('filtroCertificacao')||{}).value || 'todas';
   var filtroOrdem = (document.getElementById('filtroOrdem')||{}).value || 'nome';
-  
+
   var totalAntes = lista.length;
-  
+
   // Filtro agência
   if(filtroAg !== 'todas'){
     lista = lista.filter(function(e){ return (e.perfil && e.perfil.agencia) === filtroAg; });
   }
-  
+
   // Filtro certificação
   if(filtroCert !== 'todas'){
     if(filtroCert === 'sem'){
@@ -2246,7 +2320,7 @@ function renderCards(){
       lista = lista.filter(function(e){ return (e.perfil && e.perfil.certificacao) === filtroCert; });
     }
   }
-  
+
   // Ordenação
   if(filtroOrdem === 'nome'){
     lista.sort(function(a,b){ return (a.nome||'').localeCompare(b.nome||'', 'pt-BR'); });
@@ -2255,7 +2329,7 @@ function renderCards(){
   } else if(filtroOrdem === 'menor_nota'){
     lista.sort(function(a,b){ return calcScore(a) - calcScore(b); });
   }
-  
+
   // Contador
   var contEl = document.getElementById('filtroContador');
   if(contEl){
@@ -2265,12 +2339,12 @@ function renderCards(){
       contEl.textContent = 'Mostrando ' + lista.length + ' de ' + totalAntes;
     }
   }
-  
+
   if(!lista.length){
     document.getElementById('notionGrid').innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink3);font-size:14px;">Nenhum estagiário encontrado com esses filtros.</div>';
     return;
   }
-  
+
   var cards=lista.map(function(e,ei){
     var ci=currMonth(e);
     var done=e.meses.filter(function(s){return s.indexOf('Concluído')>=0||s.indexOf('Renovado')>=0;}).length;
@@ -2391,6 +2465,7 @@ function openPanel(idx){
 }
 function closePanel(){
   panelIdx=-1;
+  if(window.nextuberTracking) window.nextuberTracking.close();
   document.getElementById('overlay').classList.remove('open');
   document.getElementById('panel').classList.remove('open');
   renderCards();
@@ -2404,22 +2479,22 @@ function abrirPermissoesGestor(id){
   if(!g) return;
   var perms = g.permissoes || {};
   var tipo = g.tipo_gestor || 'ga';
-  
+
   document.getElementById('permGestorId').value = id;
   document.getElementById('permGestorNome').textContent = g.nome;
-  
+
   // Carregar tipo de gestor
   document.getElementById('tipoGA').checked = (tipo === 'ga');
   document.getElementById('tipoGGA').checked = (tipo === 'gga');
-  
+
   // Carregar permissões
   document.getElementById('permTrilhas').checked = !!perms.trilhas;
   document.getElementById('permRanking').checked = !!perms.ranking;
   document.getElementById('permTodosEstag').checked = !!perms.todos_estagiarios;
-  
+
   // Limpar campo de nova senha sempre que abrir
   document.getElementById('permNovaSenha').value = '';
-  
+
   // Listeners para auto-marcar checkboxes quando GGA é selecionado
   document.getElementById('tipoGA').addEventListener('change', function(){
     if(this.checked){
@@ -2429,7 +2504,7 @@ function abrirPermissoesGestor(id){
       document.getElementById('permTodosEstag').disabled = false;
     }
   });
-  
+
   document.getElementById('tipoGGA').addEventListener('change', function(){
     if(this.checked){
       // GGA = auto-marcar todas as permissões
@@ -2442,7 +2517,7 @@ function abrirPermissoesGestor(id){
       document.getElementById('permTodosEstag').disabled = false;
     }
   });
-  
+
   document.getElementById('permissoesOv').classList.add('open');
 }
 
@@ -2450,41 +2525,43 @@ async function salvarPermissoesGestor(){
   var id = document.getElementById('permGestorId').value;
   var novaSenha = document.getElementById('permNovaSenha').value.trim();
   var tipoGestor = document.querySelector('input[name="permTipoGestor"]:checked').value;
-  
+
   // Validar nova senha (se preenchida)
   if(novaSenha && novaSenha.length < 4){
     alert('A nova senha deve ter pelo menos 4 caracteres.');
     return;
   }
-  
+
   var permissoes = {
     trilhas: document.getElementById('permTrilhas').checked,
     ranking: document.getElementById('permRanking').checked,
     todos_estagiarios: document.getElementById('permTodosEstag').checked
   };
-  
-  var update = {
-    permissoes: permissoes,
-    tipo_gestor: tipoGestor
-  };
-  if(novaSenha){
-    update.senha_hash = await hashSenha(novaSenha.slice(0,4));
+
+  var r;
+  try {
+    if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+    r = await window.nextuberMutations.updateManager(String(id), {
+      permissions: permissoes,
+      managerType: tipoGestor,
+      password: novaSenha || ''
+    });
+  } catch(error) {
+    alert('Erro ao salvar: ' + (error.message || error));
+    return;
   }
-  
-  var r = await sb.from('gestores').update(JSON.parse(JSON.stringify(update))).eq('id',id).select().single();
-  if(r.error){ alert('Erro ao salvar: '+r.error.message); return; }
-  if(r.data){
+  if(r.manager){
     var i = S.gestores.findIndex(function(g){ return g.id === id; });
-    if(i>=0) S.gestores[i] = r.data;
+    if(i>=0) S.gestores[i] = r.manager;
     // Se o gestor logado é esse, atualizar também
     if(gestorLogado && gestorLogado.id === id){
-      gestorLogado = r.data;
+      gestorLogado = r.manager;
       if(modoGestor) applyModoGestor();
     }
   }
   document.getElementById('permissoesOv').classList.remove('open');
   renderGestoresList();
-  
+
   if(novaSenha){
     alert('Senha redefinida com sucesso! A nova senha é: ' + novaSenha.slice(0,4));
   }
@@ -2503,19 +2580,20 @@ function renderGestoresList(){
   var el = document.getElementById('gestoresList');
   var countEl = document.getElementById('gestoresCount');
   if(!el) return;
-  if(countEl) countEl.textContent = (S.gestores||[]).length;
-  if(!S.gestores || !S.gestores.length){
-    el.innerHTML = '<div class="cad-list-empty">Nenhum gestor cadastrado.</div>';
+  var gestoresAtivos = (typeof getGestoresAtivos === 'function') ? getGestoresAtivos() : S.gestores;
+  if(countEl) countEl.textContent = (gestoresAtivos||[]).length;
+  if(!gestoresAtivos || !gestoresAtivos.length){
+    el.innerHTML = '<div class="cad-list-empty">Nenhum gestor cadastrado nesta regional.</div>';
     return;
   }
-  el.innerHTML = S.gestores.map(function(g){
+  el.innerHTML = gestoresAtivos.map(function(g){
     var perms = g.permissoes || {};
     var pCount = Object.keys(perms).filter(function(k){ return perms[k]; }).length;
     var tipo = g.tipo_gestor || 'ga';
     var tipoBg = tipo === 'gga' ? '#FEE2E2' : '#E0F2FE';
     var tipoColor = tipo === 'gga' ? '#DC2626' : '#0369A1';
     var tipoLabel = tipo === 'gga' ? '👔 GGA' : '👤 GA';
-    
+
     return '<div class="cad-list-row">'
       +'<div class="cad-list-av" style="background:var(--ink);color:#fff;">'+escapeHtml(g.nome[0].toUpperCase())+'</div>'
       +'<div class="cad-list-info">'
@@ -2549,7 +2627,8 @@ function renderCadChips(){
   renderCadList();
 }
 function renderCadList(){
-  var ests = S.ests.filter(function(e){ return e.perfil && e.perfil.funcional; });
+  var estsAtivos = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
+  var ests = estsAtivos.filter(function(e){ return e.perfil && e.perfil.funcional; });
   document.getElementById('cadListCount').textContent = ests.length;
   if(ests.length===0){
     document.getElementById('cadList').innerHTML='<div class="cad-list-empty">Nenhum estagiário cadastrado ainda.</div>';
@@ -2583,8 +2662,12 @@ function renderCadList(){
       var e = S.ests[idx];
       if(!confirm('Excluir o estagiário "'+e.nome+'"? Esta ação não pode ser desfeita.')) return;
       if(e.id){
-        var r = await sb.from('estagiarios').delete().eq('id', e.id);
-        if(r.error){ alert('Erro ao excluir: ' + (r.error.message||JSON.stringify(r.error))); return; }
+        try {
+          await deleteEstagiario(e.id);
+        } catch(error) {
+          alert('Erro ao excluir: ' + (error.message||error));
+          return;
+        }
       }
       S.ests.splice(idx, 1);
       persist(true);
@@ -2658,10 +2741,10 @@ async function savePerfil(){
     certificacao: document.getElementById('cadCertificacao').value || null,
     mes_aniversario: mesAniversario
   };
-  
+
   // Validate
   if(!func || func.length < 9){ alert('Funcional deve ter 9 dígitos.'); return; }
-  
+
   var estagiario;
   if(cadIdx >= 0){
     // editing existing — preserve trilha_manual and ultima_atualizacao_prod
@@ -2689,20 +2772,20 @@ async function savePerfil(){
     };
     S.ests.push(estagiario);
   }
-  
+
   await saveEstagiario(estagiario);
-  
+
   if(!estagiario.id){
     alert('Erro ao salvar. Tente novamente.');
     // Remove from local state if save failed
     if(cadIdx < 0) S.ests.pop();
     return;
   }
-  
+
   persist(true);
   renderCards();
   renderCadList();
-  
+
   // reset form
   cadIdx = -1;
   ['cadNome','cadFunc','cadAgencia','cadInicio','cadGAFunc','cadGGAFunc','cadCertificacao','cadAnivDia','cadAnivMes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
@@ -2779,7 +2862,7 @@ function goPage(id){
   if(pg) pg.classList.add('active');
   document.querySelectorAll('.nav-item[data-page="'+id+'"],.drawer-item[data-page="'+id+'"]').forEach(function(el){el.classList.add('active');});
   if(id==='overview'){ renderOverviewAll(); renderRanking(); }
-  
+
   if(id==='estagiarios'){
     var lock = document.getElementById('estagLock');
     var content = document.getElementById('estagContent');
@@ -2799,10 +2882,30 @@ function goPage(id){
 // ── AUTH ───────────────────────────────────────────────────────────────────
 function openLogin(){ document.getElementById('loginPwd').value=''; document.getElementById('loginErr').classList.remove('show'); document.getElementById('loginOv').classList.add('open'); setTimeout(function(){document.getElementById('loginPwd').focus();},80); }
 function cancelLogin(){ document.getElementById('loginOv').classList.remove('open'); }
-function doLogin(){
-  if(document.getElementById('loginPwd').value===PWD){
-    editor=true; window.editor=true; document.getElementById('loginOv').classList.remove('open'); applyMode();
-  } else { document.getElementById('loginErr').classList.add('show'); document.getElementById('loginPwd').value=''; document.getElementById('loginPwd').focus(); }
+async function doLogin(){
+  var input = document.getElementById('loginPwd');
+  var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('btnLogin');
+  errEl.classList.remove('show');
+  if(!window.nextuberAuth){
+    errEl.textContent = 'Autenticação indisponível. Recarregue a página.';
+    errEl.classList.add('show');
+    return;
+  }
+  if(btn) btn.disabled = true;
+  try {
+    await window.nextuberAuth.loginTutor(input.value);
+    document.getElementById('loginOv').classList.remove('open');
+    input.value = '';
+    await loadFromDB();
+  } catch(e) {
+    errEl.textContent = (e && e.message) ? e.message : 'Senha incorreta.';
+    errEl.classList.add('show');
+    input.value='';
+    input.focus();
+  } finally {
+    if(btn) btn.disabled = false;
+  }
 }
 function setCadInputState(){
   var dis=!editor && !isGGA();
@@ -2848,13 +2951,14 @@ function applyModoGestor(){
   goPage('estagiarios');
 }
 
-function logoutGestor(){
+async function logoutGestor(){
+  if(window.nextuberAuth) await window.nextuberAuth.logout().catch(function(){});
   modoGestor = false;
   gestorLogado = null;
   window.modoGestor = false;
   window.gestorLogado = null;
   window.editor = false;
-  applyMode();
+  await loadFromDB();
   goPage('overview');
 }
 
@@ -2864,7 +2968,7 @@ function openLoginModal(){
   var drawerOv = document.getElementById('drawerOverlay');
   if(drawer) drawer.classList.remove('open');
   if(drawerOv) drawerOv.classList.remove('open');
-  
+
   var tw = document.getElementById('loginTipoWrap');
   var ttw = document.getElementById('loginTutoraWrap');
   var gw = document.getElementById('loginGestorWrap');
@@ -2877,8 +2981,8 @@ function openLoginModal(){
 function applyMode(){
   if(modoGestor){ applyModoGestor(); return; }
   // Itens tutora-only: visíveis SÓ para a tutora; escondidos para visitantes anônimos
-  document.querySelectorAll('[data-tutora="only"]').forEach(function(el){ 
-    el.style.display = editor ? '' : 'none'; 
+  document.querySelectorAll('[data-tutora="only"]').forEach(function(el){
+    el.style.display = editor ? '' : 'none';
   });
   // Mostrar botão "Editar banner" para tutora
   var btnEditBanner = document.getElementById('btnEditarBanner');
@@ -2929,7 +3033,7 @@ function applyMode(){
     renderAvaliacao(_pIdx);
     renderResultados(_pIdx);
   }
-  
+
   renderRanking();
   renderOverviewAll();
 }
@@ -2954,7 +3058,11 @@ function closeExportModal(){
   if(ov) ov.classList.remove('open');
 }
 
-function exportToExcel(){
+async function exportToExcel(){
+  if(typeof XLSX === 'undefined' && window.loadNextuberXLSX){
+    try { await window.loadNextuberXLSX(); }
+    catch(e){ alert('Erro: biblioteca de exportação não carregou. Recarregue a página e tente novamente.'); return; }
+  }
   if(typeof XLSX === 'undefined'){ alert('Erro: biblioteca de exportação não carregou. Recarregue a página e tente novamente.'); return; }
   // Carregar agendamentos ANTES de exportar (para incluir na aba)
   if(typeof carregarAgendamentos === 'function'){
@@ -2986,7 +3094,7 @@ function exportToExcelSync(){
   if(!lista.length){ alert('Nenhum estagiário para exportar.'); return; }
 
   var wb = XLSX.utils.book_new();
-  
+
   // ═══════════════════════════════════════════════════════════
   // ABA 1: RESUMO GERAL (dados cadastrais + nota + totais)
   // ═══════════════════════════════════════════════════════════
@@ -3003,7 +3111,7 @@ function exportToExcelSync(){
       'Nota '+label
     );
   });
-  
+
   var rowsResumo = lista.map(function(e){
     var trilhaKey = getEffectiveTrilhaKey(e);
     var trilhaNome = trilhaKey ? {iniciante:'Decolar',intermediario:'Evoluir',avancado:'Impactar'}[trilhaKey] : '—';
@@ -3021,7 +3129,7 @@ function exportToExcelSync(){
     checkedTris.forEach(function(tri){
       var prod = getProducaoTri(e.id, tri);
       var meta = parseFloat(prod.meta)||0;
-      
+
       // Crédito
       var producaoCredito = getTotalTrimestreModalidades(e.id, tri);
       if(producaoCredito === 0){
@@ -3029,20 +3137,20 @@ function exportToExcelSync(){
         producaoCredito = totalMes > 0 ? totalMes : (parseFloat(prod.producao)||0);
       }
       var pctCredito = meta>0 ? Math.round(Math.min(producaoCredito/meta, 1)*100) : 0;
-      
+
       // Produtos
       var metaProdutos = meta * 0.2;
       var producaoProdutos = getTotalTrimestreOutros(e.id, tri);
       var pctProdutos = metaProdutos>0 ? Math.round(Math.min(producaoProdutos/metaProdutos, 1)*100) : 0;
-      
+
       var nota = calcScore(e, tri);
       var totalGeral = producaoCredito + producaoProdutos;
-      
+
       row.push(meta, producaoCredito, pctCredito+'%', producaoProdutos, pctProdutos+'%', totalGeral, nota);
     });
     return row;
   });
-  
+
   var wsResumo = XLSX.utils.aoa_to_sheet([headerResumo].concat(rowsResumo));
   var colsResumo = [{wch:25},{wch:12},{wch:10},{wch:12},{wch:18},{wch:14},{wch:12},{wch:14}];
   checkedTris.forEach(function(){
@@ -3050,7 +3158,7 @@ function exportToExcelSync(){
   });
   wsResumo['!cols'] = colsResumo;
   XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo Geral');
-  
+
   // ═══════════════════════════════════════════════════════════
   // ABA 2: CRÉDITO DETALHADO (INSS, OP, EP, Creditário por semana)
   // ═══════════════════════════════════════════════════════════
@@ -3083,7 +3191,7 @@ function exportToExcelSync(){
   var wsCredito = XLSX.utils.aoa_to_sheet([headerCredito].concat(rowsCredito));
   wsCredito['!cols'] = [{wch:25},{wch:12},{wch:10},{wch:10},{wch:8},{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12}];
   XLSX.utils.book_append_sheet(wb, wsCredito, 'Crédito Detalhado');
-  
+
   // ═══════════════════════════════════════════════════════════
   // ABA 3: OUTROS PRODUTOS DETALHADO (Seguros, PIC, etc por semana)
   // ═══════════════════════════════════════════════════════════
@@ -3116,7 +3224,7 @@ function exportToExcelSync(){
   var wsProd = XLSX.utils.aoa_to_sheet([headerProd].concat(rowsProd));
   wsProd['!cols'] = [{wch:25},{wch:12},{wch:10},{wch:10},{wch:8},{wch:14},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12}];
   XLSX.utils.book_append_sheet(wb, wsProd, 'Outros Produtos');
-  
+
   // ═══════════════════════════════════════════════════════════
   // ABA 4: CONTATOS (histórico semanal por estagiário)
   // ═══════════════════════════════════════════════════════════
@@ -3160,7 +3268,7 @@ function exportToExcelSync(){
   var wsCont = XLSX.utils.aoa_to_sheet([headerCont].concat(rowsCont));
   wsCont['!cols'] = [{wch:25},{wch:12},{wch:10},{wch:10},{wch:20},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:14},{wch:10}];
   XLSX.utils.book_append_sheet(wb, wsCont, 'Contatos');
-  
+
   // ═══════════════════════════════════════════════════════════
   // ABA 5: AGENDAMENTOS
   // ═══════════════════════════════════════════════════════════
@@ -3198,7 +3306,7 @@ function exportToExcelSync(){
     wsAg['!cols'] = [{wch:12},{wch:32},{wch:14},{wch:18},{wch:40},{wch:20},{wch:10},{wch:30},{wch:8},{wch:20}];
     XLSX.utils.book_append_sheet(wb, wsAg, 'Agendamentos');
   }
-  
+
   // Gerar e baixar
   var nomeArquivo = 'Nextuber_Resultados_' + new Date().toISOString().slice(0,10) + '.xlsx';
   XLSX.writeFile(wb, nomeArquivo);
@@ -3206,7 +3314,7 @@ function exportToExcelSync(){
 }
 
 // ── EVENT LISTENERS ────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function(){
+onNextuberReady(function(){
 
   // Navigation — sidebar
   document.querySelectorAll('.nav-item[data-page]').forEach(function(el){
@@ -3228,9 +3336,9 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 
   // Auth buttons
-  function handleMode(){
-    if(editor){ editor=false; applyMode(); }
-    else if(modoGestor){ logoutGestor(); }
+  async function handleMode(){
+    if(editor){ if(window.nextuberAuth) await window.nextuberAuth.logout().catch(function(){}); editor=false; window.editor=false; await loadFromDB(); goPage('overview'); }
+    else if(modoGestor){ await logoutGestor(); }
     else{ openLoginModal(); }
   }
   document.getElementById('modeBtn').addEventListener('click', handleMode);
@@ -3309,11 +3417,17 @@ document.addEventListener('DOMContentLoaded', function(){
       errEl.classList.add('show');
       return;
     }
-    var hash = await hashSenha(senha);
-    var gestor = (S.gestores||[]).find(function(g){
-      return g.funcional === func && g.senha_hash === hash;
-    });
+    var gestor = null;
+    try {
+      if(!window.nextuberAuth) throw new Error('Autenticação indisponível. Recarregue a página.');
+      var payload = await window.nextuberAuth.loginManager(func, senha);
+      gestor = payload.gestor;
+    } catch(error) {
+      errEl.textContent = (error && error.message) ? error.message : 'Funcional ou senha incorretos.';
+    }
     if(gestor){
+      var gestorIdx = S.gestores.findIndex(function(g){ return g.id === gestor.id; });
+      if(gestorIdx >= 0) S.gestores[gestorIdx] = gestor;
       modoGestor = true;
       gestorLogado = gestor;
       window.modoGestor = true;
@@ -3321,7 +3435,7 @@ document.addEventListener('DOMContentLoaded', function(){
       document.getElementById('loginOv').classList.remove('open');
       document.getElementById('loginGestorFunc').value = '';
       document.getElementById('loginGestorSenha').value = '';
-      applyModoGestor();
+      await loadFromDB();
     } else {
       errEl.textContent = 'Funcional ou senha incorretos.';
       errEl.classList.add('show');
@@ -3409,9 +3523,18 @@ if(btnMarcarAtz){
     if(_pIdx < 0) return;
     if(!editor && !(modoGestor && gestorLogado)) return;
     var e = S.ests[_pIdx];
-    var confirmouNoPrazo = registrarProducaoVerificada(e);
-    if(!(await saveEstagiario(e))) return;
-    
+    if(!window.nextuberProduction) return;
+    var verificacao;
+    try {
+      verificacao = await window.nextuberProduction.verifyToday(String(e.id));
+      e.perfil = verificacao.profile;
+    } catch(error) {
+      console.error('Confirmar producao:', error);
+      alert((error && error.message) || 'Não foi possível confirmar a produção.');
+      return;
+    }
+    var confirmouNoPrazo = verificacao.confirmed;
+
     // Feedback visual: pisca o botão em verde
     var original = this.innerHTML;
     var originalBg = this.style.background;
@@ -3428,11 +3551,11 @@ if(btnMarcarAtz){
       self.style.color = originalColor;
       self.style.borderColor = originalBorder;
     }, 1500);
-    
+
     // Re-render partes que dependem do status
     renderCards();
     // Reabrir painel para atualizar linha "última atualização"
-    setTimeout(function(){ 
+    setTimeout(function(){
       if(getPanelEstIdx() >= 0){
         // Re-preencher só a linha (sem fechar o painel)
         var updEl = document.getElementById('pUltimaAtualizacao');
@@ -3499,7 +3622,7 @@ if(btnMarcarAtz){
   // Configurações — prazo semanal de produção (sexta-feira por padrão)
   var cfgPrazoInput = document.getElementById('cfgPrazoData');
   if(cfgPrazoInput) cfgPrazoInput.value = getPrazoProducaoAtual();
-  
+
   // Renderiza o estado da UI (com prazo definido = mostra card, sem = mostra form)
   function renderPrazoAtual(){
     var cardEl = document.getElementById('cfgPrazoCardAtual');
@@ -3507,7 +3630,7 @@ if(btnMarcarAtz){
     var displayEl = document.getElementById('cfgPrazoDataDisplay');
     var statusEl = document.getElementById('cfgPrazoStatus');
     var btnFecharForm = document.getElementById('btnCfgFecharForm');
-    
+
     var prazoAtual = getPrazoProducaoAtual();
     var usaDataManual = S.cfg && S.cfg.prazo_producao_manual && S.cfg.prazo_producao_manual_semana === inicioSemanaAtualYMD();
     if(cardEl) cardEl.style.display = 'block';
@@ -3530,23 +3653,26 @@ if(btnMarcarAtz){
     }
   }
   renderPrazoAtual();
-  
+
   var btnCfgPrazo = document.getElementById('btnCfgSalvarPrazo');
   if(btnCfgPrazo) btnCfgPrazo.addEventListener('click', async function(){
     var val = document.getElementById('cfgPrazoData').value;
     if(!val){ alert('Selecione uma data.'); return; }
-    S.cfg = S.cfg || {};
-    S.cfg.prazo_producao_manual = val;
-    S.cfg.prazo_producao_manual_semana = inicioSemanaAtualYMD();
-    S.cfg.prazo_producao = val;
-    S.cfg.ultimo_prazo_producao = val;
-    await sb.from('configuracoes').upsert(JSON.parse(JSON.stringify({id:'cfg_geral', valor:S.cfg})));
+    if(!window.nextuberProduction) return;
+    try {
+      var prazoResult = await window.nextuberProduction.saveDeadline(val);
+      S.cfg = prazoResult.config;
+    } catch(error) {
+      console.error('Alterar prazo:', error);
+      alert((error && error.message) || 'Não foi possível alterar o prazo.');
+      return;
+    }
     var sv = document.getElementById('cfgPrazoSaved');
     if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
     renderPrazoAtual();
     renderCards();
   });
-  
+
   // Botão "Alterar" - abre o form pré-preenchido
   var btnAlterar = document.getElementById('btnCfgAlterarPrazo');
   if(btnAlterar) btnAlterar.addEventListener('click', function(){
@@ -3558,7 +3684,7 @@ if(btnMarcarAtz){
     if(btnFecharForm) btnFecharForm.style.display = 'inline-flex';
     if(cfgPrazoInput) cfgPrazoInput.value = getPrazoProducaoAtual();
   });
-  
+
   // Botão "Cancelar edição" - fecha o form sem salvar
   var btnFechar = document.getElementById('btnCfgFecharForm');
   if(btnFechar) btnFechar.addEventListener('click', function(){
@@ -3585,10 +3711,16 @@ if(btnMarcarAtz){
     var descricao = document.getElementById('encDescricao').value.trim();
     if(!titulo){ alert('Preencha o título.'); return; }
     if(!data){ alert('Selecione a data.'); return; }
-    var r = await sb.from('encontros').insert({titulo:titulo, data:data, descricao:descricao}).select().single();
-    if(r.error){ alert('Erro: ' + (r.error.message||JSON.stringify(r.error))); return; }
-    if(r.data){
-      S.encontros.push(r.data);
+    if(!window.nextuberMutations){ alert('Serviço de encontros indisponível.'); return; }
+    var r;
+    try {
+      r = await window.nextuberMutations.createMeeting({title:titulo, date:data, description:descricao});
+    } catch(error) {
+      alert('Erro: ' + (error.message||error));
+      return;
+    }
+    if(r.meeting){
+      S.encontros.push(r.meeting);
       S.encontros.sort(function(a,b){ return a.data.localeCompare(b.data); });
     }
     renderEncontros();
@@ -3643,11 +3775,11 @@ if(btnMarcarAtz){
 
   // Export Excel
   document.getElementById('btnExportExcel').addEventListener('click', openExportModal);
-  
+
   // Listener do filtro de ranking
   var fRank = document.getElementById('filtroRanking');
   if(fRank) fRank.addEventListener('change', function(){ renderRanking(); });
-  
+
   // ═══ Listeners dos filtros de acompanhamento ═══
   ['filtroAgencia','filtroCertificacao','filtroOrdem'].forEach(function(id){
     var el = document.getElementById(id);
@@ -3790,44 +3922,19 @@ var agendEditandoId = null;
 var agendVisualizandoId = null;
 
 async function carregarAgendamentos(){
-  // Resolver cliente Supabase (tenta escopo local e window)
-  var _sb = null;
-  try {
-    if(typeof sb !== 'undefined' && sb) _sb = sb;
-    else if(typeof window !== 'undefined' && window.sb) _sb = window.sb;
-  } catch(e){}
-  
-  if(!_sb){
-    console.warn('Cliente Supabase ainda não inicializado');
+  if(!window.nextuberReads){
+    console.warn('Serviço de leitura ainda não inicializado');
     agendamentosCache = [];
     var el = document.getElementById('agendamentosList');
-    if(el) el.innerHTML = '<div style="background:#FEF2F2;border:1px solid #DC2626;border-radius:10px;padding:16px;color:#991B1B;font-size:13px;">⚠ Cliente Supabase não inicializado. Recarregue a página.</div>';
+    if(el) el.innerHTML = '<div style="background:#FEF2F2;border:1px solid #DC2626;border-radius:10px;padding:16px;color:#991B1B;font-size:13px;">⚠ Serviço de leitura indisponível. Recarregue a página.</div>';
     return;
   }
-  
+
   try {
-    var r = await _sb.from('agendamentos').select('*').order('data', {ascending: false});
-    if(r.error){
-      // Se a tabela não existe, mostra mensagem amigável
-      if(r.error.message && r.error.message.indexOf('does not exist') >= 0){
-        console.warn('Tabela "agendamentos" não existe no Supabase. Execute o SQL para criá-la.');
-        agendamentosCache = [];
-        var el2 = document.getElementById('agendamentosList');
-        if(el2){
-          el2.innerHTML = '<div style="background:#FEF2F2;border:1px solid #DC2626;border-radius:10px;padding:16px;color:#991B1B;font-size:13px;">' 
-            +'<strong>⚠ Tabela "agendamentos" não encontrada no Supabase.</strong><br><br>' 
-            +'Acesse o painel do Supabase → SQL Editor e execute o comando CREATE TABLE fornecido pelo Claude.'
-            +'</div>';
-        }
-        return;
-      }
-      console.error('Erro carregando agendamentos:', r.error);
-      agendamentosCache = [];
-    } else {
-      agendamentosCache = r.data || [];
-    }
+    var r = await window.nextuberReads.appointments();
+    agendamentosCache = r.appointments || [];
   } catch(e){
-    console.error('Erro:', e);
+    if(!e || e.message !== 'Faca login novamente.') console.error('Erro:', e);
     agendamentosCache = [];
   }
 }
@@ -3883,29 +3990,29 @@ function formatarDataBR(dataStr){
 function renderAgendamentos(){
   var el = document.getElementById('agendamentosList');
   if(!el) return;
-  
+
   var filtroFase = (document.getElementById('filtroAgendFase')||{}).value || 'todos';
   var filtroTipo = (document.getElementById('filtroAgendTipo')||{}).value || 'todos';
-  
+
   var lista = agendamentosCache.filter(function(a){
     if(filtroFase !== 'todos' && a.fase_alvo !== filtroFase && a.fase_alvo !== 'todos') return false;
     if(filtroTipo !== 'todos' && a.tipo !== filtroTipo) return false;
     return true;
   });
-  
+
   if(lista.length === 0){
     el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--ink3);background:var(--surface);border:1px dashed var(--border);border-radius:12px;">Nenhum agendamento encontrado.<br><span style="font-size:12px;">Clique em "+ Novo Agendamento" para registrar o primeiro.</span></div>';
     return;
   }
-  
+
   var h = '';
   lista.forEach(function(a){
-    var presentes = (a.presenca && Array.isArray(a.presenca)) 
-      ? a.presenca.filter(function(p){return p.presente;}).length 
+    var presentes = (a.presenca && Array.isArray(a.presenca))
+      ? a.presenca.filter(function(p){return p.presente;}).length
       : 0;
     var totalEsperado = (a.presenca && Array.isArray(a.presenca)) ? a.presenca.length : 0;
     var temArquivo = !!a.arquivo_nome;
-    
+
     h += '<div class="agend-card" data-id="'+escapeAttr(a.id)+'" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid '+corTipo(a.tipo)+';border-radius:10px;padding:14px;cursor:pointer;transition:transform .15s;">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;flex-wrap:wrap;">'
         +'<div style="flex:1;min-width:200px;">'
@@ -3927,9 +4034,9 @@ function renderAgendamentos(){
       +'</div>'
     +'</div>';
   });
-  
+
   el.innerHTML = h;
-  
+
   // Listeners de clique nos cards
   el.querySelectorAll('.agend-card').forEach(function(card){
     card.addEventListener('click', function(){
@@ -3956,13 +4063,13 @@ function podeGerenciarAgendamento(a){
 function abrirDetalhesAgendamento(id){
   var a = agendamentosCache.find(function(x){ return x.id === id; });
   if(!a) return;
-  
+
   agendVisualizandoId = id;
   var modal = document.getElementById('modalAgendDetalhes');
   var body = document.getElementById('agendDetalhesBody');
-  
+
   var podeGerenciar = podeGerenciarAgendamento(a);
-  
+
   var presencaHtml = '';
   if(a.presenca && Array.isArray(a.presenca) && a.presenca.length > 0){
     var ausentes = a.presenca.filter(function(p){ return !p.presente; });
@@ -3978,7 +4085,7 @@ function abrirDetalhesAgendamento(id){
       presencaHtml += '</div>';
     }
   }
-  
+
   var arquivoHtml = '';
   var arquivoUrlSeguro = safeUrl(a.arquivo_url);
   if(arquivoUrlSeguro){
@@ -3988,7 +4095,7 @@ function abrirDetalhesAgendamento(id){
     arquivoHtml = '<div style="margin-bottom:14px;"><div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Arquivo</div>'
       +'<div style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--ink2);font-size:13px;">📎 '+escapeHtml(a.arquivo_nome)+'</div></div>';
   }
-  
+
   body.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">'
     +'<span style="background:'+corTipo(a.tipo)+'20;color:'+corTipo(a.tipo)+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;">'+nomeTipo(a.tipo)+'</span>'
     +'<span style="font-size:12px;color:var(--ink3);">'+nomeFase(a.fase_alvo)+'</span>'
@@ -4004,13 +4111,13 @@ function abrirDetalhesAgendamento(id){
     +'<div style="padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3);">'
       +'Criado por: <strong style="color:var(--ink2);">'+escapeHtml(a.gestor_nome||'—')+'</strong>'
     +'</div>';
-  
+
   // Mostrar botões só se tem permissão
   var btnEditar = document.getElementById('btnEditarAgend');
   var btnExcluir = document.getElementById('btnExcluirAgend');
   if(btnEditar) btnEditar.style.display = podeGerenciar ? '' : 'none';
   if(btnExcluir) btnExcluir.style.display = podeGerenciar ? '' : 'none';
-  
+
   modal.classList.add('open');
 }
 
@@ -4033,7 +4140,7 @@ function abrirModalNovoAgendamento(){
 function abrirModalEditarAgendamento(id){
   var a = agendamentosCache.find(function(x){ return x.id === id; });
   if(!a) return;
-  
+
   agendEditandoId = id;
   document.getElementById('modalAgendTitulo').textContent = 'Editar Agendamento';
   document.getElementById('agendTitulo').value = a.titulo || '';
@@ -4043,7 +4150,7 @@ function abrirModalEditarAgendamento(id){
   document.getElementById('agendDescricao').value = a.descricao || '';
   document.getElementById('agendArquivo').value = '';
   document.getElementById('agendArquivoAtual').textContent = a.arquivo_nome ? '📎 Atual: ' + a.arquivo_nome + ' (envie um novo para substituir)' : '';
-  
+
   var ausentes = (a.presenca || []).filter(function(p){ return !p.presente; });
   if(ausentes.length === 0){
     document.getElementById('agendPresencaTodos').checked = true;
@@ -4053,7 +4160,7 @@ function abrirModalEditarAgendamento(id){
     document.getElementById('agendListaEstagiarios').style.display = 'block';
   }
   renderListaEstagiariosPresenca(a.presenca || []);
-  
+
   document.getElementById('modalAgendDetalhes').classList.remove('open');
   document.getElementById('modalAgendamento').classList.add('open');
 }
@@ -4068,12 +4175,12 @@ function renderListaEstagiariosPresenca(presencaAtual){
   var fase = document.getElementById('agendFaseAlvo').value;
   var ests = getEstagiariosPorFase(fase);
   var lista = document.getElementById('agendListaEstagiarios');
-  
+
   if(ests.length === 0){
     lista.innerHTML = '<div style="font-size:12px;color:var(--ink3);text-align:center;padding:10px;">Nenhum estagiário nessa fase.</div>';
     return;
   }
-  
+
   var h = '<div style="font-size:11px;color:var(--ink3);margin-bottom:8px;">Desmarque quem faltou:</div>';
   ests.forEach(function(e){
     var registro = presencaAtual.find(function(p){ return p.estagiario_id === e.id; });
@@ -4093,44 +4200,10 @@ async function salvarAgendamento(){
   var faseAlvo = document.getElementById('agendFaseAlvo').value;
   var descricao = document.getElementById('agendDescricao').value.trim();
   var presencaTipo = document.querySelector('input[name="agendPresenca"]:checked').value;
-  
+
   if(!titulo){ alert('Informe o título.'); return; }
   if(!data){ alert('Informe a data.'); return; }
-  
-  // Resolver cliente Supabase (defensivo contra escopo)
-  var _sb = null;
-  try {
-    if(typeof sb !== 'undefined' && sb) _sb = sb;
-    else if(typeof window !== 'undefined' && window.sb) _sb = window.sb;
-  } catch(e){}
-  
-  if(!_sb){
-    alert('Cliente Supabase não está disponível. Recarregue a página (Ctrl+Shift+R).');
-    return;
-  }
-  
-  // Identificar quem está salvando (defensivo contra escopo)
-  var gestorId = null;
-  var gestorNome = 'Tutora Kamilla';
-  try {
-    var _modoGestor = false, _gestorLogado = null, _editor = false;
-    try { _modoGestor = (typeof modoGestor !== 'undefined') ? modoGestor : (window.modoGestor || false); } catch(e){ _modoGestor = window.modoGestor || false; }
-    try { _gestorLogado = (typeof gestorLogado !== 'undefined') ? gestorLogado : (window.gestorLogado || null); } catch(e){ _gestorLogado = window.gestorLogado || null; }
-    try { _editor = (typeof editor !== 'undefined') ? editor : (window.editor || false); } catch(e){ _editor = window.editor || false; }
-    
-    if(_modoGestor && _gestorLogado){
-      gestorId = _gestorLogado.id || null;
-      gestorNome = _gestorLogado.nome || _gestorLogado.funcional || 'Gestor';
-    } else if(_editor){
-      gestorId = 'tutora';
-      gestorNome = 'Tutora Kamilla';
-    }
-  } catch(err){
-    console.warn('Erro ao identificar gestor, salvando como Tutora:', err);
-    gestorId = 'tutora';
-    gestorNome = 'Tutora Kamilla';
-  }
-  
+
   // Montar lista de presença
   var ests = getEstagiariosPorFase(faseAlvo);
   var presenca = [];
@@ -4147,12 +4220,12 @@ async function salvarAgendamento(){
       });
     });
   }
-  
+
   // Upload de arquivo (se houver)
   var arquivoInput = document.getElementById('agendArquivo');
   var arquivoUrl = null;
   var arquivoNome = null;
-  
+
   // Manter arquivo existente se estiver editando e não enviou novo
   if(agendEditandoId){
     var existente = agendamentosCache.find(function(x){ return x.id === agendEditandoId; });
@@ -4161,57 +4234,44 @@ async function salvarAgendamento(){
       arquivoNome = existente.arquivo_nome;
     }
   }
-  
+
   if(arquivoInput.files && arquivoInput.files[0]){
     var file = arquivoInput.files[0];
-    var ext = file.name.split('.').pop();
-    var path = 'agendamentos/' + Date.now() + '_' + Math.random().toString(36).substring(2,8) + '.' + ext;
-    
     try {
-      var upRes = await _sb.storage.from('arquivos').upload(path, file);
-      if(upRes.error){
-        console.warn('Erro upload (continuando sem arquivo):', upRes.error);
-        arquivoNome = file.name;
-      } else {
-        var urlRes = _sb.storage.from('arquivos').getPublicUrl(path);
-        arquivoUrl = urlRes.data.publicUrl;
-        arquivoNome = file.name;
-      }
+      if(!window.nextuberMutations) throw new Error('Serviço de agendamentos indisponível.');
+      var upRes = await window.nextuberMutations.uploadAppointment(file);
+      arquivoUrl = upRes.fileUrl;
+      arquivoNome = upRes.fileName;
     } catch(err){
-      console.warn('Storage indisponível, salvando só nome:', err);
-      arquivoNome = file.name;
-    }
-  }
-  
-  var dados = {
-    gestor_id: gestorId,
-    gestor_nome: gestorNome,
-    titulo: titulo,
-    descricao: descricao,
-    data: data,
-    tipo: tipo,
-    fase_alvo: faseAlvo,
-    arquivo_url: arquivoUrl,
-    arquivo_nome: arquivoNome,
-    presenca: presenca
-  };
-  
-  console.log('Salvando agendamento:', dados);
-  
-  try {
-    var r;
-    if(agendEditandoId){
-      r = await _sb.from('agendamentos').update(JSON.parse(JSON.stringify(dados))).eq('id', agendEditandoId).select().single();
-    } else {
-      r = await _sb.from('agendamentos').insert(JSON.parse(JSON.stringify(dados))).select().single();
-    }
-    
-    if(r.error){
-      console.error('Erro salvando agendamento:', r.error);
-      alert('Erro ao salvar: ' + (r.error.message || 'desconhecido'));
+      alert('Erro ao enviar arquivo: ' + (err.message || err));
       return;
     }
-    
+  }
+
+  var dados = {
+    title: titulo,
+    description: descricao,
+    date: data,
+    type: tipo,
+    targetPhase: faseAlvo,
+    fileUrl: arquivoUrl,
+    fileName: arquivoNome,
+    presence: presenca.map(function(item){
+      return {studentId:item.estagiario_id, present:item.presente};
+    })
+  };
+
+  console.log('Salvando agendamento:', dados);
+
+  try {
+    if(!window.nextuberMutations) throw new Error('Serviço de agendamentos indisponível.');
+    var r;
+    if(agendEditandoId){
+      r = await window.nextuberMutations.updateAppointment(String(agendEditandoId), dados);
+    } else {
+      r = await window.nextuberMutations.createAppointment(dados);
+    }
+
     await carregarAgendamentos();
     renderAgendamentos();
     document.getElementById('modalAgendamento').classList.remove('open');
@@ -4225,21 +4285,10 @@ async function salvarAgendamento(){
 async function excluirAgendamento(){
   if(!agendVisualizandoId) return;
   if(!confirm('Tem certeza que deseja excluir este agendamento?')) return;
-  
-  // Resolver cliente Supabase
-  var _sb = null;
+
   try {
-    if(typeof sb !== 'undefined' && sb) _sb = sb;
-    else if(typeof window !== 'undefined' && window.sb) _sb = window.sb;
-  } catch(e){}
-  if(!_sb){ alert('Cliente Supabase não disponível.'); return; }
-  
-  try {
-    var r = await _sb.from('agendamentos').delete().eq('id', agendVisualizandoId);
-    if(r.error){
-      alert('Erro ao excluir: ' + r.error.message);
-      return;
-    }
+    if(!window.nextuberMutations) throw new Error('Serviço de agendamentos indisponível.');
+    await window.nextuberMutations.deleteAppointment(String(agendVisualizandoId));
     await carregarAgendamentos();
     renderAgendamentos();
     document.getElementById('modalAgendDetalhes').classList.remove('open');
@@ -4254,28 +4303,28 @@ async function excluirAgendamento(){
 function initAgendamentosListeners(){
   var btnNovo = document.getElementById('btnNovoAgendamento');
   if(btnNovo) btnNovo.addEventListener('click', abrirModalNovoAgendamento);
-  
+
   var btnCancel = document.getElementById('btnCancelAgend');
   if(btnCancel) btnCancel.addEventListener('click', function(){
     document.getElementById('modalAgendamento').classList.remove('open');
   });
-  
+
   var btnSalvar = document.getElementById('btnSalvarAgend');
   if(btnSalvar) btnSalvar.addEventListener('click', salvarAgendamento);
-  
+
   var btnFechar = document.getElementById('btnFecharAgendDetalhes');
   if(btnFechar) btnFechar.addEventListener('click', function(){
     document.getElementById('modalAgendDetalhes').classList.remove('open');
   });
-  
+
   var btnEditar = document.getElementById('btnEditarAgend');
   if(btnEditar) btnEditar.addEventListener('click', function(){
     if(agendVisualizandoId) abrirModalEditarAgendamento(agendVisualizandoId);
   });
-  
+
   var btnExcluir = document.getElementById('btnExcluirAgend');
   if(btnExcluir) btnExcluir.addEventListener('click', excluirAgendamento);
-  
+
   // Radio presença
   document.querySelectorAll('input[name="agendPresenca"]').forEach(function(r){
     r.addEventListener('change', function(){
@@ -4288,7 +4337,7 @@ function initAgendamentosListeners(){
       }
     });
   });
-  
+
   // Mudança de fase atualiza lista
   var faseSelect = document.getElementById('agendFaseAlvo');
   if(faseSelect) faseSelect.addEventListener('change', function(){
@@ -4297,11 +4346,11 @@ function initAgendamentosListeners(){
       renderListaEstagiariosPresenca([]);
     }
   });
-  
+
   // Filtros
   var fFase = document.getElementById('filtroAgendFase');
   if(fFase) fFase.addEventListener('change', renderAgendamentos);
-  
+
   var fTipo = document.getElementById('filtroAgendTipo');
   if(fTipo) fTipo.addEventListener('change', renderAgendamentos);
 }
@@ -4347,7 +4396,7 @@ document.querySelectorAll('[data-page="agendamentos"]').forEach(function(item){
 // ═══════════════════════════════════════════════
 
 // URL da Supabase Edge Function (será configurada no Supabase)
-var AI_EDGE_FUNCTION_URL = 'https://hbebkripmytkknqydjpt.supabase.co/functions/v1/ai-assistant';
+var AI_EDGE_FUNCTION_URL = '/api/assistant';
 
 var aiChatHistory = []; // histórico da conversa atual
 var aiChatOpen = false;
@@ -4395,7 +4444,7 @@ function gerarContextoIA(){
   var S_ = window.S || {ests:[], cfg:{}, producao:[]};
   var modoGestor_ = window.modoGestor || false;
   var gestorLogado_ = window.gestorLogado || null;
-  
+
   // Trimestre atual (calcula do zero)
   function _trimestreAtualLocal(){
     var d = new Date();
@@ -4404,7 +4453,7 @@ function gerarContextoIA(){
     return d.getFullYear() + '-Q' + q;
   }
   var tri = _trimestreAtualLocal();
-  
+
   // Meses do trimestre
   function _mesesDoTri(triRef){
     var partes = triRef.split('-Q');
@@ -4413,13 +4462,13 @@ function gerarContextoIA(){
     var nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     return [nomes[mesInicio-1], nomes[mesInicio], nomes[mesInicio+1]];
   }
-  
+
   // Busca valor de produção pelo ref
   function _prod(eid, ref){
     var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
     return row ? (parseFloat(row.producao) || 0) : 0;
   }
-  
+
   // Total de uma modalidade no trimestre (inclui a quinta semana quando aplicável)
   function _totCredMod(eid, modIdx){
     var t = 0;
@@ -4430,12 +4479,12 @@ function gerarContextoIA(){
     }
     return t;
   }
-  
+
   // Total de crédito no trimestre (todas as 4 modalidades)
   function _totCredTri(eid){
     return _totCredMod(eid, 0) + _totCredMod(eid, 1) + _totCredMod(eid, 2) + _totCredMod(eid, 3);
   }
-  
+
   // Total de um produto "outros" no trimestre
   function _totOutProd(eid, prodIdx){
     var t = 0;
@@ -4446,26 +4495,26 @@ function gerarContextoIA(){
     }
     return t;
   }
-  
+
   // Total de outros produtos no trimestre
   function _totOutTri(eid){
     var t = 0;
     for(var p = 0; p < 5; p++){ t += _totOutProd(eid, p); }
     return t;
   }
-  
+
   // Alvo do trimestre
   function _metaTri(eid){
     var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === tri; });
     return row ? (parseFloat(row.meta) || 0) : 0;
   }
-  
+
   // Alvo diário de contatos
   function _metaContatos(eid){
     var row = (S_.producao||[]).find(function(p){ return p.estagiario_id === eid && p.tri_ref === 'CONTATO-META'; });
     return row ? (parseFloat(row.meta) || 0) : 0;
   }
-  
+
   // Calcula nota
   function _nota(eid){
     var meta = _metaTri(eid);
@@ -4477,7 +4526,7 @@ function gerarContextoIA(){
     var pctOut = metaOut > 0 ? Math.min(out/metaOut, 1) : 0;
     return Math.min(Math.round((pctCred*6 + pctOut*4)*10)/10, 10);
   }
-  
+
   // Fase (trilha) baseada em meses no programa
   function _fase(e){
     if(!e.perfil || !e.perfil.inicio) return 'Não definida';
@@ -4488,12 +4537,12 @@ function gerarContextoIA(){
     if(dias <= 180) return 'Evoluir (91-180d)';
     return 'Impactar (181+d)';
   }
-  
+
   // Status de atualização
   function _statusAtz(e){
     return statusAtualizacao(e);
   }
-  
+
   // Tempo no programa
   function _tempo(inicio){
     if(!inicio) return null;
@@ -4505,10 +4554,10 @@ function gerarContextoIA(){
     if(m===0) return y===1?'1 ano':y+' anos';
     return y+' ano'+(y>1?'s':'')+' e '+m+' '+(m===1?'mês':'meses');
   }
-  
+
   var hojeYMD = _aiHojeYMD();
-  
-  var ctx = { 
+
+  var ctx = {
     data_atual: hojeYMD,
     total_estagiarios: (S_.ests||[]).length,
     trimestre_atual: tri,
@@ -4516,9 +4565,9 @@ function gerarContextoIA(){
     estagiarios: [],
     agendamentos: []
   };
-  
+
   console.log('[IA] Contexto: total_ests=', ctx.total_estagiarios, 'trimestre=', tri);
-  
+
   // Filtrar por permissão
   var lista = S_.ests || [];
   if(modoGestor_ && gestorLogado_){
@@ -4530,13 +4579,13 @@ function gerarContextoIA(){
       });
     }
   }
-  
+
   ctx.estagiarios = lista.map(function(e){
     var meta = _metaTri(e.id);
     var producaoCredito = _totCredTri(e.id);
     var producaoOutros = _totOutTri(e.id);
     var metaProdutos = meta * 0.2;
-    
+
     return {
       nome: e.nome,
       agencia: (e.perfil && e.perfil.agencia) || null,
@@ -4569,14 +4618,14 @@ function gerarContextoIA(){
       meta_diaria_contatos: _metaContatos(e.id)
     };
   });
-  
+
   // Agendamentos (últimos 30 dias)
   var agendCache = window.agendamentosCache || [];
   if(agendCache && agendCache.length > 0){
     var hoje30 = new Date();
     hoje30.setDate(hoje30.getDate() - 30);
     var lim = hoje30.toISOString().slice(0,10);
-    
+
     ctx.agendamentos = agendCache.filter(function(a){ return a.data >= lim; }).map(function(a){
       var pres = 0, aus = 0;
       var nomesAusentes = [];
@@ -4597,7 +4646,7 @@ function gerarContextoIA(){
       };
     });
   }
-  
+
   return ctx;
 }
 
@@ -4632,34 +4681,29 @@ async function aiSendMessage(){
   var input = document.getElementById('aiInput');
   var btn = document.getElementById('aiSendBtn');
   if(!input) return;
-  
+
   var msg = input.value.trim();
   if(!msg) return;
-  
+
   // Adiciona mensagem do usuário
   aiAddMsg('user', msg);
   aiChatHistory.push({ role: 'user', content: msg });
-  
+
   input.value = '';
   input.style.height = 'auto';
   btn.disabled = true;
   input.disabled = true;
   aiShowTyping();
-  
+
   try {
     // Gera contexto atualizado
     var contexto = gerarContextoIA();
-    
-    // Pega token de autenticação Supabase
-    var supaKey = 'sb_publishable_PjzxYcSPxCwSjeGB-Jzk3g_1632xWIH';
-    
-    // Chama a Edge Function
+
+    // Chama a rota segura do Next.js
     var response = await fetch(AI_EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + supaKey,
-        'apikey': supaKey
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         pergunta: msg,
@@ -4667,22 +4711,22 @@ async function aiSendMessage(){
         historico: aiChatHistory.slice(-10) // últimas 10 mensagens
       })
     });
-    
+
     aiHideTyping();
-    
+
     if(!response.ok){
       var errText = await response.text();
       aiAddMsg('system', '❌ Erro na comunicação com a IA. Verifique se a Edge Function foi criada. (' + response.status + ')');
       console.error('Erro IA:', errText);
       return;
     }
-    
+
     var data = await response.json();
     var resposta = data.resposta || data.answer || data.content || 'Sem resposta.';
-    
+
     aiAddMsg('assistant', resposta);
     aiChatHistory.push({ role: 'assistant', content: resposta });
-    
+
   } catch(err) {
     aiHideTyping();
     aiAddMsg('system', '❌ Erro: ' + (err.message || 'desconhecido'));
@@ -4701,7 +4745,7 @@ function initAIListeners(){
   var closeBtn = document.getElementById('aiChatClose');
   var sendBtn = document.getElementById('aiSendBtn');
   var input = document.getElementById('aiInput');
-  
+
   if(floatBtn) floatBtn.addEventListener('click', function(){
     aiChatOpen = !aiChatOpen;
     if(aiChatOpen){
@@ -4720,16 +4764,16 @@ function initAIListeners(){
       floatBtn.classList.remove('ai-hidden');
     }
   });
-  
+
   if(closeBtn) closeBtn.addEventListener('click', function(){
     aiChatOpen = false;
     modal.classList.remove('open');
     document.body.classList.remove('ai-chat-is-open');
     if(floatBtn) floatBtn.classList.remove('ai-hidden');
   });
-  
+
   if(sendBtn) sendBtn.addEventListener('click', aiSendMessage);
-  
+
   if(input){
     input.addEventListener('keydown', function(e){
       if(e.key === 'Enter' && !e.shiftKey){
@@ -4742,7 +4786,7 @@ function initAIListeners(){
       this.style.height = Math.min(this.scrollHeight, 100) + 'px';
     });
   }
-  
+
   // Chips de sugestão
   document.querySelectorAll('.ai-sug-chip').forEach(function(chip){
     chip.addEventListener('click', function(){

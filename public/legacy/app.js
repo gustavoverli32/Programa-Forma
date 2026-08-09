@@ -190,9 +190,76 @@ function faixaComp(p){if(p>=75)return{cor:'#16A34A',bg:'#DCFCE7',label:'Acima do
 function faixaRes(p){if(p>=85)return{cor:'#16A34A',bg:'#DCFCE7',label:'Alvo atingido'};if(p>=50)return{cor:'#EC7000',bg:'#FFF3E8',label:'Em desenvolvimento'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Abaixo do alvo'};}
 
 // ── STATE ──────────────────────────────────────────────────────────────────
-var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{} };
+var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{}, regionais:[], selectedRegionalId: null };
 window.S = S; // exposto pra IA e outros escopos
 var DB_LOADED = false;
+
+// ── HELPERS DE REGIONAL ──
+function getEstagiariosAtivos(){
+  if(!S.selectedRegionalId || S.selectedRegionalId === 'all') return S.ests || [];
+  return (S.ests || []).filter(function(e){
+    return String(e.regional_id || '') === String(S.selectedRegionalId);
+  });
+}
+
+function getGestoresAtivos(){
+  if(!S.selectedRegionalId || S.selectedRegionalId === 'all') return S.gestores || [];
+  return (S.gestores || []).filter(function(g){
+    return String(g.regional_id || '') === String(S.selectedRegionalId);
+  });
+}
+
+function renderRegionalSelectorUI(){
+  var dropdown = document.getElementById('regionalSelectDropdown');
+  var badge = document.getElementById('regionalBadgeInfo');
+  if(!dropdown) return;
+
+  var list = S.regionais || [];
+  if(list.length === 0){
+    dropdown.innerHTML = '<option value="all">Todas as Regionais</option>';
+    if(badge) badge.textContent = 'Visão Global';
+    return;
+  }
+
+  var html = '';
+  list.forEach(function(r){
+    var sel = String(r.id) === String(S.selectedRegionalId) ? 'selected' : '';
+    html += '<option value="'+escapeAttr(r.id)+'" '+sel+'>'+escapeHtml(r.nome)+'</option>';
+  });
+  html += '<option value="all" '+(S.selectedRegionalId === 'all' ? 'selected' : '')+'>🌐 Todas as Regionais (Consolidado)</option>';
+  dropdown.innerHTML = html;
+
+  var currentReg = list.find(function(r){ return String(r.id) === String(S.selectedRegionalId); });
+  if(badge){
+    if(currentReg){
+      badge.textContent = 'Regional: ' + currentReg.nome;
+    } else if(S.selectedRegionalId === 'all'){
+      badge.textContent = 'Visão Consolidada (Todas)';
+    } else {
+      badge.textContent = 'Regional Ativa';
+    }
+  }
+
+  if(window.modoGestor && window.gestorLogado && window.gestorLogado.regional_id){
+    dropdown.disabled = true;
+    dropdown.style.opacity = '0.7';
+    dropdown.style.cursor = 'not-allowed';
+  } else {
+    dropdown.disabled = false;
+    dropdown.style.opacity = '1';
+    dropdown.style.cursor = 'pointer';
+  }
+
+  if(!dropdown._bound){
+    dropdown._bound = true;
+    dropdown.addEventListener('change', function(evt){
+      S.selectedRegionalId = evt.target.value;
+      renderRegionalSelectorUI();
+      updateMetrics(); renderCiclos(); renderCards(); renderTrilha();
+      renderCadList(); renderTimeline(); renderGestoresList(); renderOverviewAll(); renderRanking(); updateProgress();
+    });
+  }
+}
 
 function aplicarRetornoProducao(eid, tri, result){
   var sid = String(eid);
@@ -268,6 +335,7 @@ function mkEstObj(row){
     atencao:      row.atencao || false,
     perfil:       row.perfil || {idade:'',funcional:'',inicio:''},
     trilhaChecks: row.trilha_checks || {},
+    regional_id:  row.regional_id || null,
     meta:         (row.perfil && row.perfil.meta) ? row.perfil.meta : '',
     resultado:    (row.perfil && row.perfil.resultado) ? row.perfil.resultado : ''
   };
@@ -289,6 +357,12 @@ async function loadFromDB(){
     // Load gestores
     S.gestores = payload.managers || [];
 
+    // Load regionais
+    S.regionais = payload.regionais || [];
+    if(!S.selectedRegionalId && S.regionais.length > 0){
+      S.selectedRegionalId = S.regionais[0].id;
+    }
+
     // Load producao trimestral
     S.producao = payload.production || [];
 
@@ -307,6 +381,9 @@ async function loadFromDB(){
       editor = false;
       modoGestor = true;
       gestorLogado = payload.session.manager || null;
+      if(gestorLogado && gestorLogado.regional_id){
+        S.selectedRegionalId = gestorLogado.regional_id;
+      }
     } else {
       editor = false;
       modoGestor = false;
@@ -322,6 +399,7 @@ async function loadFromDB(){
     // Still render the page even if DB fails
   }
   showLoading(false);
+  renderRegionalSelectorUI();
   updateMetrics(); renderCiclos(); renderCards(); renderTrilha();
   renderCadList(); renderTimeline(); renderGestoresList(); renderOverviewAll(); renderRanking();  updateProgress();
   await loadTextosProjeto();
@@ -2502,12 +2580,13 @@ function renderGestoresList(){
   var el = document.getElementById('gestoresList');
   var countEl = document.getElementById('gestoresCount');
   if(!el) return;
-  if(countEl) countEl.textContent = (S.gestores||[]).length;
-  if(!S.gestores || !S.gestores.length){
-    el.innerHTML = '<div class="cad-list-empty">Nenhum gestor cadastrado.</div>';
+  var gestoresAtivos = (typeof getGestoresAtivos === 'function') ? getGestoresAtivos() : S.gestores;
+  if(countEl) countEl.textContent = (gestoresAtivos||[]).length;
+  if(!gestoresAtivos || !gestoresAtivos.length){
+    el.innerHTML = '<div class="cad-list-empty">Nenhum gestor cadastrado nesta regional.</div>';
     return;
   }
-  el.innerHTML = S.gestores.map(function(g){
+  el.innerHTML = gestoresAtivos.map(function(g){
     var perms = g.permissoes || {};
     var pCount = Object.keys(perms).filter(function(k){ return perms[k]; }).length;
     var tipo = g.tipo_gestor || 'ga';
@@ -2548,7 +2627,8 @@ function renderCadChips(){
   renderCadList();
 }
 function renderCadList(){
-  var ests = S.ests.filter(function(e){ return e.perfil && e.perfil.funcional; });
+  var estsAtivos = (typeof getEstagiariosAtivos === 'function') ? getEstagiariosAtivos() : S.ests;
+  var ests = estsAtivos.filter(function(e){ return e.perfil && e.perfil.funcional; });
   document.getElementById('cadListCount').textContent = ests.length;
   if(ests.length===0){
     document.getElementById('cadList').innerHTML='<div class="cad-list-empty">Nenhum estagiário cadastrado ainda.</div>';

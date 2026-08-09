@@ -26,6 +26,7 @@ export async function GET() {
       managersResult,
       productionResult,
       meetingsResult,
+      regionaisResult,
     ] = await Promise.all([
       supabase
         .from("configuracoes")
@@ -38,7 +39,7 @@ export async function GET() {
       supabase
         .from("estagiarios")
         .select(
-          "id,nome,meses,obs,atencao,perfil,trilha_checks,gestor_funcional,created_at",
+          "id,nome,meses,obs,atencao,perfil,trilha_checks,gestor_funcional,regional_id,created_at",
         )
         .order("created_at"),
       supabase
@@ -48,7 +49,7 @@ export async function GET() {
         .maybeSingle(),
       supabase
         .from("gestores")
-        .select("id,nome,funcional,permissoes,tipo_gestor,created_at")
+        .select("id,nome,funcional,permissoes,tipo_gestor,regional_id,created_at")
         .order("nome"),
       supabase
         .from("producao_trimestral")
@@ -57,6 +58,11 @@ export async function GET() {
         .from("encontros")
         .select("id,titulo,descricao,data,created_at")
         .order("data", { ascending: true }),
+      supabase
+        .from("regionais")
+        .select("id,slug,nome,ativa,created_at")
+        .eq("ativa", true)
+        .order("nome"),
     ]);
 
     const settings = new Map(
@@ -68,6 +74,7 @@ export async function GET() {
     if (!session) {
       return Response.json(
         {
+          regionais: regionaisResult.data ?? [],
           students: rows.map(publicStudent),
           timeline: settings.get("timeline") ?? null,
           config: configResult.data?.valor ?? {},
@@ -128,6 +135,7 @@ export async function GET() {
 
     return Response.json(
       {
+        regionais: regionaisResult.data ?? [],
         students,
         timeline: settings.get("timeline") ?? null,
         config: configResult.data?.valor ?? {},
