@@ -41,20 +41,50 @@ async function buildPlatformContext() {
       );
 
       let creditTotal = 0;
-      let prodTotal = 0;
+      const prodTotal = 0;
       let target = 0;
+
+      let inss = 0;
+      let op = 0;
+      let ep = 0;
+      let creditario = 0;
+
+      let seguros = 0;
+      let pic = 0;
+      let combinaqui = 0;
+      let consorcios = 0;
+      let engajamento = 0;
 
       studentProd.forEach((p) => {
         const val = parseFloat(String(p.producao || 0)) || 0;
-        if (p.tri_ref === currentQuarterRef) {
+        const ref = String(p.tri_ref || "");
+
+        if (ref === currentQuarterRef) {
           target = parseFloat(String(p.meta || 0)) || 0;
-          creditTotal += val;
-        } else if (p.tri_ref && p.tri_ref.includes("-OUT")) {
-          prodTotal += val;
-        } else if (p.tri_ref && p.tri_ref.includes("-MOD")) {
-          creditTotal += val;
+          if (val > 0 && creditTotal === 0) creditTotal += val;
+        } else if (ref.includes("-MOD0")) {
+          inss += val;
+        } else if (ref.includes("-MOD1")) {
+          op += val;
+        } else if (ref.includes("-MOD2")) {
+          ep += val;
+        } else if (ref.includes("-MOD3")) {
+          creditario += val;
+        } else if (ref.includes("-OUT0")) {
+          seguros += val;
+        } else if (ref.includes("-OUT1")) {
+          pic += val;
+        } else if (ref.includes("-OUT2")) {
+          combinaqui += val;
+        } else if (ref.includes("-OUT3")) {
+          consorcios += val;
+        } else if (ref.includes("-OUT4")) {
+          engajamento += val;
         }
       });
+
+      const modalCreditTotal = inss + op + ep + creditario;
+      const modalProdTotal = seguros + pic + combinaqui + consorcios + engajamento;
 
       return {
         id: s.id,
@@ -64,8 +94,21 @@ async function buildPlatformContext() {
         inicio: perfil.inicio || null,
         certificacao: perfil.certificacao || "sem certificação",
         meta_trimestre: target,
-        producao_credito_total: creditTotal,
-        producao_produtos_total: prodTotal,
+        producao_credito_total: modalCreditTotal > 0 ? modalCreditTotal : creditTotal,
+        producao_credito: {
+          INSS: inss,
+          OP: op,
+          EP: ep,
+          Creditario: creditario,
+        },
+        producao_produtos_total: modalProdTotal > 0 ? modalProdTotal : prodTotal,
+        producao_produtos: {
+          Seguros: seguros,
+          PIC: pic,
+          Combinaqui: combinaqui,
+          Consorcios: consorcios,
+          Engajamento: engajamento,
+        },
         sinalizacao_atencao: s.atencao || false,
       };
     });
