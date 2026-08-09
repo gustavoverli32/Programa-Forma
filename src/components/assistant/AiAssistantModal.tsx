@@ -70,28 +70,34 @@ export function AiAssistantModal() {
       {/* Floating Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        title={isOpen ? "Fechar Assistente" : "Assistente Nextuber IA"}
         style={{
           position: "fixed",
           bottom: "24px",
           right: "24px",
           zIndex: 9999,
-          padding: "12px 20px",
-          borderRadius: "50px",
-          background: "linear-gradient(135deg, #EC7000 0%, #B45309 100%)",
-          color: "#fff",
-          border: "none",
-          boxShadow: "0 4px 20px rgba(236,112,0,0.35)",
-          fontWeight: 700,
-          fontSize: "14px",
+          width: "58px",
+          height: "58px",
+          borderRadius: "20px",
+          background: "#FFFFFF",
+          border: "2px solid #EC7000",
+          color: "#EC7000",
+          fontSize: "24px",
+          boxShadow: "0 6px 24px rgba(236,112,0,0.25)",
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          justifyContent: "center",
           cursor: "pointer",
-          transition: "transform 0.2s ease",
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "scale(1.08)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
         }}
       >
-        <span>✨</span>
-        <span>{isOpen ? "Fechar IA" : "Nextuber IA"}</span>
+        <span>{isOpen ? "✕" : "✨"}</span>
       </button>
 
       {/* Expandable Chat Window */}

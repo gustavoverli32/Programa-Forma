@@ -64,3 +64,9 @@ body {
   text-decoration: none;
   cursor: pointer;
 }
+
+/* Oculta os elementos do assistente legado para manter apenas o botão flutuante React */
+#aiFloatBtn,
+#aiChatModal {
+  display: none !important;
+}
