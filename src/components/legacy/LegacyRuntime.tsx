@@ -22,6 +22,7 @@ import {
   type NextuberTrackingBridge,
 } from "@/services/tracking-bridge";
 import { ProductionTrackingIsland } from "@/components/tracking/ProductionTrackingIsland";
+import { StudentMonitoringIsland } from "@/components/tracking/StudentMonitoringIsland";
 
 declare global {
   interface Window {
@@ -113,6 +114,7 @@ export function LegacyRuntime() {
   return (
     <>
       <ProductionTrackingIsland />
+      <StudentMonitoringIsland />
       {error ? (
         <div className="runtime-error" role="alert">
           <strong>Nextuber indisponivel</strong>

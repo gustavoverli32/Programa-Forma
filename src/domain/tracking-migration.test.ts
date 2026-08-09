@@ -35,3 +35,22 @@ test("bootstrap limits production rows to readable students", () => {
 
   assert.equal(source.includes("readableStudentIds.has(row.estagiario_id)"), true);
 });
+
+test("React student monitoring section includes filters, excel export, and drawer integration", () => {
+  const sectionSource = readFileSync(
+    `${projectRoot}/src/components/tracking/StudentMonitoringSection.tsx`,
+    "utf8",
+  );
+  const drawerSource = readFileSync(
+    `${projectRoot}/src/components/tracking/StudentProfileDrawer.tsx`,
+    "utf8",
+  );
+
+  assert.equal(sectionSource.includes("Acompanhamento <em>individual</em>"), true);
+  assert.equal(sectionSource.includes("handleExportExcel"), true);
+  assert.equal(sectionSource.includes("StudentProfileDrawer"), true);
+
+  assert.equal(drawerSource.includes("Fase 1 | Decolar"), true);
+  assert.equal(drawerSource.includes("Marcar produção como verificada hoje"), true);
+  assert.equal(drawerSource.includes("handleToggleAttention"), true);
+});
