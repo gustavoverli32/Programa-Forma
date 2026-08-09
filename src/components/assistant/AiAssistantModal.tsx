@@ -33,7 +33,11 @@ export function AiAssistantModal() {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: query }),
+        body: JSON.stringify({
+          pergunta: query,
+          question: query,
+          message: query,
+        }),
       });
 
       if (!res.ok) {
@@ -53,7 +57,13 @@ export function AiAssistantModal() {
       }
 
       const data = await res.json();
-      const reply = data.reply || data.message || data.text || JSON.stringify(data);
+      const reply =
+        data.resposta ||
+        data.reply ||
+        data.message ||
+        data.text ||
+        data.resposta_ia ||
+        (typeof data === "string" ? data : JSON.stringify(data));
       setMessages((prev) => [...prev, createChatMessage("assistant", reply)]);
     } catch {
       setMessages((prev) => [
