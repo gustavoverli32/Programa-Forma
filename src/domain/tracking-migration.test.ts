@@ -96,3 +96,29 @@ test("React registration section includes student card, manager card, and deleti
   assert.equal(managerCardSource.includes("validateManagerRegistrationInput"), true);
   assert.equal(managerCardSource.includes("createManager"), true);
 });
+
+test("React program sections include trilhas tabs, appointment forms, and deadline settings", () => {
+  const trilhasSource = readFileSync(
+    `${projectRoot}/src/components/program/TrilhasSection.tsx`,
+    "utf8",
+  );
+  const appSource = readFileSync(
+    `${projectRoot}/src/components/program/AppointmentsSection.tsx`,
+    "utf8",
+  );
+  const cfgSource = readFileSync(
+    `${projectRoot}/src/components/program/SettingsSection.tsx`,
+    "utf8",
+  );
+
+  assert.equal(trilhasSource.includes("Trilhas de <em>aprendizado</em>"), true);
+  assert.equal(trilhasSource.includes("TRILHAS_FULL_DATA"), true);
+
+  assert.equal(appSource.includes("Registrar Novo Agendamento"), true);
+  assert.equal(appSource.includes("uploadAppointment"), true);
+  assert.equal(appSource.includes("createAppointment"), true);
+
+  assert.equal(cfgSource.includes("Prazo para Atualização de Produção Semanal"), true);
+  assert.equal(cfgSource.includes("formatDeadlineStatus"), true);
+  assert.equal(cfgSource.includes("/api/settings/production-deadline"), true);
+});

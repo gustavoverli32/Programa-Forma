@@ -25,6 +25,9 @@ import { ProductionTrackingIsland } from "@/components/tracking/ProductionTracki
 import { StudentMonitoringIsland } from "@/components/tracking/StudentMonitoringIsland";
 import { HomeOverviewIsland } from "@/components/overview/HomeOverviewIsland";
 import { RegistrationIsland } from "@/components/registration/RegistrationIsland";
+import { TrilhasIsland } from "@/components/program/TrilhasIsland";
+import { AppointmentsIsland } from "@/components/program/AppointmentsIsland";
+import { SettingsIsland } from "@/components/program/SettingsIsland";
 
 declare global {
   interface Window {
@@ -119,6 +122,9 @@ export function LegacyRuntime() {
       <ProductionTrackingIsland />
       <StudentMonitoringIsland />
       <RegistrationIsland />
+      <TrilhasIsland />
+      <AppointmentsIsland />
+      <SettingsIsland />
       {error ? (
         <div className="runtime-error" role="alert">
           <strong>Nextuber indisponivel</strong>
