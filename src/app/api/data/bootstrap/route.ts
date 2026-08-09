@@ -103,6 +103,7 @@ export async function GET() {
     let students: Array<
       ReturnType<typeof publicStudent> | ReturnType<typeof privateStudent>
     > = rows.map(privateStudent);
+    let readableStudentIds = new Set(rows.map((row) => row.id));
     if (session.role === "gestor" && currentManager) {
       const permissions = (currentManager.permissoes ?? {}) as Record<
         string,
@@ -111,6 +112,18 @@ export async function GET() {
       const seesAll =
         currentManager.tipo_gestor === "gga" ||
         permissions.todos_estagiarios === true;
+      readableStudentIds = new Set(
+        rows
+          .filter(
+            (row) =>
+              seesAll ||
+              isStudentAssignedToManager(
+                row,
+                String(currentManager.funcional ?? ""),
+              ),
+          )
+          .map((row) => row.id),
+      );
       students = rows.map((row) =>
         seesAll ||
         isStudentAssignedToManager(row, String(currentManager.funcional ?? ""))
@@ -128,7 +141,11 @@ export async function GET() {
           settings.get("textos_projeto") ?? null,
         ),
         managers,
-        production: productionResult.data ?? [],
+        production: (productionResult.data ?? []).filter((row) =>
+          row.estagiario_id
+            ? readableStudentIds.has(row.estagiario_id)
+            : false,
+        ),
         descriptions: descriptionsResult.data ?? [],
         meetings: meetingsResult.data ?? [],
         session:

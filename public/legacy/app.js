@@ -1428,6 +1428,35 @@ function getTotalTrimestreModalidades(eid, tri){
   return total;
 }
 
+function abrirResultadosReact(idx, tri){
+  if(!window.nextuberTracking) return false;
+  var e = S.ests[idx];
+  if(!e) return false;
+  window.nextuberTracking.open({
+    student: { id: String(e.id), name: String(e.nome || '') },
+    quarterRef: tri,
+    productionRows: (S.producao || []).filter(function(p){
+      return String(p.estagiario_id) === String(e.id) && String(p.tri_ref || '').indexOf(tri) === 0;
+    }),
+    canEdit: !!(editor || (modoGestor && gestorLogado))
+  });
+  return true;
+}
+
+window.addEventListener('nextuber:production-saved', function(event){
+  var detail = event && event.detail;
+  if(!detail || !detail.studentId || !detail.quarterRef || !Array.isArray(detail.productionRows)) return;
+  S.producao = (S.producao || []).filter(function(row){
+    return !(String(row.estagiario_id) === String(detail.studentId) && String(row.tri_ref || '').indexOf(detail.quarterRef) === 0);
+  }).concat(detail.productionRows);
+  var est = S.ests.find(function(item){ return String(item.id) === String(detail.studentId); });
+  if(est && detail.profile) est.perfil = detail.profile;
+  updateMetrics();
+  renderCards();
+  renderOverviewAll();
+  renderRanking();
+});
+
 function renderResultados(idx){
   var el = document.getElementById('pResultados');
   var sel = document.getElementById('pTriSelect');
@@ -1443,6 +1472,7 @@ function renderResultados(idx){
 function renderResultadosForTri(idx, tri){
   var el = document.getElementById('pResultados'); if(!el) return;
   var e = S.ests[idx];
+  if(abrirResultadosReact(idx, tri)) return;
   var prod = getProducaoTri(e.id, tri);
   var meta = parseFloat(prod.meta)||0;
   var meses = getMesesTrimestre(tri);
@@ -2356,6 +2386,7 @@ function openPanel(idx){
 }
 function closePanel(){
   panelIdx=-1;
+  if(window.nextuberTracking) window.nextuberTracking.close();
   document.getElementById('overlay').classList.remove('open');
   document.getElementById('panel').classList.remove('open');
   renderCards();
@@ -2773,19 +2804,26 @@ function cancelLogin(){ document.getElementById('loginOv').classList.remove('ope
 async function doLogin(){
   var input = document.getElementById('loginPwd');
   var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('btnLogin');
   errEl.classList.remove('show');
+  if(!window.nextuberAuth){
+    errEl.textContent = 'Autenticação indisponível. Recarregue a página.';
+    errEl.classList.add('show');
+    return;
+  }
+  if(btn) btn.disabled = true;
   try {
-    var response = await fetch('/api/auth/tutora', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:input.value})
-    });
-    if(!response.ok) throw new Error('Senha incorreta');
-    editor=true; window.editor=true; document.getElementById('loginOv').classList.remove('open'); await loadFromDB();
+    await window.nextuberAuth.loginTutor(input.value);
+    document.getElementById('loginOv').classList.remove('open');
+    input.value = '';
+    await loadFromDB();
   } catch(e) {
+    errEl.textContent = (e && e.message) ? e.message : 'Senha incorreta.';
     errEl.classList.add('show');
     input.value='';
     input.focus();
+  } finally {
+    if(btn) btn.disabled = false;
   }
 }
 function setCadInputState(){
@@ -2833,7 +2871,7 @@ function applyModoGestor(){
 }
 
 async function logoutGestor(){
-  await fetch('/api/auth/logout', {method:'POST'}).catch(function(){});
+  if(window.nextuberAuth) await window.nextuberAuth.logout().catch(function(){});
   modoGestor = false;
   gestorLogado = null;
   window.modoGestor = false;
@@ -3218,7 +3256,7 @@ onNextuberReady(function(){
 
   // Auth buttons
   async function handleMode(){
-    if(editor){ await fetch('/api/auth/logout', {method:'POST'}).catch(function(){}); editor=false; window.editor=false; await loadFromDB(); goPage('overview'); }
+    if(editor){ if(window.nextuberAuth) await window.nextuberAuth.logout().catch(function(){}); editor=false; window.editor=false; await loadFromDB(); goPage('overview'); }
     else if(modoGestor){ await logoutGestor(); }
     else{ openLoginModal(); }
   }
@@ -3293,13 +3331,14 @@ onNextuberReady(function(){
       errEl.classList.add('show');
       return;
     }
-    var response = await fetch('/api/auth/gestor', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({funcional:func, password:senha})
-    }).catch(function(){ return null; });
-    var payload = response && response.ok ? await response.json() : null;
-    var gestor = payload && payload.gestor;
+    var gestor = null;
+    try {
+      if(!window.nextuberAuth) throw new Error('Autenticação indisponível. Recarregue a página.');
+      var payload = await window.nextuberAuth.loginManager(func, senha);
+      gestor = payload.gestor;
+    } catch(error) {
+      errEl.textContent = (error && error.message) ? error.message : 'Funcional ou senha incorretos.';
+    }
     if(gestor){
       var gestorIdx = S.gestores.findIndex(function(g){ return g.id === gestor.id; });
       if(gestorIdx >= 0) S.gestores[gestorIdx] = gestor;

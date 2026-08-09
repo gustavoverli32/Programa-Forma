@@ -13,6 +13,15 @@ import {
   nextuberReadBridge,
   type NextuberReadBridge,
 } from "@/services/read-client";
+import {
+  nextuberAuthBridge,
+  type NextuberAuthBridge,
+} from "@/services/auth-client";
+import {
+  nextuberTrackingBridge,
+  type NextuberTrackingBridge,
+} from "@/services/tracking-bridge";
+import { ProductionTrackingIsland } from "@/components/tracking/ProductionTrackingIsland";
 
 declare global {
   interface Window {
@@ -21,6 +30,8 @@ declare global {
     nextuberProduction?: NextuberProductionBridge;
     nextuberMutations?: NextuberMutationBridge;
     nextuberReads?: NextuberReadBridge;
+    nextuberAuth?: NextuberAuthBridge;
+    nextuberTracking?: NextuberTrackingBridge;
   }
 }
 
@@ -78,6 +89,8 @@ export function LegacyRuntime() {
       window.nextuberProduction = nextuberProductionBridge;
       window.nextuberMutations = nextuberMutationBridge;
       window.nextuberReads = nextuberReadBridge;
+      window.nextuberAuth = nextuberAuthBridge;
+      window.nextuberTracking = nextuberTrackingBridge;
 
       await loadScript("/legacy/security.js", "security");
       if (cancelled) return;
@@ -93,15 +106,19 @@ export function LegacyRuntime() {
 
     return () => {
       cancelled = true;
+      nextuberTrackingBridge.close();
     };
   }, []);
 
-  if (!error) return null;
-
   return (
-    <div className="runtime-error" role="alert">
-      <strong>Nextuber indisponivel</strong>
-      <span>{error}</span>
-    </div>
+    <>
+      <ProductionTrackingIsland />
+      {error ? (
+        <div className="runtime-error" role="alert">
+          <strong>Nextuber indisponivel</strong>
+          <span>{error}</span>
+        </div>
+      ) : null}
+    </>
   );
 }

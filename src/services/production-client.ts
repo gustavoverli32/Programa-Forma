@@ -10,7 +10,7 @@ import {
   type ProductionProfile,
 } from "@/domain/production-deadline";
 
-type ProductionBatchResult = {
+export type ProductionBatchResult = {
   productionRows: ProductionRow[];
   snapshot: Record<string, unknown>;
   profile: ProductionProfile;
