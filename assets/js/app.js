@@ -103,7 +103,7 @@ function anoAtual(){return new Date().getFullYear();}
 function trimestreRef(){return anoAtual()+'-'+trimestreAtual();}
 function fmtTrimestre(t){if(!t)return'—';var p=t.split('-');return p[1].replace('Q','')+'º Tri '+p[0];}
 function ultimosTrimestres(){var r=[],d=new Date(),a=d.getFullYear(),q=Math.floor(d.getMonth()/3)+1;for(var i=0;i<6;i++){r.push(a+'-Q'+q);q--;if(q<1){q=4;a--;}}return r;}
-function getProducaoTri(eid,tri){if(!S.producao)return{meta:0,producao:0};return S.producao.find(function(p){return p.estagiario_id===eid&&p.tri_ref===tri;})||{meta:0,producao:0};}
+function getProducaoTri(eid,tri){if(!S.producao)return{meta:0,producao:0};return S.producao.find(function(p){return String(p.estagiario_id)===String(eid)&&p.tri_ref===tri;})||{meta:0,producao:0};}
 // ─── DETECÇÃO DE MÊS VIGENTE ───
 function getMesVigente(){
   var hoje = new Date();
@@ -1331,7 +1331,7 @@ var CORES_OUTROS = {
 function getProducaoOutroProduto(eid, tri, mesIdx, semanaIdx, prodIdx){
   var ref = tri + '-M' + mesIdx + '-S' + semanaIdx + '-OUT' + prodIdx;
   if(!S.producao) return 0;
-  var row = S.producao.find(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
+  var row = S.producao.find(function(p){ return String(p.estagiario_id) === String(eid) && p.tri_ref === ref; });
   return row ? (parseFloat(row.producao) || 0) : 0;
 }
 
@@ -1396,7 +1396,7 @@ function getTotalTrimestreOutroProduto(eid, tri, prodIdx){
 function getProducaoSemanalModalidade(eid, tri, mesIdx, semIdx, modIdx){
   var ref = tri + '-M' + mesIdx + '-S' + semIdx + '-MOD' + modIdx;
   if(!S.producao) return 0;
-  var row = S.producao.find(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
+  var row = S.producao.find(function(p){ return String(p.estagiario_id) === String(eid) && p.tri_ref === ref; });
   return row ? (parseFloat(row.producao) || 0) : 0;
 }
 

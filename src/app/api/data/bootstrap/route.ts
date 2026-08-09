@@ -59,14 +59,6 @@ export async function GET() {
         .order("data", { ascending: true }),
     ]);
 
-    if (settingsResult.error) throw settingsResult.error;
-    if (descriptionsResult.error) throw descriptionsResult.error;
-    if (studentsResult.error) throw studentsResult.error;
-    if (configResult.error) throw configResult.error;
-    if (managersResult.error) throw managersResult.error;
-    if (productionResult.error) throw productionResult.error;
-    if (meetingsResult.error) throw meetingsResult.error;
-
     const settings = new Map(
       (settingsResult.data ?? []).map((item) => [item.id, item.valor]),
     );
