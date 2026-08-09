@@ -21,8 +21,8 @@ test("calculates consolidated KPIs and phase distribution", () => {
     { id: "2", nome: "Bruno", atencao: false, perfil: { inicio: "2026-01-01" } },
   ];
   const rows: ProductionRow[] = [
-    { estagiario_id: "1", tri_ref: "2026-Q3", mes_idx: 1, sem_idx: 1, ref_item: "cred_INSS", valor: 5000 },
-    { estagiario_id: "1", tri_ref: "2026-Q3", mes_idx: 1, sem_idx: 1, ref_item: "out_Seguros", valor: 10 },
+    { estagiario_id: "1", tri_ref: "2026-Q3", meta: 0, producao: 0, ref_item: "cred_INSS", valor: 5000 },
+    { estagiario_id: "1", tri_ref: "2026-Q3", meta: 0, producao: 0, ref_item: "out_Seguros", valor: 10 },
   ];
 
   const kpis = calculateConsolidatedKpis(students, rows);
@@ -40,8 +40,8 @@ test("calculates rankings and assigns positions correctly", () => {
     { id: "2", nome: "Bruno", perfil: { agencia: "0002" } },
   ];
   const rows: ProductionRow[] = [
-    { estagiario_id: "1", tri_ref: "2026-Q3", mes_idx: 1, sem_idx: 1, ref_item: "cred_INSS", valor: 10000 },
-    { estagiario_id: "2", tri_ref: "2026-Q3", mes_idx: 1, sem_idx: 1, ref_item: "cred_INSS", valor: 50000 },
+    { estagiario_id: "1", tri_ref: "2026-Q3", meta: 0, producao: 0, ref_item: "cred_INSS", valor: 10000 },
+    { estagiario_id: "2", tri_ref: "2026-Q3", meta: 0, producao: 0, ref_item: "cred_INSS", valor: 50000 },
   ];
 
   const rankByCredit = calculateRankings(students, rows, "credito");

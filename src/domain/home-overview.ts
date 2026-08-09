@@ -1,4 +1,4 @@
-import { calcDaysInProgram, getProgramPhaseKey, getStudentProfile, type StudentItem } from "./student-monitoring.ts";
+import { getProgramPhaseKey, getStudentProfile, type StudentItem } from "./student-monitoring.ts";
 import type { ProductionRow } from "./production.ts";
 
 export type HomeKpis = {
@@ -55,11 +55,13 @@ export function calculateConsolidatedKpis(
   let totalProductsAmount = 0;
 
   productionRows.forEach((row) => {
-    const isCredit = ["cred_INSS", "cred_OP", "cred_EP", "cred_Crediario"].includes(row.ref_item);
+    const refItem = typeof row.ref_item === "string" ? row.ref_item : "";
+    const valor = typeof row.valor === "number" ? row.valor : 0;
+    const isCredit = ["cred_INSS", "cred_OP", "cred_EP", "cred_Crediario"].includes(refItem);
     if (isCredit) {
-      totalCreditAmount += row.valor || 0;
+      totalCreditAmount += valor;
     } else {
-      totalProductsAmount += row.valor || 0;
+      totalProductsAmount += valor;
     }
   });
 
@@ -77,7 +79,6 @@ export function calculateRankings(
   productionRows: ProductionRow[],
   filterKey = "nota",
 ): RankingItem[] {
-  // Mapear totais por estagiário
   const totalsByStudent: Record<string, { credit: number; products: number; itemValues: Record<string, number> }> = {};
 
   students.forEach((s) => {
@@ -85,16 +86,24 @@ export function calculateRankings(
   });
 
   productionRows.forEach((row) => {
-    if (!totalsByStudent[row.estagiario_id]) {
-      totalsByStudent[row.estagiario_id] = { credit: 0, products: 0, itemValues: {} };
-    }
-    const target = totalsByStudent[row.estagiario_id];
-    target.itemValues[row.ref_item] = (target.itemValues[row.ref_item] || 0) + (row.valor || 0);
+    const studentId = String(row.estagiario_id ?? "");
+    if (!studentId) return;
 
-    if (row.ref_item.startsWith("cred_")) {
-      target.credit += row.valor || 0;
-    } else if (row.ref_item.startsWith("out_")) {
-      target.products += row.valor || 0;
+    if (!totalsByStudent[studentId]) {
+      totalsByStudent[studentId] = { credit: 0, products: 0, itemValues: {} };
+    }
+    const target = totalsByStudent[studentId];
+    const refItem = typeof row.ref_item === "string" ? row.ref_item : "";
+    const valor = typeof row.valor === "number" ? row.valor : 0;
+
+    if (refItem) {
+      target.itemValues[refItem] = (target.itemValues[refItem] || 0) + valor;
+
+      if (refItem.startsWith("cred_")) {
+        target.credit += valor;
+      } else if (refItem.startsWith("out_")) {
+        target.products += valor;
+      }
     }
   });
 
@@ -105,7 +114,6 @@ export function calculateRankings(
     let formattedValue = "0";
 
     if (filterKey === "nota") {
-      // Score simplificado de nota (soma ponderada / milhar)
       scoreOrValue = (totals.credit / 10000) * 0.6 + (totals.products / 100) * 0.4;
       formattedValue = `${scoreOrValue.toFixed(1)} pts`;
     } else if (filterKey === "credito") {
