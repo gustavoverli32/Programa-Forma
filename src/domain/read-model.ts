@@ -9,6 +9,7 @@ export type StudentReadRow = {
   perfil: Json | null;
   trilha_checks: Json | null;
   gestor_funcional: string | null;
+  regional_id?: string | null;
   created_at: string | null;
 };
 
@@ -50,6 +51,7 @@ export function publicStudent(row: StudentReadRow) {
     atencao: false,
     perfil,
     trilha_checks: {},
+    regional_id: row.regional_id ?? null,
     created_at: row.created_at,
   };
 }
@@ -64,6 +66,7 @@ export function privateStudent(row: StudentReadRow) {
     perfil: row.perfil,
     trilha_checks: row.trilha_checks,
     gestor_funcional: row.gestor_funcional,
+    regional_id: row.regional_id ?? null,
     created_at: row.created_at,
   };
 }
@@ -78,6 +81,14 @@ export function isStudentAssignedToManager(
     String(profile.gga_funcional ?? "") === employeeCode ||
     String(row.gestor_funcional ?? "") === employeeCode
   );
+}
+
+export function isStudentInRegional(
+  row: StudentReadRow,
+  regionalId?: string | null,
+) {
+  if (!regionalId) return true;
+  return String(row.regional_id ?? "") === String(regionalId);
 }
 
 export function sanitizeProjectTexts(value: Json | null) {

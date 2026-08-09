@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   isStudentAssignedToManager,
+  isStudentInRegional,
   privateStudent,
   publicStudent,
   sanitizeProjectTexts,
@@ -67,3 +68,16 @@ test("replaces forbidden target terminology in project copy", () => {
     },
   );
 });
+
+test("filters students accurately by regional_id", () => {
+  const studentWithRegional: StudentReadRow = {
+    ...student,
+    regional_id: "reg-lagos-123",
+  };
+
+  assert.equal(isStudentInRegional(studentWithRegional, "reg-lagos-123"), true);
+  assert.equal(isStudentInRegional(studentWithRegional, "reg-campos-456"), false);
+  assert.equal(isStudentInRegional(studentWithRegional, null), true);
+  assert.equal(isStudentInRegional(studentWithRegional, undefined), true);
+});
+

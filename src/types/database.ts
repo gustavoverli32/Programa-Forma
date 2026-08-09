@@ -162,6 +162,7 @@ export type Database = {
           nome: string
           obs: string | null
           perfil: Json | null
+          regional_id: string | null
           senha_hash: string | null
           trilha_checks: Json | null
         }
@@ -174,6 +175,7 @@ export type Database = {
           nome: string
           obs?: string | null
           perfil?: Json | null
+          regional_id?: string | null
           senha_hash?: string | null
           trilha_checks?: Json | null
         }
@@ -186,6 +188,7 @@ export type Database = {
           nome?: string
           obs?: string | null
           perfil?: Json | null
+          regional_id?: string | null
           senha_hash?: string | null
           trilha_checks?: Json | null
         }
@@ -242,6 +245,7 @@ export type Database = {
           id: string
           nome: string
           permissoes: Json | null
+          regional_id: string | null
           senha_hash: string | null
           tipo_gestor: string | null
         }
@@ -251,6 +255,7 @@ export type Database = {
           id?: string
           nome: string
           permissoes?: Json | null
+          regional_id?: string | null
           senha_hash?: string | null
           tipo_gestor?: string | null
         }
@@ -260,8 +265,33 @@ export type Database = {
           id?: string
           nome?: string
           permissoes?: Json | null
+          regional_id?: string | null
           senha_hash?: string | null
           tipo_gestor?: string | null
+        }
+        Relationships: []
+      }
+      regionais: {
+        Row: {
+          ativa: boolean | null
+          created_at: string | null
+          id: string
+          nome: string
+          slug: string
+        }
+        Insert: {
+          ativa?: boolean | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          slug: string
+        }
+        Update: {
+          ativa?: boolean | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          slug?: string
         }
         Relationships: []
       }
