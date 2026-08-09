@@ -2401,7 +2401,7 @@ function renderCards(){
   document.querySelectorAll('.notion-card').forEach(function(card){
     card.addEventListener('click',function(){
       var eid = this.dataset.eid;
-      var idx = S.ests.findIndex(function(e){ return e.id === eid; });
+      var idx = S.ests.findIndex(function(e){ return String(e.id) === String(eid); });
       if(idx >= 0) openPanel(idx);
     });
   });
@@ -2410,10 +2410,11 @@ function renderCards(){
 // ── PANEL ──────────────────────────────────────────────────────────────────
 function getPanelEstIdx(){
   if(panelIdx===-1 || panelIdx===undefined || panelIdx===null) return -1;
-  return S.ests.findIndex(function(e){ return e.id === panelIdx; });
+  return S.ests.findIndex(function(e){ return String(e.id) === String(panelIdx); });
 }
 function openPanel(idx){
   var e=S.ests[idx];
+  if(!e) return;
   panelIdx=e.id;
   document.getElementById('pAv').textContent=ini(e.nome);
   document.getElementById('pNm').textContent=e.nome;
@@ -2425,8 +2426,8 @@ function openPanel(idx){
   // GA e GGA
   var gaFunc = e.perfil&&e.perfil.ga_funcional?e.perfil.ga_funcional:null;
   var ggaFunc = e.perfil&&e.perfil.gga_funcional?e.perfil.gga_funcional:null;
-  var gaGestor = gaFunc ? S.gestores.find(function(g){return g.funcional===gaFunc;}) : null;
-  var ggaGestor = ggaFunc ? S.gestores.find(function(g){return g.funcional===ggaFunc;}) : null;
+  var gaGestor = gaFunc ? (S.gestores||[]).find(function(g){return String(g.funcional)===String(gaFunc);}) : null;
+  var ggaGestor = ggaFunc ? (S.gestores||[]).find(function(g){return String(g.funcional)===String(ggaFunc);}) : null;
   document.getElementById('pGA').textContent = gaGestor ? gaGestor.nome+' (#'+gaFunc+')' : (gaFunc||'—');
   document.getElementById('pGGA').textContent = ggaGestor ? ggaGestor.nome+' (#'+ggaFunc+')' : (ggaFunc||'—');
   document.getElementById('pInicio').textContent=fmtDate(e.perfil&&e.perfil.inicio?e.perfil.inicio:'');
@@ -2483,7 +2484,6 @@ function openPanel(idx){
   document.getElementById('obsSaved').classList.remove('show');
   document.getElementById('overlay').classList.add('open');
   document.getElementById('panel').classList.add('open');
-  renderCards();
 }
 function closePanel(){
   panelIdx=-1;

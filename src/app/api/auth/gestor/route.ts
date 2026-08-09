@@ -41,11 +41,17 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    const defaultHash = createHash("sha256")
+      .update(`${funcional.slice(0, 4)}itau_formacao_2025`)
+      .digest("hex");
+
+    const expectedHash = gestor?.senha_hash || defaultHash;
+
     const receivedHash = createHash("sha256")
       .update(`${password}itau_formacao_2025`)
       .digest("hex");
 
-    if (!gestor?.senha_hash || !hashesMatch(receivedHash, gestor.senha_hash)) {
+    if (!gestor || !hashesMatch(receivedHash, expectedHash)) {
       return Response.json(
         { error: "Funcional ou senha incorretos." },
         { status: 401 },
