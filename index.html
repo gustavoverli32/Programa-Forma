@@ -45,7 +45,12 @@
     <button class="btn-mode" id="modeBtn">Fazer login</button>
     <button class="btn-mode" id="btnMeuPerfil" style="margin-top:8px;display:none;background:var(--bg);color:var(--ink);border:1px solid var(--border2);">👤 Meu perfil</button>
   </div>
-  <div class="sb-footer">Tutora regional<br><strong>Kamilla</strong><br><span style="font-size:11px">6 meses · 3 ciclos</span></div>
+  <div class="sb-footer">
+    <div style="font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:2px;">Tutora Geral</div>
+    <div style="font-weight:700;color:var(--ink);font-size:13px;margin-bottom:6px;">Kamilla Silva</div>
+    <div style="font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:2px;">Desenvolvedor</div>
+    <div style="font-weight:700;color:var(--ink);font-size:13px;">Luiz Gustavo Verli</div>
+  </div>
 </aside>
 
 <main class="main">
@@ -200,45 +205,56 @@
         </div>
       </div>
 
-      <!-- SEÇÃO DE NOTÍCIAS & SOLUÇÕES DE CRÉDITO ITAÚ -->
+      <!-- SEÇÃO DE NOTÍCIAS & SOLUÇÕES DE CRÉDITO ITAÚ (CURADAS POR AGENTE DE IA) -->
       <div style="background:var(--surface,#fff);border:1px solid var(--border,#eee);border-radius:var(--r,16px);padding:24px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
           <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--ink,#111);display:flex;align-items:center;gap:8px;">
             <span>📰</span> Notícias & Soluções de Crédito Itaú
           </div>
-          <span style="font-size:11px;font-weight:600;color:var(--or,#EC7000);background:#FFF3E8;padding:4px 12px;border-radius:20px;">Destaques do Mercado</span>
+          <a href="https://www.itau.com.br/imprensa" target="_blank" rel="noopener noreferrer" style="font-size:11px;font-weight:600;color:var(--or,#EC7000);background:#FFF3E8;padding:4px 12px;border-radius:20px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+            <span>🤖 Curado por IA · Itaú Imprensa ↗</span>
+          </a>
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:14px;">
           <!-- Card Notícia 1 -->
-          <div style="background:var(--bg,#f8f9fa);border:1px solid var(--border,#eee);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;">
+          <a href="https://www.itau.com.br/imprensa" target="_blank" rel="noopener noreferrer" style="text-decoration:none;background:var(--bg,#f8f9fa);border:1px solid var(--border,#eee);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease,box-shadow .15s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
             <div>
               <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#16A34A;margin-bottom:6px;">Crédito Pessoal & Consignado</div>
               <h4 style="font-size:14px;font-weight:700;color:var(--ink,#111);margin:0 0 8px 0;line-height:1.35;">Itaú expande limites de crédito pessoal com simulação digital no App</h4>
               <p style="font-size:12.5px;color:var(--ink2,#555);margin:0;line-height:1.5;">Contratação rápida, taxas personalizadas e prazos flexíveis de até 72 meses para correntistas Itaú Unibanco.</p>
             </div>
-            <div style="margin-top:14px;font-size:11px;color:var(--ink3,#888);font-weight:500;">Portal Financeiro Itaú</div>
-          </div>
+            <div style="margin-top:14px;font-size:11px;color:var(--or,#EC7000);font-weight:600;display:flex;align-items:center;justify-content:space-between;">
+              <span>Itaú Imprensa 2026</span>
+              <span>Ler artigo ↗</span>
+            </div>
+          </a>
 
           <!-- Card Notícia 2 -->
-          <div style="background:var(--bg,#f8f9fa);border:1px solid var(--border,#eee);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;">
+          <a href="https://www.itau.com.br/imprensa" target="_blank" rel="noopener noreferrer" style="text-decoration:none;background:var(--bg,#f8f9fa);border:1px solid var(--border,#eee);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease,box-shadow .15s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
             <div>
               <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2563EB;margin-bottom:6px;">Crédito Imobiliário</div>
               <h4 style="font-size:14px;font-weight:700;color:var(--ink,#111);margin:0 0 8px 0;line-height:1.35;">Financiamento Imobiliário Itaú: facilidades no uso do FGTS e amortização</h4>
               <p style="font-size:12.5px;color:var(--ink2,#555);margin:0;line-height:1.5;">Linhas com taxas atreladas à Poupança ou Selic, análise simplificada e acompanhamento 100% digital.</p>
             </div>
-            <div style="margin-top:14px;font-size:11px;color:var(--ink3,#888);font-weight:500;">Mercado & Economia</div>
-          </div>
+            <div style="margin-top:14px;font-size:11px;color:var(--or,#EC7000);font-weight:600;display:flex;align-items:center;justify-content:space-between;">
+              <span>Mercado & Economia</span>
+              <span>Ler artigo ↗</span>
+            </div>
+          </a>
 
           <!-- Card Notícia 3 -->
-          <div style="background:var(--bg,#f8f9fa);border:1px solid var(--border,#eee);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;">
+          <a href="https://www.itau.com.br/imprensa" target="_blank" rel="noopener noreferrer" style="text-decoration:none;background:var(--bg,#f8f9fa);border:1px solid var(--border,#eee);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease,box-shadow .15s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
             <div>
               <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#D97706;margin-bottom:6px;">Financiamento de Veículos</div>
               <h4 style="font-size:14px;font-weight:700;color:var(--ink,#111);margin:0 0 8px 0;line-height:1.35;">Condições especiais para veículos e modelos sustentáveis no Itaú Mobilidade</h4>
               <p style="font-size:12.5px;color:var(--ink2,#555);margin:0;line-height:1.5;">Aprovação ágil para seminovos e elétricos, com prazos sob medida e inclusão do seguro auto nas parcelas.</p>
             </div>
-            <div style="margin-top:14px;font-size:11px;color:var(--ink3,#888);font-weight:500;">Itaú Mobilidade</div>
-          </div>
+            <div style="margin-top:14px;font-size:11px;color:var(--or,#EC7000);font-weight:600;display:flex;align-items:center;justify-content:space-between;">
+              <span>Itaú Mobilidade</span>
+              <span>Ler artigo ↗</span>
+            </div>
+          </a>
         </div>
       </div>
     </div>
