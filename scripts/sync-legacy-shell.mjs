@@ -24,6 +24,7 @@ const html = body[1]
     /<script>\s*for\(var _d=1;_d<=31;_d\+\+\) document\.write\([\s\S]*?<\/script>/i,
     birthdayOptions,
   )
+  .replace(/<script\s+src=["']\.\/assets\/js\/security\.js[^>]*><\/script>/gi, "")
   .replace(/<script\s+src=["']\.\/assets\/js\/app\.js[^>]*><\/script>/gi, "")
   .replace(/<link\s+rel=["']stylesheet["']\s+href=["']\.\/assets\/css\/app\.css[^>]*>/gi, "")
   .trim();

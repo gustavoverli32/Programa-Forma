@@ -30,6 +30,42 @@ export function LegacyRuntime() {
   useEffect(() => {
     let cancelled = false;
 
+    function loadScript(src: string, marker: string) {
+      return new Promise<void>((resolve, reject) => {
+        const existing = document.querySelector<HTMLScriptElement>(
+          `script[data-nextuber-runtime="${marker}"]`,
+        );
+        if (existing?.dataset.loaded === "true") {
+          resolve();
+          return;
+        }
+        if (existing) {
+          existing.addEventListener("load", () => resolve(), { once: true });
+          existing.addEventListener("error", () => reject(new Error(`Falha ao carregar ${src}.`)), {
+            once: true,
+          });
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = src;
+        script.dataset.nextuberRuntime = marker;
+        script.async = false;
+        script.addEventListener(
+          "load",
+          () => {
+            script.dataset.loaded = "true";
+            resolve();
+          },
+          { once: true },
+        );
+        script.addEventListener("error", () => reject(new Error(`Falha ao carregar ${src}.`)), {
+          once: true,
+        });
+        document.body.appendChild(script);
+      });
+    }
+
     async function startLegacyApplication() {
       if (cancelled) return;
 
@@ -43,16 +79,9 @@ export function LegacyRuntime() {
       window.nextuberMutations = nextuberMutationBridge;
       window.nextuberReads = nextuberReadBridge;
 
-      if (document.querySelector('script[data-nextuber-legacy="true"]')) return;
-
-      const script = document.createElement("script");
-      script.src = "/legacy/app.js";
-      script.dataset.nextuberLegacy = "true";
-      script.async = false;
-      script.onerror = () => {
-        setError("Nao foi possivel iniciar a plataforma.");
-      };
-      document.body.appendChild(script);
+      await loadScript("/legacy/security.js", "security");
+      if (cancelled) return;
+      await loadScript("/legacy/app.js", "legacy");
     }
 
     startLegacyApplication().catch((reason: unknown) => {

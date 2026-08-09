@@ -1,12 +1,14 @@
-const CACHE_NAME = 'nextuber-v4-semanal';
+const CACHE_PREFIX = 'nextuber-github-';
+const CACHE_NAME = CACHE_PREFIX + 'v5-security-pwa';
 const APP_SHELL = [
   './',
   './index.html',
   './formaplus_2_0.html',
   './manifest.json',
   './assets/css/app.css',
-  './assets/js/app.js?v=semanal2',
-  './assets/js/pwa.js',
+  './assets/js/security.js?v=1',
+  './assets/js/app.js?v=seguranca1',
+  './assets/js/pwa.js?v=pwa5',
   './pwa-icons/icon-192x192.png',
   './pwa-icons/icon-512x512.png'
 ];
@@ -24,7 +26,7 @@ self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(
-        keys.filter(function (key) { return key !== CACHE_NAME; })
+        keys.filter(function (key) { return key.indexOf(CACHE_PREFIX) === 0 && key !== CACHE_NAME; })
           .map(function (key) { return caches.delete(key); })
       );
     }).then(function () {
@@ -43,7 +45,8 @@ self.addEventListener('fetch', function (event) {
 
   event.respondWith(
     fetch(request, { cache: 'no-store' }).then(function (response) {
-      if (response.ok) {
+      var cacheControl = response.headers.get('cache-control') || '';
+      if (response.ok && response.type === 'basic' && !/(?:no-store|private)/i.test(cacheControl)) {
         var copy = response.clone();
         caches.open(CACHE_NAME).then(function (cache) {
           cache.put(request, copy);

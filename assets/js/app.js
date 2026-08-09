@@ -1,5 +1,10 @@
 (function(){
 
+if(!window.NextuberSecurity) throw new Error('Camada de seguranca indisponivel.');
+var escapeHtml = window.NextuberSecurity.escapeHtml;
+var escapeAttr = window.NextuberSecurity.escapeAttr;
+var safeUrl = window.NextuberSecurity.safeUrl;
+
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 var PWD = 'kamilla2025';
 console.log('🔶 NEXTUBER BUILD: 2026-06-17-v28 - IA acessa window.S');
@@ -798,10 +803,10 @@ function renderEncontros(){
         +'<div style="font-size:18px;font-weight:600;color:var(--or);line-height:1;">'+dia+'</div>'
       +'</div>'
       +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:13.5px;font-weight:500;color:var(--ink);">'+enc.titulo+'</div>'
-        +(enc.descricao?'<div style="font-size:12px;color:var(--ink3);margin-top:2px;">'+enc.descricao+'</div>':'')
+        +'<div style="font-size:13.5px;font-weight:500;color:var(--ink);">'+escapeHtml(enc.titulo)+'</div>'
+        +(enc.descricao?'<div style="font-size:12px;color:var(--ink3);margin-top:2px;">'+escapeHtml(enc.descricao)+'</div>':'')
       +'</div>'
-      +(editor?'<button style="background:none;border:none;font-size:14px;color:var(--ink3);cursor:pointer;flex-shrink:0;" data-delenc="'+enc.id+'">✕</button>':'')
+      +(editor?'<button style="background:none;border:none;font-size:14px;color:var(--ink3);cursor:pointer;flex-shrink:0;" data-delenc="'+escapeAttr(enc.id)+'">✕</button>':'')
     +'</div>';
   }).join('');
   el.querySelectorAll('[data-delenc]').forEach(function(btn){
@@ -879,7 +884,7 @@ function renderRanking(){
     
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">'
       +'<div style="width:22px;height:22px;border-radius:50%;background:'+(i<2?corPos:'var(--bg)')+';color:'+(i<2?'#fff':'var(--ink3)')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+(i+1)+'</div>'
-      +'<div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.e.nome+'</div>'
+      +'<div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(r.e.nome)+'</div>'
       +'<div style="width:80px;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;flex-shrink:0;"><div style="width:'+pct+'%;height:100%;background:'+corBarra+';"></div></div>'
       +'<div style="font-size:13px;font-weight:600;color:'+corBarra+';min-width:60px;text-align:right;flex-shrink:0;">'+valorDisplay+'</div>'
     +'</div>';
@@ -934,7 +939,7 @@ async function loadSnapshotsHistory(eid){
       var pct = s.meta>0 ? Math.round(s.total_producao/s.meta*100) : 0;
       var fr = faixaRes(pct);
       return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">'
-        +'<span style="font-size:11px;color:var(--ink2);min-width:70px;">'+fmtTrimestre(s.tri_ref)+'</span>'
+        +'<span style="font-size:11px;color:var(--ink2);min-width:70px;">'+escapeHtml(fmtTrimestre(s.tri_ref))+'</span>'
         +'<div style="flex:1;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+fr.cor+';"></div></div>'
         +'<span style="font-size:11px;font-weight:500;color:'+fr.cor+';min-width:42px;text-align:right;">'+(s.meta>0?pct+'%':'—')+'</span>'
         +'<span style="font-size:11px;font-weight:600;min-width:42px;text-align:right;">'+s.score+'/10</span>'
@@ -1029,7 +1034,7 @@ async function loadEvolucaoChart(eid){
   var xLabels = '';
   pts.forEach(function(p, i){
     var lbl = p.tri.split('-')[1].replace('Q','T') + '/' + p.tri.split('-')[0].slice(2);
-    xLabels += '<text x="'+p.x+'" y="'+(h-4)+'" font-size="3.5" fill="#999" text-anchor="middle">'+lbl+'</text>';
+    xLabels += '<text x="'+p.x+'" y="'+(h-4)+'" font-size="3.5" fill="#999" text-anchor="middle">'+escapeHtml(lbl)+'</text>';
   });
   
   // Dots and score labels
@@ -2189,7 +2194,7 @@ function atualizarOpcoesFiltroAgencia(lista){
   // Reconstruir opções
   var h = '<option value="todas">Todas</option>';
   listaAg.forEach(function(ag){
-    h += '<option value="'+ag+'">Ag '+ag+'</option>';
+    h += '<option value="'+escapeAttr(ag)+'">Ag '+escapeHtml(ag)+'</option>';
   });
   sel.innerHTML = h;
   
@@ -2277,14 +2282,14 @@ function renderCards(){
     var score=calcScore(e);
     var dots=e.meses.map(function(s,i){
       var cls=i===ci?'curr':(dotCls(s)||'');
-      return '<span class="nd'+(cls?' '+cls:'')+'" title="'+ML[i]+': '+sShort(s)+'"></span>';
+      return '<span class="nd'+(cls?' '+cls:'')+'" title="'+escapeAttr(ML[i]+': '+sShort(s))+'"></span>';
     }).join('');
-    return '<div class="notion-card'+(panelIdx===e.id?' nc-active':'')+'" data-eid="'+e.id+'" style="'+cardBorder+'">'
-      +'<div class="nc-top"><div class="nc-avatar">'+(bday?'🎂':ini(e.nome))+'</div><div class="nc-name">'+e.nome+(ag?' <span style="font-size:11px;color:var(--ink3);font-weight:500;">· Ag '+ag+'</span>':'')+(bday?' <span style="font-size:11px;color:var(--or);">Aniversário hoje!</span>':'')+'</div><span class="nc-arrow">→</span></div>'
+    return '<div class="notion-card'+(panelIdx===e.id?' nc-active':'')+'" data-eid="'+escapeAttr(e.id)+'" style="'+cardBorder+'">'
+      +'<div class="nc-top"><div class="nc-avatar">'+(bday?'🎂':escapeHtml(ini(e.nome)))+'</div><div class="nc-name">'+escapeHtml(e.nome)+(ag?' <span style="font-size:11px;color:var(--ink3);font-weight:500;">· Ag '+escapeHtml(ag)+'</span>':'')+(bday?' <span style="font-size:11px;color:var(--or);">Aniversário hoje!</span>':'')+'</div><span class="nc-arrow">→</span></div>'
       +'<div class="nc-meta">'
-        +(hasFn?'<span class="nc-chip func">#'+e.perfil.funcional+'</span>':'')
+        +(hasFn?'<span class="nc-chip func">#'+escapeHtml(e.perfil.funcional)+'</span>':'')
         +(t?'<span class="nc-chip">◷ '+t+'</span>':'')
-        +(cert?'<span class="nc-chip" style="background:#DBEAFE;color:#1E40AF;font-weight:600;">🏅 '+cert+'</span>':'')
+        +(cert?'<span class="nc-chip" style="background:#DBEAFE;color:#1E40AF;font-weight:600;">🏅 '+escapeHtml(cert)+'</span>':'')
         +(updStatus==='atrasado'?'<span class="nc-chip" style="background:#FEE2E2;color:#DC2626;font-weight:600;">⚠ Prazo vencido</span>':'')
         +(updStatus==='alerta'?'<span class="nc-chip" style="background:#FEF3C7;color:#92400E;font-weight:600;">⏳ Prazo próximo</span>':'')
         +(!hasFn&&!t?'<span class="nc-chip empty">Perfil não cadastrado</span>':'')
@@ -2332,7 +2337,7 @@ function openPanel(idx){
   var certEl = document.getElementById('pCertificacao');
   if(certEl){
     if(certVal){
-      certEl.innerHTML = '<span style="background:#DBEAFE;color:#1E40AF;font-weight:600;padding:2px 10px;border-radius:12px;font-size:12px;">🏅 '+certVal+'</span>';
+      certEl.innerHTML = '<span style="background:#DBEAFE;color:#1E40AF;font-weight:600;padding:2px 10px;border-radius:12px;font-size:12px;">🏅 '+escapeHtml(certVal)+'</span>';
     } else {
       certEl.textContent = '—';
     }
@@ -2345,7 +2350,7 @@ function openPanel(idx){
       var anivP = anivVal.split('-');
       var mesesNome = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
       var bday = isAniversario(e);
-      nascEl.innerHTML = anivP[0]+' de '+mesesNome[parseInt(anivP[1])] + (bday?' <span style="font-size:12px;">🎂 Aniversário hoje!</span>':'');
+      nascEl.innerHTML = escapeHtml(anivP[0])+' de '+escapeHtml(mesesNome[parseInt(anivP[1])]||'') + (bday?' <span style="font-size:12px;">🎂 Aniversário hoje!</span>':'');
     } else { nascEl.textContent = '—'; }
   }
   // Última atualização de produção
@@ -2356,7 +2361,7 @@ function openPanel(idx){
     if(updVal){
       var corSt = st==='atrasado'?'#DC2626':(st==='alerta'?'#F59E0B':'#16A34A');
       var lblSt = st==='atrasado'?' (prazo vencido)':(st==='alerta'?' (prazo próximo)':' (em dia)');
-      updEl.innerHTML = fmtDate(updVal)+' <span style="color:'+corSt+';font-size:11px;font-weight:600;">'+lblSt+'</span>';
+      updEl.innerHTML = escapeHtml(fmtDate(updVal))+' <span style="color:'+corSt+';font-size:11px;font-weight:600;">'+lblSt+'</span>';
     } else if(getPrazoProducaoAtual()){
       var corSt2 = st==='atrasado'?'#DC2626':(st==='alerta'?'#F59E0B':'var(--ink3)');
       updEl.innerHTML = '<span style="color:'+corSt2+';font-size:12px;">Ainda não atualizada</span>';
@@ -2510,14 +2515,14 @@ function renderGestoresList(){
     var tipoLabel = tipo === 'gga' ? '👔 GGA' : '👤 GA';
     
     return '<div class="cad-list-row">'
-      +'<div class="cad-list-av" style="background:var(--ink);color:#fff;">'+g.nome[0].toUpperCase()+'</div>'
+      +'<div class="cad-list-av" style="background:var(--ink);color:#fff;">'+escapeHtml(g.nome[0].toUpperCase())+'</div>'
       +'<div class="cad-list-info">'
-        +'<div class="cad-list-name">'+g.nome+'</div>'
-        +'<div class="cad-list-meta"><span>#'+g.funcional+'</span><span style="background:'+tipoBg+';color:'+tipoColor+';padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">'+tipoLabel+'</span>'+(pCount>0?'<span style="color:var(--or);font-weight:500;">'+pCount+' acesso'+(pCount>1?'s':'')+' extra</span>':'')+'</div>'
+        +'<div class="cad-list-name">'+escapeHtml(g.nome)+'</div>'
+        +'<div class="cad-list-meta"><span>#'+escapeHtml(g.funcional)+'</span><span style="background:'+tipoBg+';color:'+tipoColor+';padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">'+tipoLabel+'</span>'+(pCount>0?'<span style="color:var(--or);font-weight:500;">'+pCount+' acesso'+(pCount>1?'s':'')+' extra</span>':'')+'</div>'
       +'</div>'
       +'<div style="display:flex;gap:6px;">'
-        +'<button class="cad-list-btn" data-permgestor="'+g.id+'" style="color:var(--or);border-color:rgba(236,112,0,.3);'+(editor?'':'opacity:.5;cursor:default;pointer-events:none;')+'">⚙ Permissões</button>'
-        +'<button class="cad-list-btn cad-del-btn" data-delgestor="'+g.id+'" style="color:#DC2626;border-color:#FECACA;">Remover</button>'
+        +'<button class="cad-list-btn" data-permgestor="'+escapeAttr(g.id)+'" style="color:var(--or);border-color:rgba(236,112,0,.3);'+(editor?'':'opacity:.5;cursor:default;pointer-events:none;')+'">⚙ Permissões</button>'
+        +'<button class="cad-list-btn cad-del-btn" data-delgestor="'+escapeAttr(g.id)+'" style="color:#DC2626;border-color:#FECACA;">Remover</button>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -2552,12 +2557,12 @@ function renderCadList(){
     var realIdx = S.ests.indexOf(e);
     var tempo = e.perfil&&e.perfil.inicio ? calcTempo(e.perfil.inicio) : null;
     return '<div class="cad-list-row">'
-      +'<div class="cad-list-av">'+ini(e.nome)+'</div>'
+      +'<div class="cad-list-av">'+escapeHtml(ini(e.nome))+'</div>'
       +'<div class="cad-list-info">'
-        +'<div class="cad-list-name">'+e.nome+'</div>'
+        +'<div class="cad-list-name">'+escapeHtml(e.nome)+'</div>'
         +'<div class="cad-list-meta">'
-          +(e.perfil.funcional?'<span>#'+e.perfil.funcional+'</span>':'')
-          +(e.perfil.idade?'<span>'+e.perfil.idade+' anos</span>':'')
+          +(e.perfil.funcional?'<span>#'+escapeHtml(e.perfil.funcional)+'</span>':'')
+          +(e.perfil.idade?'<span>'+escapeHtml(e.perfil.idade)+' anos</span>':'')
           +(tempo?'<span>'+tempo+'</span>':'')
         +'</div>'
       +'</div>'
@@ -3731,7 +3736,9 @@ function renderImgPreview(id){
   if(!imgs.length){ wrap.style.display='none'; wrap.innerHTML=''; return; }
   wrap.style.display='flex';
   wrap.innerHTML = imgs.map(function(src,i){
-    return '<div class="rich-img-thumb-wrap"><img class="rich-img-thumb" src="'+src+'"><button class="rich-img-del" data-imgid="'+id+'" data-idx="'+i+'">✕</button></div>';
+    var imageUrl = safeUrl(src, {allowImageData:true});
+    if(!imageUrl) return '';
+    return '<div class="rich-img-thumb-wrap"><img class="rich-img-thumb" src="'+escapeAttr(imageUrl)+'" alt=""><button class="rich-img-del" data-imgid="'+escapeAttr(id)+'" data-idx="'+i+'">✕</button></div>';
   }).join('');
   wrap.querySelectorAll('.rich-img-del').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -3752,7 +3759,10 @@ function renderContent(text, images){
     .replace(/\n/g,'<br>');
   if(images && images.length){
     h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">'
-      +images.map(function(src){ return '<img src="'+src+'" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);object-fit:contain;">'; }).join('')
+      +images.map(function(src){
+        var imageUrl = safeUrl(src, {allowImageData:true});
+        return imageUrl ? '<img src="'+escapeAttr(imageUrl)+'" alt="" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);object-fit:contain;">' : '';
+      }).join('')
     +'</div>';
   }
   return h;
@@ -3889,7 +3899,7 @@ function renderAgendamentos(){
     var totalEsperado = (a.presenca && Array.isArray(a.presenca)) ? a.presenca.length : 0;
     var temArquivo = !!a.arquivo_nome;
     
-    h += '<div class="agend-card" data-id="'+a.id+'" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid '+corTipo(a.tipo)+';border-radius:10px;padding:14px;cursor:pointer;transition:transform .15s;">'
+    h += '<div class="agend-card" data-id="'+escapeAttr(a.id)+'" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid '+corTipo(a.tipo)+';border-radius:10px;padding:14px;cursor:pointer;transition:transform .15s;">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;flex-wrap:wrap;">'
         +'<div style="flex:1;min-width:200px;">'
           +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">'
@@ -3897,15 +3907,15 @@ function renderAgendamentos(){
             +'<span style="font-size:11px;color:var(--ink3);">'+nomeFase(a.fase_alvo)+'</span>'
             +(temArquivo ? '<span style="font-size:11px;color:var(--or);">📎 Arquivo</span>' : '')
           +'</div>'
-          +'<div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px;">'+(a.titulo||'(sem título)')+'</div>'
-          +(a.descricao ? '<div style="font-size:12px;color:var(--ink2);margin-bottom:6px;line-height:1.4;">'+(a.descricao.length>120 ? a.descricao.substring(0,120)+'...' : a.descricao)+'</div>' : '')
+          +'<div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px;">'+escapeHtml(a.titulo||'(sem título)')+'</div>'
+          +(a.descricao ? '<div style="font-size:12px;color:var(--ink2);margin-bottom:6px;line-height:1.4;">'+escapeHtml(a.descricao.length>120 ? a.descricao.substring(0,120)+'...' : a.descricao)+'</div>' : '')
         +'</div>'
         +'<div style="text-align:right;min-width:120px;">'
-          +'<div style="font-size:13px;font-weight:600;color:var(--or);">'+formatarDataBR(a.data)+'</div>'
+          +'<div style="font-size:13px;font-weight:600;color:var(--or);">'+escapeHtml(formatarDataBR(a.data))+'</div>'
         +'</div>'
       +'</div>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3);flex-wrap:wrap;gap:8px;">'
-        +'<span>👤 Criado por: <strong style="color:var(--ink2);">'+(a.gestor_nome||'—')+'</strong></span>'
+        +'<span>👤 Criado por: <strong style="color:var(--ink2);">'+escapeHtml(a.gestor_nome||'—')+'</strong></span>'
         +'<span>✓ Presentes: <strong style="color:var(--ink2);">'+presentes+'/'+totalEsperado+'</strong></span>'
       +'</div>'
     +'</div>';
@@ -3956,35 +3966,36 @@ function abrirDetalhesAgendamento(id){
         +'<div style="font-size:12px;color:#92400E;font-weight:600;margin-bottom:6px;">⚠ '+ausentes.length+' ausente(s) de '+a.presenca.length+':</div>';
       ausentes.forEach(function(p){
         var est = S.ests.find(function(e){ return e.id === p.estagiario_id; });
-        presencaHtml += '<div style="font-size:12px;color:#78350F;padding:2px 0;">• '+(est?est.nome:'(estagiário removido)')+(p.observacao ? ' <span style="opacity:.7;">— '+p.observacao+'</span>' : '')+'</div>';
+        presencaHtml += '<div style="font-size:12px;color:#78350F;padding:2px 0;">• '+escapeHtml(est?est.nome:'(estagiário removido)')+(p.observacao ? ' <span style="opacity:.7;">— '+escapeHtml(p.observacao)+'</span>' : '')+'</div>';
       });
       presencaHtml += '</div>';
     }
   }
   
   var arquivoHtml = '';
-  if(a.arquivo_url){
+  var arquivoUrlSeguro = safeUrl(a.arquivo_url);
+  if(arquivoUrlSeguro){
     arquivoHtml = '<div style="margin-bottom:14px;"><div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Arquivo</div>'
-      +'<a href="'+a.arquivo_url+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--or);text-decoration:none;font-size:13px;">📎 '+(a.arquivo_nome||'Arquivo')+'</a></div>';
+      +'<a href="'+escapeAttr(arquivoUrlSeguro)+'" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--or);text-decoration:none;font-size:13px;">📎 '+escapeHtml(a.arquivo_nome||'Arquivo')+'</a></div>';
   } else if(a.arquivo_nome){
     arquivoHtml = '<div style="margin-bottom:14px;"><div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Arquivo</div>'
-      +'<div style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--ink2);font-size:13px;">📎 '+a.arquivo_nome+'</div></div>';
+      +'<div style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--ink2);font-size:13px;">📎 '+escapeHtml(a.arquivo_nome)+'</div></div>';
   }
   
   body.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">'
     +'<span style="background:'+corTipo(a.tipo)+'20;color:'+corTipo(a.tipo)+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;">'+nomeTipo(a.tipo)+'</span>'
     +'<span style="font-size:12px;color:var(--ink3);">'+nomeFase(a.fase_alvo)+'</span>'
     +'</div>'
-    +'<h3 style="font-size:18px;margin-bottom:6px;color:var(--ink);">'+(a.titulo||'(sem título)')+'</h3>'
-    +'<div style="font-size:13px;color:var(--or);font-weight:600;margin-bottom:14px;">📅 '+formatarDataBR(a.data)+'</div>'
-    +(a.descricao ? '<div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:14px;font-size:13px;color:var(--ink2);line-height:1.5;white-space:pre-wrap;">'+a.descricao+'</div>' : '')
+    +'<h3 style="font-size:18px;margin-bottom:6px;color:var(--ink);">'+escapeHtml(a.titulo||'(sem título)')+'</h3>'
+    +'<div style="font-size:13px;color:var(--or);font-weight:600;margin-bottom:14px;">📅 '+escapeHtml(formatarDataBR(a.data))+'</div>'
+    +(a.descricao ? '<div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:14px;font-size:13px;color:var(--ink2);line-height:1.5;white-space:pre-wrap;">'+escapeHtml(a.descricao)+'</div>' : '')
     +arquivoHtml
     +'<div style="margin-bottom:14px;">'
       +'<div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Presença</div>'
       +presencaHtml
     +'</div>'
     +'<div style="padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3);">'
-      +'Criado por: <strong style="color:var(--ink2);">'+(a.gestor_nome||'—')+'</strong>'
+      +'Criado por: <strong style="color:var(--ink2);">'+escapeHtml(a.gestor_nome||'—')+'</strong>'
     +'</div>';
   
   // Mostrar botões só se tem permissão
@@ -4061,8 +4072,8 @@ function renderListaEstagiariosPresenca(presencaAtual){
     var registro = presencaAtual.find(function(p){ return p.estagiario_id === e.id; });
     var presente = registro ? registro.presente : true;
     h += '<label style="display:flex;align-items:center;gap:8px;padding:6px;font-size:12px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background=\'var(--surface)\'" onmouseout="this.style.background=\'transparent\'">'
-      +'<input type="checkbox" class="agendPresChk" data-eid="'+e.id+'" '+(presente?'checked':'')+'>'
-      +'<span>'+e.nome+'</span>'
+      +'<input type="checkbox" class="agendPresChk" data-eid="'+escapeAttr(e.id)+'" '+(presente?'checked':'')+'>'
+      +'<span>'+escapeHtml(e.nome)+'</span>'
       +'</label>';
   });
   lista.innerHTML = h;

@@ -6,8 +6,10 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Nextuber",
     description:
       "Plataforma de formação e acompanhamento de estagiários comerciais do Itaú Unibanco.",
+    id: "/",
     start_url: "/",
     scope: "/",
+    lang: "pt-BR",
     display: "standalone",
     background_color: "#1A1A2E",
     theme_color: "#EC7000",
@@ -22,9 +24,21 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icons/icon-192x192.png",
         sizes: "192x192",
         type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
         purpose: "maskable",
       },
       { src: "/icons/icon-384x384.png", sizes: "384x384", type: "image/png" },
+      {
+        src: "/icons/icon-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
       {
         src: "/icons/icon-512x512.png",
         sizes: "512x512",
