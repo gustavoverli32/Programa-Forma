@@ -1,4 +1,5 @@
 import type { ProductionBatchInput, ProductionRow } from "@/domain/production";
+import type { ContactsBatchInput } from "@/domain/contacts";
 import {
   getCurrentProductionDeadline,
   getProductionUpdateStatus,
@@ -51,6 +52,12 @@ export const nextuberProductionBridge = {
       config: ProductionConfig & Record<string, unknown>;
       deadline: string;
     }>("/api/settings/production-deadline", { deadline });
+  },
+  saveContacts(input: ContactsBatchInput) {
+    return postJson<{
+      contactRows: ProductionRow[];
+      profile: ProductionProfile;
+    }>("/api/contacts/save", input);
   },
 };
 

@@ -1113,41 +1113,11 @@ function getContatoDia(eid, semISO, diaIdx){
   return row ? (parseFloat(row.producao) || 0) : 0;
 }
 
-async function saveContatoDia(eid, semISO, diaIdx, valor){
-  var ref = 'CONTATO-' + semISO + '-D' + diaIdx;
-  var r = await sb.from('producao_trimestral').upsert(JSON.parse(JSON.stringify({
-    estagiario_id: eid,
-    tri_ref: ref,
-    meta: 0,
-    producao: valor
-  })), {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-    if(i >= 0) S.producao[i] = r.data;
-    else S.producao.push(r.data);
-  }
-}
-
 function getMetaContatos(eid){
   var ref = 'CONTATO-META';
   if(!S.producao) return 0;
   var row = S.producao.find(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
   return row ? (parseFloat(row.meta) || 0) : 0;
-}
-
-async function saveMetaContatos(eid, meta){
-  var ref = 'CONTATO-META';
-  var r = await sb.from('producao_trimestral').upsert(JSON.parse(JSON.stringify({
-    estagiario_id: eid,
-    tri_ref: ref,
-    meta: meta,
-    producao: 0
-  })), {onConflict:'estagiario_id,tri_ref'}).select().single();
-  if(!r.error && r.data){
-    var i = S.producao.findIndex(function(p){ return p.estagiario_id === eid && p.tri_ref === ref; });
-    if(i >= 0) S.producao[i] = r.data;
-    else S.producao.push(r.data);
-  }
 }
 
 // Naviga entre semanas (delta = -1 para anterior, +1 para próxima)
@@ -1283,25 +1253,43 @@ function renderContatosCard(idx){
   // Salvar
   var btnSv = document.getElementById('btnSalvarContatos');
   if(btnSv) btnSv.addEventListener('click', async function(){
-    // Salvar alvo
-    var novaMeta = parseInt((el.querySelector('.fieldContMeta')||{}).value) || 0;
-    await saveMetaContatos(e.id, novaMeta);
-    // Salvar dias
-    var inputs = el.querySelectorAll('.fieldContDia');
-    for(var i = 0; i < inputs.length; i++){
-      var val = parseInt(inputs[i].value) || 0;
-      var diaIdx = parseInt(inputs[i].getAttribute('data-dia'));
-      await saveContatoDia(e.id, contatosSelectedWeek, diaIdx, val);
-    }
-    // Marca estagiário como atualizado (contatos fazem parte da produção)
-    if(!e.perfil) e.perfil = {};
-    e.perfil.ultima_atualizacao_prod = hojeLocalYMD();
-    await saveEstagiario(e);
+    btnSv.disabled = true;
+    btnSv.textContent = 'Salvando...';
+    try {
+      if(!window.nextuberProduction) throw new Error('Serviço de contatos indisponível.');
+      var novaMeta = parseInt((el.querySelector('.fieldContMeta')||{}).value) || 0;
+      var inputs = el.querySelectorAll('.fieldContDia');
+      var days = [];
+      for(var i = 0; i < inputs.length; i++){
+        days.push({
+          dayIndex:parseInt(inputs[i].getAttribute('data-dia')),
+          value:parseInt(inputs[i].value) || 0
+        });
+      }
+      var result = await window.nextuberProduction.saveContacts({
+        studentId:String(e.id),
+        weekRef:contatosSelectedWeek,
+        dailyTarget:novaMeta,
+        days:days
+      });
+      var sid = String(e.id);
+      var refsSalvas = {};
+      (result.contactRows || []).forEach(function(row){ refsSalvas[row.tri_ref] = true; });
+      S.producao = (S.producao || []).filter(function(row){
+        return !(String(row.estagiario_id) === sid && refsSalvas[row.tri_ref]);
+      }).concat(result.contactRows || []);
+      e.perfil = result.profile;
 
-    var sv = document.getElementById('contatosSaved');
-    if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
-    renderContatosCard(idx);
-    renderCards();
+      renderContatosCard(idx);
+      renderCards();
+      var sv = document.getElementById('contatosSaved');
+      if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2000); }
+    } catch(error) {
+      console.error('Salvar contatos:', error);
+      alert((error && error.message) || 'Não foi possível salvar os contatos.');
+      btnSv.disabled = false;
+      btnSv.textContent = 'Salvar';
+    }
   });
 }
 

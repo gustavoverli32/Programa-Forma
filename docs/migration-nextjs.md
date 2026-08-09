@@ -29,6 +29,7 @@ Ordem dos módulos:
 - Permissão do gestor validada novamente no servidor antes de qualquer gravação.
 - Salvamento da tabela consolidado em uma única requisição do navegador.
 - Proteção de origem aplicada às novas operações de escrita.
+- Contatos diários e alvo de contatos consolidados em uma rota autenticada.
 
 ## Pendências de segurança antes da produção
 

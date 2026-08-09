@@ -43,6 +43,8 @@ As políticas não devem ser fechadas imediatamente porque o GitHub Pages atual 
 6. Ativar políticas mínimas de leitura e bloquear acesso direto a hashes, permissões e dados sensíveis.
 7. Publicar o Next.js, monitorar e só então retirar a versão antiga.
 
+Produção semanal, confirmação de produção, prazo e contatos já utilizam Route Handlers na branch de migração.
+
 ## Regra de segurança para o corte
 
 O fechamento do RLS e a troca de domínio devem ocorrer na mesma janela de publicação. Aplicar apenas uma dessas etapas isoladamente pode interromper a plataforma atual ou manter o banco exposto.
