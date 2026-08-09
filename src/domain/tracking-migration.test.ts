@@ -122,3 +122,15 @@ test("React program sections include trilhas tabs, appointment forms, and deadli
   assert.equal(cfgSource.includes("formatDeadlineStatus"), true);
   assert.equal(cfgSource.includes("/api/settings/production-deadline"), true);
 });
+
+test("React AI assistant includes floating drawer, suggested prompts, and secure API integration", () => {
+  const assistantModalSource = readFileSync(
+    `${projectRoot}/src/components/assistant/AiAssistantModal.tsx`,
+    "utf8",
+  );
+
+  assert.equal(assistantModalSource.includes("Nextuber IA"), true);
+  assert.equal(assistantModalSource.includes("SUGGESTED_QUESTIONS"), true);
+  assert.equal(assistantModalSource.includes("/api/assistant"), true);
+  assert.equal(assistantModalSource.includes("sanitizeAssistantText"), true);
+});
