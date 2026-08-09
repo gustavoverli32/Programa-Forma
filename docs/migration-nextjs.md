@@ -30,17 +30,24 @@ Ordem dos módulos:
 - Salvamento da tabela consolidado em uma única requisição do navegador.
 - Proteção de origem aplicada às novas operações de escrita.
 - Contatos diários e alvo de contatos consolidados em uma rota autenticada.
+- Cadastro e edição de estagiários movidos para rotas autenticadas, incluindo a regra de acesso do GGA.
+- Cadastro, perfil, permissões e exclusão de gestores protegidos no servidor.
+- Textos do projeto, linha do tempo e encontros protegidos por sessão de tutora.
+- Agendamentos e uploads protegidos por sessão, validação de arquivo e regra de propriedade.
+- Arquivos substituídos ou pertencentes a agendamentos excluídos são removidos do Storage.
+- O navegador não calcula nem envia mais hashes de senha e não grava diretamente no Supabase.
 
 ## Pendências de segurança antes da produção
 
 - Substituir as políticas RLS públicas atuais por políticas mínimas no momento do corte.
-- Migrar as gravações restantes de cadastro, trilhas, contatos e agendamentos para Route Handlers autenticados.
+- Migrar as leituras públicas restantes para rotas do servidor antes da segunda etapa de restrição do RLS.
 - Trocar o hash legado de gestores por autenticação Supabase Auth ou Argon2/bcrypt com salt.
 - Adicionar limitação de tentativas de login e de chamadas ao assistente.
 - Configurar logs de auditoria para alterações de produção, perfis e permissões.
 - Rotacionar a senha antiga da tutora, pois ela existia no frontend publicado.
 
 O diagnóstico detalhado e o plano de corte estão em `docs/supabase-security-audit.md`.
+O SQL manual da primeira etapa do corte está em `docs/sql/supabase-rls-cutover.sql` e não deve ser executado enquanto o GitHub Pages estiver ativo.
 
 ## Critério para remover a camada legada
 

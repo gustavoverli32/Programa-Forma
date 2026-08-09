@@ -24,6 +24,41 @@ export async function requireProductionSession() {
   return session;
 }
 
+export function requireTutorSession(session: SessionPayload) {
+  if (session.role !== "tutora") {
+    throw new ProductionHttpError("Apenas a tutora pode concluir esta operacao.", 403);
+  }
+}
+
+export async function loadSessionManager(
+  supabase: SupabaseClient,
+  session: SessionPayload,
+) {
+  if (session.role !== "gestor") {
+    throw new ProductionHttpError("Gestor nao autenticado.", 403);
+  }
+  const { data: manager, error } = await supabase
+    .from("gestores")
+    .select("id,nome,funcional,permissoes,tipo_gestor")
+    .eq("id", session.subject)
+    .maybeSingle();
+  if (error) throw error;
+  if (!manager) throw new ProductionHttpError("Gestor nao encontrado.", 403);
+  return manager;
+}
+
+export async function requireTutorOrGga(
+  supabase: SupabaseClient,
+  session: SessionPayload,
+) {
+  if (session.role === "tutora") return null;
+  const manager = await loadSessionManager(supabase, session);
+  if (manager.tipo_gestor !== "gga") {
+    throw new ProductionHttpError("Apenas a tutora ou um GGA pode concluir esta operacao.", 403);
+  }
+  return manager;
+}
+
 export function assertSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) {

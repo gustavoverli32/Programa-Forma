@@ -189,13 +189,6 @@ function calcPctChecks(e){var tot=0,done=0;['iniciante','intermediario','avancad
 function faixaComp(p){if(p>=75)return{cor:'#16A34A',bg:'#DCFCE7',label:'Acima do esperado'};if(p>=40)return{cor:'#EC7000',bg:'#FFF3E8',label:'Esperado'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Precisa melhorar'};}
 function faixaRes(p){if(p>=85)return{cor:'#16A34A',bg:'#DCFCE7',label:'Alvo atingido'};if(p>=50)return{cor:'#EC7000',bg:'#FFF3E8',label:'Em desenvolvimento'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Abaixo do alvo'};}
 
-async function hashSenha(senha) {
-  var enc = new TextEncoder();
-  var data = enc.encode(senha + 'itau_formacao_2025');
-  var buf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-}
-
 // ── STATE ──────────────────────────────────────────────────────────────────
 var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{} };
 window.S = S; // exposto pra IA e outros escopos
@@ -264,7 +257,8 @@ function aplicarTextosProjeto(){
 }
 
 async function salvarTextosProjeto(){
-  await sb.from('configuracoes').upsert({id:'textos_projeto', valor:JSON.parse(JSON.stringify(S_textos))});
+  if(!window.nextuberMutations) throw new Error('Serviço de configurações indisponível.');
+  await window.nextuberMutations.saveSetting('textos_projeto', JSON.parse(JSON.stringify(S_textos)));
 }
 
 
@@ -358,21 +352,20 @@ async function persistAsync(silent){
 async function saveEstagiario(est){
   // Serializar tudo via JSON para garantir dados puros (evita DataCloneError)
   var data = JSON.parse(JSON.stringify({
-    nome:          String(est.nome||''),
-    meses:         est.meses||[],
-    obs:           String(est.obs||''),
-    atencao:       !!est.atencao,
-    perfil:        est.perfil||{},
-    trilha_checks: est.trilhaChecks||{}
+    name:        String(est.nome||''),
+    months:      est.meses||[],
+    notes:       String(est.obs||''),
+    attention:   !!est.atencao,
+    profile:     est.perfil||{},
+    trailChecks: est.trilhaChecks||{}
   }));
   try {
+    if(!window.nextuberMutations) throw new Error('Serviço de cadastro indisponível.');
     if(est.id){
-      var r = await sb.from('estagiarios').update(data).eq('id', est.id);
-      if(r.error){ console.error('saveEstagiario UPDATE error:', JSON.stringify(r.error)); alert('Erro ao salvar: ' + (r.error.message||JSON.stringify(r.error))); return false; }
+      await window.nextuberMutations.updateStudent(String(est.id), data);
     } else {
-      var r = await sb.from('estagiarios').insert(data).select().single();
-      if(r.error){ console.error('saveEstagiario INSERT error:', JSON.stringify(r.error)); alert('Erro ao salvar: ' + (r.error.message||JSON.stringify(r.error))); return false; }
-      if(r.data) est.id = r.data.id;
+      var r = await window.nextuberMutations.createStudent(data);
+      if(r.student) est.id = r.student.id;
     }
     return true;
   } catch(e) {
@@ -383,39 +376,43 @@ async function saveEstagiario(est){
 }
 
 async function deleteEstagiario(id){
-  await sb.from('estagiarios').delete().eq('id', id);
+  if(!window.nextuberMutations) throw new Error('Serviço de cadastro indisponível.');
+  await window.nextuberMutations.deleteStudent(String(id));
 }
 
 
 
 async function updateMeuPerfil(nome, funcional, senha){
   if(!gestorLogado) return null;
-  var update = {nome: nome, funcional: funcional};
-  if(senha){
-    update.senha_hash = await hashSenha(senha.slice(0,4));
-  }
-  var r = await sb.from('gestores').update(JSON.parse(JSON.stringify(update))).eq('id', gestorLogado.id).select().single();
-  if(r.error){ console.error('updateMeuPerfil:', r.error); return null; }
-  if(r.data){
-    // Update local cache
-    var i = S.gestores.findIndex(function(g){ return g.id === gestorLogado.id; });
-    if(i >= 0) S.gestores[i] = r.data;
-    gestorLogado = r.data;
-    return r.data;
+  try {
+    if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+    var r = await window.nextuberMutations.updateMyManagerProfile({name:nome, employeeCode:funcional, password:senha||''});
+    if(r.manager){
+      var i = S.gestores.findIndex(function(g){ return g.id === gestorLogado.id; });
+      if(i >= 0) S.gestores[i] = r.manager;
+      gestorLogado = r.manager;
+      return r.manager;
+    }
+  } catch(error) {
+    console.error('updateMeuPerfil:', error);
   }
   return null;
 }
 
 async function saveGestor(nome, funcional){
-  var hash = await hashSenha(funcional.slice(0,4));
-  var r = await sb.from('gestores').insert({nome:nome, funcional:funcional, senha_hash:hash}).select().single();
-  if(r.error){ console.error('saveGestor error:', r.error); return null; }
-  if(r.data){ S.gestores.push(r.data); return r.data; }
+  try {
+    if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+    var r = await window.nextuberMutations.createManager({name:nome, employeeCode:funcional});
+    if(r.manager){ S.gestores.push(r.manager); return r.manager; }
+  } catch(error) {
+    console.error('saveGestor error:', error);
+  }
   return null;
 }
 
 async function deleteGestor(id){
-  await sb.from('gestores').delete().eq('id', id);
+  if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+  await window.nextuberMutations.deleteManager(String(id));
   S.gestores = S.gestores.filter(function(g){ return g.id !== id; });
 }
 
@@ -430,7 +427,8 @@ async function saveProducaoTri(eid,tri,prod){
 }
 
 async function saveTimeline(){
-  await sb.from('configuracoes').upsert({id:'timeline', valor:JSON.parse(JSON.stringify(S.tl))});
+  if(!window.nextuberMutations) throw new Error('Serviço de configurações indisponível.');
+  await window.nextuberMutations.saveSetting('timeline', JSON.parse(JSON.stringify(S.tl)));
 }
 function showToast(){ var t=document.getElementById('toast'); t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2000); }
 
@@ -843,7 +841,8 @@ function renderEncontros(){
     btn.addEventListener('click', async function(){
       var id = this.dataset.delenc;
       if(!confirm('Excluir este encontro?')) return;
-      await sb.from('encontros').delete().eq('id', id);
+      if(!window.nextuberMutations) throw new Error('Serviço de encontros indisponível.');
+      await window.nextuberMutations.deleteMeeting(String(id));
       S.encontros = S.encontros.filter(function(e){ return e.id !== id; });
       renderEncontros();
     });
@@ -2418,22 +2417,24 @@ async function salvarPermissoesGestor(){
     todos_estagiarios: document.getElementById('permTodosEstag').checked
   };
 
-  var update = {
-    permissoes: permissoes,
-    tipo_gestor: tipoGestor
-  };
-  if(novaSenha){
-    update.senha_hash = await hashSenha(novaSenha.slice(0,4));
+  var r;
+  try {
+    if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+    r = await window.nextuberMutations.updateManager(String(id), {
+      permissions: permissoes,
+      managerType: tipoGestor,
+      password: novaSenha || ''
+    });
+  } catch(error) {
+    alert('Erro ao salvar: ' + (error.message || error));
+    return;
   }
-
-  var r = await sb.from('gestores').update(JSON.parse(JSON.stringify(update))).eq('id',id).select().single();
-  if(r.error){ alert('Erro ao salvar: '+r.error.message); return; }
-  if(r.data){
+  if(r.manager){
     var i = S.gestores.findIndex(function(g){ return g.id === id; });
-    if(i>=0) S.gestores[i] = r.data;
+    if(i>=0) S.gestores[i] = r.manager;
     // Se o gestor logado é esse, atualizar também
     if(gestorLogado && gestorLogado.id === id){
-      gestorLogado = r.data;
+      gestorLogado = r.manager;
       if(modoGestor) applyModoGestor();
     }
   }
@@ -2538,8 +2539,12 @@ function renderCadList(){
       var e = S.ests[idx];
       if(!confirm('Excluir o estagiário "'+e.nome+'"? Esta ação não pode ser desfeita.')) return;
       if(e.id){
-        var r = await sb.from('estagiarios').delete().eq('id', e.id);
-        if(r.error){ alert('Erro ao excluir: ' + (r.error.message||JSON.stringify(r.error))); return; }
+        try {
+          await deleteEstagiario(e.id);
+        } catch(error) {
+          alert('Erro ao excluir: ' + (error.message||error));
+          return;
+        }
       }
       S.ests.splice(idx, 1);
       persist(true);
@@ -3570,10 +3575,16 @@ if(btnMarcarAtz){
     var descricao = document.getElementById('encDescricao').value.trim();
     if(!titulo){ alert('Preencha o título.'); return; }
     if(!data){ alert('Selecione a data.'); return; }
-    var r = await sb.from('encontros').insert({titulo:titulo, data:data, descricao:descricao}).select().single();
-    if(r.error){ alert('Erro: ' + (r.error.message||JSON.stringify(r.error))); return; }
-    if(r.data){
-      S.encontros.push(r.data);
+    if(!window.nextuberMutations){ alert('Serviço de encontros indisponível.'); return; }
+    var r;
+    try {
+      r = await window.nextuberMutations.createMeeting({title:titulo, date:data, description:descricao});
+    } catch(error) {
+      alert('Erro: ' + (error.message||error));
+      return;
+    }
+    if(r.meeting){
+      S.encontros.push(r.meeting);
       S.encontros.sort(function(a,b){ return a.data.localeCompare(b.data); });
     }
     renderEncontros();
@@ -4076,40 +4087,6 @@ async function salvarAgendamento(){
   if(!titulo){ alert('Informe o título.'); return; }
   if(!data){ alert('Informe a data.'); return; }
 
-  // Resolver cliente Supabase (defensivo contra escopo)
-  var _sb = null;
-  try {
-    if(typeof sb !== 'undefined' && sb) _sb = sb;
-    else if(typeof window !== 'undefined' && window.sb) _sb = window.sb;
-  } catch(e){}
-
-  if(!_sb){
-    alert('Cliente Supabase não está disponível. Recarregue a página (Ctrl+Shift+R).');
-    return;
-  }
-
-  // Identificar quem está salvando (defensivo contra escopo)
-  var gestorId = null;
-  var gestorNome = 'Tutora Kamilla';
-  try {
-    var _modoGestor = false, _gestorLogado = null, _editor = false;
-    try { _modoGestor = (typeof modoGestor !== 'undefined') ? modoGestor : (window.modoGestor || false); } catch(e){ _modoGestor = window.modoGestor || false; }
-    try { _gestorLogado = (typeof gestorLogado !== 'undefined') ? gestorLogado : (window.gestorLogado || null); } catch(e){ _gestorLogado = window.gestorLogado || null; }
-    try { _editor = (typeof editor !== 'undefined') ? editor : (window.editor || false); } catch(e){ _editor = window.editor || false; }
-
-    if(_modoGestor && _gestorLogado){
-      gestorId = _gestorLogado.id || null;
-      gestorNome = _gestorLogado.nome || _gestorLogado.funcional || 'Gestor';
-    } else if(_editor){
-      gestorId = 'tutora';
-      gestorNome = 'Tutora Kamilla';
-    }
-  } catch(err){
-    console.warn('Erro ao identificar gestor, salvando como Tutora:', err);
-    gestorId = 'tutora';
-    gestorNome = 'Tutora Kamilla';
-  }
-
   // Montar lista de presença
   var ests = getEstagiariosPorFase(faseAlvo);
   var presenca = [];
@@ -4143,52 +4120,39 @@ async function salvarAgendamento(){
 
   if(arquivoInput.files && arquivoInput.files[0]){
     var file = arquivoInput.files[0];
-    var ext = file.name.split('.').pop();
-    var path = 'agendamentos/' + Date.now() + '_' + Math.random().toString(36).substring(2,8) + '.' + ext;
-
     try {
-      var upRes = await _sb.storage.from('arquivos').upload(path, file);
-      if(upRes.error){
-        console.warn('Erro upload (continuando sem arquivo):', upRes.error);
-        arquivoNome = file.name;
-      } else {
-        var urlRes = _sb.storage.from('arquivos').getPublicUrl(path);
-        arquivoUrl = urlRes.data.publicUrl;
-        arquivoNome = file.name;
-      }
+      if(!window.nextuberMutations) throw new Error('Serviço de agendamentos indisponível.');
+      var upRes = await window.nextuberMutations.uploadAppointment(file);
+      arquivoUrl = upRes.fileUrl;
+      arquivoNome = upRes.fileName;
     } catch(err){
-      console.warn('Storage indisponível, salvando só nome:', err);
-      arquivoNome = file.name;
+      alert('Erro ao enviar arquivo: ' + (err.message || err));
+      return;
     }
   }
 
   var dados = {
-    gestor_id: gestorId,
-    gestor_nome: gestorNome,
-    titulo: titulo,
-    descricao: descricao,
-    data: data,
-    tipo: tipo,
-    fase_alvo: faseAlvo,
-    arquivo_url: arquivoUrl,
-    arquivo_nome: arquivoNome,
-    presenca: presenca
+    title: titulo,
+    description: descricao,
+    date: data,
+    type: tipo,
+    targetPhase: faseAlvo,
+    fileUrl: arquivoUrl,
+    fileName: arquivoNome,
+    presence: presenca.map(function(item){
+      return {studentId:item.estagiario_id, present:item.presente};
+    })
   };
 
   console.log('Salvando agendamento:', dados);
 
   try {
+    if(!window.nextuberMutations) throw new Error('Serviço de agendamentos indisponível.');
     var r;
     if(agendEditandoId){
-      r = await _sb.from('agendamentos').update(JSON.parse(JSON.stringify(dados))).eq('id', agendEditandoId).select().single();
+      r = await window.nextuberMutations.updateAppointment(String(agendEditandoId), dados);
     } else {
-      r = await _sb.from('agendamentos').insert(JSON.parse(JSON.stringify(dados))).select().single();
-    }
-
-    if(r.error){
-      console.error('Erro salvando agendamento:', r.error);
-      alert('Erro ao salvar: ' + (r.error.message || 'desconhecido'));
-      return;
+      r = await window.nextuberMutations.createAppointment(dados);
     }
 
     await carregarAgendamentos();
@@ -4205,20 +4169,9 @@ async function excluirAgendamento(){
   if(!agendVisualizandoId) return;
   if(!confirm('Tem certeza que deseja excluir este agendamento?')) return;
 
-  // Resolver cliente Supabase
-  var _sb = null;
   try {
-    if(typeof sb !== 'undefined' && sb) _sb = sb;
-    else if(typeof window !== 'undefined' && window.sb) _sb = window.sb;
-  } catch(e){}
-  if(!_sb){ alert('Cliente Supabase não disponível.'); return; }
-
-  try {
-    var r = await _sb.from('agendamentos').delete().eq('id', agendVisualizandoId);
-    if(r.error){
-      alert('Erro ao excluir: ' + r.error.message);
-      return;
-    }
+    if(!window.nextuberMutations) throw new Error('Serviço de agendamentos indisponível.');
+    await window.nextuberMutations.deleteAppointment(String(agendVisualizandoId));
     await carregarAgendamentos();
     renderAgendamentos();
     document.getElementById('modalAgendDetalhes').classList.remove('open');

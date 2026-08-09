@@ -5,6 +5,10 @@ import {
   nextuberProductionBridge,
   type NextuberProductionBridge,
 } from "@/services/production-client";
+import {
+  nextuberMutationBridge,
+  type NextuberMutationBridge,
+} from "@/services/admin-mutations-client";
 
 declare global {
   interface Window {
@@ -16,6 +20,7 @@ declare global {
     };
     loadNextuberXLSX?: () => Promise<typeof import("xlsx")>;
     nextuberProduction?: NextuberProductionBridge;
+    nextuberMutations?: NextuberMutationBridge;
   }
 }
 
@@ -52,6 +57,7 @@ export function LegacyRuntime() {
         supabasePublishableKey,
       };
       window.nextuberProduction = nextuberProductionBridge;
+      window.nextuberMutations = nextuberMutationBridge;
 
       if (document.querySelector('script[data-nextuber-legacy="true"]')) return;
 

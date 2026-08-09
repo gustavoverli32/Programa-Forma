@@ -43,10 +43,14 @@ As políticas não devem ser fechadas imediatamente porque o GitHub Pages atual 
 6. Ativar políticas mínimas de leitura e bloquear acesso direto a hashes, permissões e dados sensíveis.
 7. Publicar o Next.js, monitorar e só então retirar a versão antiga.
 
-Produção semanal, confirmação de produção, prazo e contatos já utilizam Route Handlers na branch de migração.
+Todas as gravações usadas pela interface — produção, confirmação, prazo, contatos, cadastro, trilhas, gestores, configurações, encontros, agendamentos e uploads — utilizam Route Handlers autenticados na branch de migração.
+
+As leituras da camada de compatibilidade ainda usam a chave pública. Por isso, o primeiro corte de RLS bloqueará toda escrita pública, limitará as colunas visíveis de `gestores` e manterá temporariamente políticas públicas somente de leitura. A segunda etapa fechará também essas leituras conforme cada módulo for convertido para React/Server Components.
 
 ## Regra de segurança para o corte
 
 O fechamento do RLS e a troca de domínio devem ocorrer na mesma janela de publicação. Aplicar apenas uma dessas etapas isoladamente pode interromper a plataforma atual ou manter o banco exposto.
 
 Referência: [Supabase Database Linter — RLS](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+
+SQL preparado, mas não aplicado: `docs/sql/supabase-rls-cutover.sql`.
