@@ -415,7 +415,7 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, marginBottom: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: 14 }}>
         <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, background: "var(--bg)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", textTransform: "uppercase", letterSpacing: ".06em" }}>{selectedMonth} - Modalidades</span>
@@ -443,13 +443,15 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
         </div>
       ) : null}
 
-      <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
-        <div style={{ fontSize: 11, color: "var(--ink3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 12 }}>Equilíbrio (trimestre)</div>
-        <DistributionChart labels={CREDIT_MODALITIES} colors={CREDIT_COLORS} kind="MOD" values={values} quarterRef={payload.quarterRef} />
-      </div>
-      <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
-        <div style={{ fontSize: 11, color: "var(--ink3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 12 }}>Outros Produtos (trimestre)</div>
-        <DistributionChart labels={OTHER_PRODUCTS} colors={OTHER_PRODUCT_COLORS} kind="OUT" values={values} quarterRef={payload.quarterRef} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
+        <div>
+          <div style={{ fontSize: 11, color: "var(--ink3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 12 }}>Equilíbrio (trimestre)</div>
+          <DistributionChart labels={CREDIT_MODALITIES} colors={CREDIT_COLORS} kind="MOD" values={values} quarterRef={payload.quarterRef} />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: "var(--ink3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 12 }}>Outros Produtos (trimestre)</div>
+          <DistributionChart labels={OTHER_PRODUCTS} colors={OTHER_PRODUCT_COLORS} kind="OUT" values={values} quarterRef={payload.quarterRef} />
+        </div>
       </div>
     </>
   );
