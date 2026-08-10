@@ -13,10 +13,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    let session = await getProductionSession();
+
     const supabase = createSupabaseAdminClient();
-    const session = await getProductionSession();
 
     const [
       settingsResult,
@@ -24,7 +25,6 @@ export async function GET() {
       studentsResult,
       configResult,
       managersResult,
-      productionResult,
       meetingsResult,
       regionaisResult,
     ] = await Promise.all([
@@ -51,10 +51,7 @@ export async function GET() {
         .from("gestores")
         .select("id,nome,funcional,permissoes,tipo_gestor,regional_id,created_at")
         .order("nome"),
-      supabase
-        .from("producao_trimestral")
-        .select("id,estagiario_id,tri_ref,meta,producao,created_at")
-        .limit(10000),
+
       supabase
         .from("encontros")
         .select("id,titulo,descricao,data,created_at")
@@ -83,7 +80,7 @@ export async function GET() {
             settings.get("textos_projeto") ?? null,
           ),
           managers: [],
-          production: productionResult.data ?? [],
+          production: [],
           descriptions: descriptionsResult.data ?? [],
           meetings: meetingsResult.data ?? [],
           session: null,
@@ -122,16 +119,44 @@ export async function GET() {
               isStudentAssignedToManager(
                 row,
                 String(currentManager.funcional ?? ""),
-              ),
+              ) ||
+              (Boolean(currentManager.regional_id) &&
+                String(row.regional_id ?? "") ===
+                  String(currentManager.regional_id)),
           )
           .map((row) => row.id),
       );
       students = rows.map((row) =>
         seesAll ||
-        isStudentAssignedToManager(row, String(currentManager.funcional ?? ""))
+        isStudentAssignedToManager(
+          row,
+          String(currentManager.funcional ?? ""),
+        ) ||
+        (Boolean(currentManager.regional_id) &&
+          String(row.regional_id ?? "") === String(currentManager.regional_id))
           ? privateStudent(row)
           : publicStudent(row),
       );
+    }
+
+    let productionData: any[] = [];
+    const studentIdsArr = Array.from(readableStudentIds);
+    if (studentIdsArr.length > 0) {
+      const chunkSize = 50;
+      const promises = [];
+      for (let i = 0; i < studentIdsArr.length; i += chunkSize) {
+        promises.push(
+          supabase
+            .from("producao_trimestral")
+            .select("id,estagiario_id,tri_ref,meta,producao,created_at")
+            .in("estagiario_id", studentIdsArr.slice(i, i + chunkSize))
+            .limit(1000)
+        );
+      }
+      const results = await Promise.all(promises);
+      for (const res of results) {
+        if (res.data) productionData.push(...res.data);
+      }
     }
 
     return Response.json(
@@ -144,11 +169,7 @@ export async function GET() {
           settings.get("textos_projeto") ?? null,
         ),
         managers,
-        production: (productionResult.data ?? []).filter((row) =>
-          row.estagiario_id
-            ? readableStudentIds.has(row.estagiario_id)
-            : false,
-        ),
+        production: productionData,
         descriptions: descriptionsResult.data ?? [],
         meetings: meetingsResult.data ?? [],
         session:
