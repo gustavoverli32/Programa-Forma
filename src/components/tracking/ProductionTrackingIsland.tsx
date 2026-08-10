@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useState,
   useSyncExternalStore,
   type CSSProperties,
@@ -31,17 +30,10 @@ import {
   weekTotal,
 } from "@/domain/production-view";
 import { nextuberProductionBridge } from "@/services/production-client";
-import { nextuberReadBridge } from "@/services/read-client";
 import {
   nextuberTrackingBridge,
   type ProductionTrackingPayload,
 } from "@/services/tracking-bridge";
-
-type Snapshot = {
-  id?: string;
-  tri_ref?: string;
-  score?: number | string | null;
-};
 
 const tableStyle: CSSProperties = {
   width: "100%",
@@ -290,84 +282,7 @@ function DistributionChart({
   );
 }
 
-function ProductionHistory({ studentId }: { studentId: string }) {
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
 
-  useEffect(() => {
-    let active = true;
-    nextuberReadBridge
-      .snapshots(studentId)
-      .then((result) => {
-        if (active) setSnapshots(result.snapshots as Snapshot[]);
-      })
-      .catch(() => {
-        if (active) setSnapshots([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [studentId]);
-
-  if (!snapshots.length) return null;
-  const width = 200;
-  const height = 80;
-  const left = 22;
-  const right = 8;
-  const top = 10;
-  const bottom = 18;
-  const innerWidth = width - left - right;
-  const innerHeight = height - top - bottom;
-  const points = snapshots.map((snapshot, index) => {
-    const score = Number(snapshot.score) || 0;
-    return {
-      x: left + (snapshots.length > 1 ? (index * innerWidth) / (snapshots.length - 1) : innerWidth / 2),
-      y: top + innerHeight - (score / 10) * innerHeight,
-      score,
-      quarter: snapshot.tri_ref || "",
-    };
-  });
-  const path = points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`).join(" ");
-  const area = `${path} L${points.at(-1)?.x},${top + innerHeight} L${points[0]?.x},${top + innerHeight} Z`;
-  const gradientId = `production-history-${studentId.replace(/[^a-zA-Z0-9]/g, "")}`;
-
-  return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", marginTop: 14 }}>
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--ink3)", fontWeight: 500, marginBottom: 6 }}>
-        Evolução da nota
-      </div>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" style={{ width: "100%", maxHeight: 140, display: "block" }}>
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#EC7000" stopOpacity=".25" />
-            <stop offset="100%" stopColor="#EC7000" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[0, 2.5, 5, 7.5, 10].map((value) => {
-          const y = top + innerHeight - (value / 10) * innerHeight;
-          return (
-            <g key={value}>
-              <line x1={left} y1={y} x2={width - right} y2={y} stroke="#eee" strokeWidth=".25" />
-              <text x={left - 2} y={y + 1.3} fontSize="3.5" fill="#999" textAnchor="end">{value}</text>
-            </g>
-          );
-        })}
-        <path d={area} fill={`url(#${gradientId})`} />
-        <path d={path} fill="none" stroke="#EC7000" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((point) => {
-          const color = point.score >= 8 ? "#16A34A" : point.score >= 5 ? "#EC7000" : "#DC2626";
-          const [year, quarter] = point.quarter.split("-Q");
-          return (
-            <g key={point.quarter}>
-              <circle cx={point.x} cy={point.y} r="1.4" fill={color} stroke="#fff" strokeWidth=".6" />
-              <text x={point.x} y={point.y - 2.5} fontSize="3.5" fontWeight="600" fill={color} textAnchor="middle">{point.score}</text>
-              <text x={point.x} y={height - 4} fontSize="3.5" fill="#999" textAnchor="middle">{quarter && year ? `${quarter.replace("Q", "T")}/${year.slice(2)}` : ""}</text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
 
 function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) {
   const [rows, setRows] = useState<ProductionRow[]>(payload.productionRows);
@@ -500,23 +415,25 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
         </div>
       ) : null}
 
-      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, background: "var(--bg)", marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", textTransform: "uppercase", letterSpacing: ".06em" }}>{selectedMonth} - Modalidades</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: "var(--or)", fontSize: 10, fontWeight: 600 }}>{monthIndex === currentMonthIndex ? "● Mês vigente" : "✎ Editável"}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink2)" }}>Total: {creditMonthTotal.toLocaleString("pt-BR")}</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, marginBottom: 14 }}>
+        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, background: "var(--bg)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", textTransform: "uppercase", letterSpacing: ".06em" }}>{selectedMonth} - Modalidades</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "var(--or)", fontSize: 10, fontWeight: 600 }}>{monthIndex === currentMonthIndex ? "● Mês vigente" : "✎ Editável"}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink2)" }}>Total: {creditMonthTotal.toLocaleString("pt-BR")}</span>
+            </div>
           </div>
+          <ProductionTable labels={CREDIT_MODALITIES} colors={CREDIT_COLORS} kind="MOD" values={values} quarterRef={payload.quarterRef} monthIndex={monthIndex} canEdit={payload.canEdit} onChange={updateValue} />
         </div>
-        <ProductionTable labels={CREDIT_MODALITIES} colors={CREDIT_COLORS} kind="MOD" values={values} quarterRef={payload.quarterRef} monthIndex={monthIndex} canEdit={payload.canEdit} onChange={updateValue} />
-      </div>
 
-      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, background: "var(--bg)", marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", textTransform: "uppercase", letterSpacing: ".06em" }}>{selectedMonth} - Outros Produtos</span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink2)" }}>Total: {otherMonthTotal.toLocaleString("pt-BR")}</span>
+        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, background: "var(--bg)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", textTransform: "uppercase", letterSpacing: ".06em" }}>{selectedMonth} - Outros Produtos</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink2)" }}>Total: {otherMonthTotal.toLocaleString("pt-BR")}</span>
+          </div>
+          <ProductionTable labels={OTHER_PRODUCTS} colors={OTHER_PRODUCT_COLORS} kind="OUT" values={values} quarterRef={payload.quarterRef} monthIndex={monthIndex} canEdit={payload.canEdit} onChange={updateValue} />
         </div>
-        <ProductionTable labels={OTHER_PRODUCTS} colors={OTHER_PRODUCT_COLORS} kind="OUT" values={values} quarterRef={payload.quarterRef} monthIndex={monthIndex} canEdit={payload.canEdit} onChange={updateValue} />
       </div>
 
       {payload.canEdit ? (
@@ -534,7 +451,6 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
         <div style={{ fontSize: 11, color: "var(--ink3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 12 }}>Outros Produtos (trimestre)</div>
         <DistributionChart labels={OTHER_PRODUCTS} colors={OTHER_PRODUCT_COLORS} kind="OUT" values={values} quarterRef={payload.quarterRef} />
       </div>
-      <ProductionHistory studentId={payload.student.id} />
     </>
   );
 }

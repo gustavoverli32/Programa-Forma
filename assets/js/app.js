@@ -1106,67 +1106,7 @@ function renderAvaliacao(idx){
 
 async function loadEvolucaoChart(eid){
   var el = document.getElementById('pEvolucaoChart');
-  if(!el) return;
-  var r;
-  try { r = await window.nextuberReads.snapshots(String(eid)); }
-  catch(error){ console.error('Evolucao trimestral:', error); el.innerHTML = ''; return; }
-  var snaps = r.snapshots || [];
-  if(snaps.length < 1){ el.innerHTML = ''; return; }
-
-  // Build SVG chart (proporção 200x80 - mais largo, menos alto)
-  var maxNota = 10;
-  var w = 200;
-  var h = 80;
-  var padL = 22, padR = 8, padT = 10, padB = 18;
-  var innerW = w - padL - padR;
-  var innerH = h - padT - padB;
-
-  var n = snaps.length;
-  var stepX = n > 1 ? innerW / (n - 1) : 0;
-
-  var pts = snaps.map(function(s, i){
-    var x = padL + (n > 1 ? i * stepX : innerW/2);
-    var y = padT + innerH - (s.score / maxNota) * innerH;
-    return {x:x, y:y, score:s.score, tri:s.tri_ref};
-  });
-
-  // Build path
-  var pathD = pts.map(function(p, i){ return (i===0?'M':'L') + p.x.toFixed(2) + ',' + p.y.toFixed(2); }).join(' ');
-  var areaD = pathD + ' L' + pts[pts.length-1].x.toFixed(2) + ',' + (padT+innerH) + ' L' + pts[0].x.toFixed(2) + ',' + (padT+innerH) + ' Z';
-
-  // Grid lines (0, 2.5, 5, 7.5, 10)
-  var grid = '';
-  [0,2.5,5,7.5,10].forEach(function(v){
-    var y = padT + innerH - (v/maxNota)*innerH;
-    grid += '<line x1="'+padL+'" y1="'+y.toFixed(2)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(2)+'" stroke="#eee" stroke-width=".25"/>';
-    grid += '<text x="'+(padL-2)+'" y="'+(y+1.3)+'" font-size="3.5" fill="#999" text-anchor="end">'+v+'</text>';
-  });
-
-  // X labels
-  var xLabels = '';
-  pts.forEach(function(p, i){
-    var lbl = p.tri.split('-')[1].replace('Q','T') + '/' + p.tri.split('-')[0].slice(2);
-    xLabels += '<text x="'+p.x+'" y="'+(h-4)+'" font-size="3.5" fill="#999" text-anchor="middle">'+escapeHtml(lbl)+'</text>';
-  });
-
-  // Dots and score labels
-  var dots = pts.map(function(p){
-    var cor = p.score>=8?'#16A34A':p.score>=5?'#EC7000':'#DC2626';
-    return '<circle cx="'+p.x.toFixed(2)+'" cy="'+p.y.toFixed(2)+'" r="1.4" fill="'+cor+'" stroke="#fff" stroke-width=".6"/>'
-      + '<text x="'+p.x+'" y="'+(p.y-2.5)+'" font-size="3.5" font-weight="600" fill="'+cor+'" text-anchor="middle">'+p.score+'</text>';
-  }).join('');
-
-  el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">'
-    +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:500;margin-bottom:6px;">Evolução da nota</div>'
-    +'<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" style="width:100%;max-height:140px;display:block;">'
-      +'<defs><linearGradient id="ev_grad_'+eid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EC7000" stop-opacity=".25"/><stop offset="100%" stop-color="#EC7000" stop-opacity="0"/></linearGradient></defs>'
-      +grid
-      +'<path d="'+areaD+'" fill="url(#ev_grad_'+eid+')"/>'
-      +'<path d="'+pathD+'" fill="none" stroke="#EC7000" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>'
-      +dots
-      +xLabels
-    +'</svg>'
-    +'</div>';
+  if(el) el.innerHTML = '';
 }
 
 // ═══════════════════════════════════════
