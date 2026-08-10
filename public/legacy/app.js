@@ -104,7 +104,15 @@ function anoAtual(){return new Date().getFullYear();}
 function trimestreRef(){return anoAtual()+'-'+trimestreAtual();}
 function fmtTrimestre(t){if(!t)return'—';var p=t.split('-');return p[1].replace('Q','')+'º Tri '+p[0];}
 function ultimosTrimestres(){var r=[],d=new Date(),a=d.getFullYear(),q=Math.floor(d.getMonth()/3)+1;for(var i=0;i<6;i++){r.push(a+'-Q'+q);q--;if(q<1){q=4;a--;}}return r;}
-function getProducaoTri(eid,tri){if(!S.producao)return{meta:0,producao:0};return S.producao.find(function(p){return String(p.estagiario_id)===String(eid)&&p.tri_ref===tri;})||{meta:0,producao:0};}
+function getProducaoTri(eid,tri){
+  if(!S.producao) return {meta:0,producao:0};
+  var est = S.ests.find(function(x){ return String(x.id) === String(eid); });
+  var func = est && est.perfil && est.perfil.funcional ? String(est.perfil.funcional) : null;
+  return S.producao.find(function(p){
+    var matchId = String(p.estagiario_id) === String(eid) || (func && String(p.estagiario_id) === func);
+    return matchId && String(p.tri_ref) === String(tri);
+  }) || {meta:0,producao:0};
+}
 // ─── DETECÇÃO DE MÊS VIGENTE ───
 function getMesVigente(){
   var hoje = new Date();
@@ -1461,7 +1469,12 @@ var CORES_OUTROS = {
 function getProducaoOutroProduto(eid, tri, mesIdx, semanaIdx, prodIdx){
   var ref = tri + '-M' + mesIdx + '-S' + semanaIdx + '-OUT' + prodIdx;
   if(!S.producao) return 0;
-  var row = S.producao.find(function(p){ return String(p.estagiario_id) === String(eid) && p.tri_ref === ref; });
+  var est = S.ests.find(function(x){ return String(x.id) === String(eid); });
+  var func = est && est.perfil && est.perfil.funcional ? String(est.perfil.funcional) : null;
+  var row = S.producao.find(function(p){
+    var matchId = String(p.estagiario_id) === String(eid) || (func && String(p.estagiario_id) === func);
+    return matchId && p.tri_ref === ref;
+  });
   return row ? (parseFloat(row.producao) || 0) : 0;
 }
 
@@ -1516,7 +1529,12 @@ function getTotalTrimestreOutroProduto(eid, tri, prodIdx){
 function getProducaoSemanalModalidade(eid, tri, mesIdx, semIdx, modIdx){
   var ref = tri + '-M' + mesIdx + '-S' + semIdx + '-MOD' + modIdx;
   if(!S.producao) return 0;
-  var row = S.producao.find(function(p){ return String(p.estagiario_id) === String(eid) && p.tri_ref === ref; });
+  var est = S.ests.find(function(x){ return String(x.id) === String(eid); });
+  var func = est && est.perfil && est.perfil.funcional ? String(est.perfil.funcional) : null;
+  var row = S.producao.find(function(p){
+    var matchId = String(p.estagiario_id) === String(eid) || (func && String(p.estagiario_id) === func);
+    return matchId && p.tri_ref === ref;
+  });
   return row ? (parseFloat(row.producao) || 0) : 0;
 }
 
@@ -1568,11 +1586,13 @@ function abrirResultadosReact(idx, tri){
   if(!window.nextuberTracking) return false;
   var e = S.ests[idx];
   if(!e) return false;
+  var func = e.perfil && e.perfil.funcional ? String(e.perfil.funcional) : null;
   window.nextuberTracking.open({
     student: { id: String(e.id), name: String(e.nome || '') },
     quarterRef: tri,
     productionRows: (S.producao || []).filter(function(p){
-      return String(p.estagiario_id) === String(e.id) && String(p.tri_ref || '').indexOf(tri) === 0;
+      var matchId = String(p.estagiario_id) === String(e.id) || (func && String(p.estagiario_id) === func);
+      return matchId && String(p.tri_ref || '').indexOf(tri) === 0;
     }),
     canEdit: !!(editor || (modoGestor && gestorLogado))
   });
@@ -1582,10 +1602,14 @@ function abrirResultadosReact(idx, tri){
 window.addEventListener('nextuber:production-saved', function(event){
   var detail = event && event.detail;
   if(!detail || !detail.studentId || !detail.quarterRef || !Array.isArray(detail.productionRows)) return;
-  S.producao = (S.producao || []).filter(function(row){
-    return !(String(row.estagiario_id) === String(detail.studentId) && String(row.tri_ref || '').indexOf(detail.quarterRef) === 0);
-  }).concat(detail.productionRows);
   var est = S.ests.find(function(item){ return String(item.id) === String(detail.studentId); });
+  var func = est && est.perfil && est.perfil.funcional ? String(est.perfil.funcional) : null;
+
+  S.producao = (S.producao || []).filter(function(row){
+    var matchId = String(row.estagiario_id) === String(detail.studentId) || (func && String(row.estagiario_id) === func);
+    return !(matchId && String(row.tri_ref || '').indexOf(detail.quarterRef) === 0);
+  }).concat(detail.productionRows);
+
   if(est && detail.profile) est.perfil = detail.profile;
   updateMetrics();
   renderCards();
@@ -1601,8 +1625,14 @@ function renderResultados(idx){
   var tris = ultimosTrimestres();
   var tri = trimestreRef();
   sel.innerHTML = tris.map(function(t){return '<option value="'+t+'"'+(t===tri?' selected':'')+'>'+fmtTrimestre(t)+'</option>';}).join('');
-  sel.onchange = function(){ renderResultadosForTri(idx, this.value); };
-  renderResultadosForTri(idx, tri);
+  sel.onchange = function(){
+    if(!abrirResultadosReact(idx, this.value)){
+      renderResultadosForTri(idx, this.value);
+    }
+  };
+  if(!abrirResultadosReact(idx, tri)){
+    renderResultadosForTri(idx, tri);
+  }
 }
 
 function renderResultadosForTri(idx, tri){
