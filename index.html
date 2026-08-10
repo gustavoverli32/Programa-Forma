@@ -106,15 +106,15 @@
   <!-- OVERVIEW -->
   <section id="page-overview" class="page active">
     <!-- BARRA DE REGIONAL -->
-    <div id="regionalSelectorBar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;background:var(--surface,#fff);border:1px solid var(--border,#eee);border-radius:var(--r,14px);padding:14px 20px;box-shadow:0 2px 10px rgba(0,0,0,0.03);flex-wrap:wrap;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span style="font-size:18px;">📍</span>
-        <span style="font-size:13px;font-weight:700;color:var(--ink,#222);letter-spacing:0.02em;">REGIONAL SELECIONADA:</span>
-        <select id="regionalSelectDropdown" style="padding:8px 16px;font-size:13.5px;font-weight:700;border-radius:10px;border:1.5px solid var(--or,#EC7000);background:#FFF3E8;color:#EC7000;cursor:pointer;outline:none;box-shadow:0 2px 6px rgba(236,112,0,0.12);transition:all 0.2s ease;">
+    <div id="regionalSelectorBar" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;background:var(--surface,#fff);border:1px solid var(--border,#eee);border-radius:var(--r,14px);padding:12px 16px;box-shadow:0 2px 10px rgba(0,0,0,0.03);flex-wrap:wrap;max-width:100%;box-sizing:border-box;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:100%;">
+        <span style="font-size:16px;">📍</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ink,#222);letter-spacing:0.02em;white-space:nowrap;">REGIONAL SELECIONADA:</span>
+        <select id="regionalSelectDropdown" style="padding:6px 12px;font-size:13px;font-weight:700;border-radius:10px;border:1.5px solid var(--or,#EC7000);background:#FFF3E8;color:#EC7000;cursor:pointer;outline:none;max-width:100%;box-shadow:0 2px 6px rgba(236,112,0,0.12);transition:all 0.2s ease;">
           <option value="">Carregando regionais...</option>
         </select>
       </div>
-      <div id="regionalBadgeInfo" style="font-size:12px;font-weight:600;color:var(--ink2,#444);background:var(--bg,#f8f9fa);padding:6px 14px;border-radius:20px;border:1px solid var(--border,#eee);">
+      <div id="regionalBadgeInfo" style="font-size:11px;font-weight:600;color:var(--ink2,#444);background:var(--bg,#f8f9fa);padding:5px 12px;border-radius:20px;border:1px solid var(--border,#eee);white-space:nowrap;">
         Visualizando Regional
       </div>
     </div>

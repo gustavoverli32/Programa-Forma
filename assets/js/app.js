@@ -3862,6 +3862,27 @@ if(btnMarcarAtz){
   document.getElementById('btnConfirmExport').addEventListener('click', exportToExcel);
   document.getElementById('exportOv').addEventListener('click', function(ev){ if(ev.target === this) closeExportModal(); });
 
+  // Listener para sincronizar produções salvas via React no estado global do app.js
+  window.addEventListener('nextuber:production-saved', function(evt){
+    if(!evt || !evt.detail) return;
+    var studentId = evt.detail.studentId;
+    var rows = evt.detail.productionRows || [];
+    if(!S.producao) S.producao = [];
+
+    // Substituir linhas salvas desse estagiário
+    S.producao = S.producao.filter(function(p){ return p.estagiario_id !== studentId; }).concat(rows);
+
+    // Atualizar perfil em memória
+    if(evt.detail.profile){
+      var est = S.ests.find(function(e){ return String(e.id) === String(studentId); });
+      if(est) est.perfil = evt.detail.profile;
+    }
+
+    // Re-renderizar indicadores e listas
+    renderOverviewAll();
+    renderCards();
+  });
+
   // Init — load from Supabase
   loadFromDB();
 });
