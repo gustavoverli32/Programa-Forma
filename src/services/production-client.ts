@@ -11,6 +11,8 @@ import {
 } from "@/domain/production-deadline";
 
 export type ProductionBatchResult = {
+  studentId: string;
+  quarterRef: string;
   productionRows: ProductionRow[];
   snapshot: Record<string, unknown>;
   profile: ProductionProfile;

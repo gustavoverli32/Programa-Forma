@@ -53,7 +53,8 @@ export async function GET() {
         .order("nome"),
       supabase
         .from("producao_trimestral")
-        .select("id,estagiario_id,tri_ref,meta,producao,created_at"),
+        .select("id,estagiario_id,tri_ref,meta,producao,created_at")
+        .limit(10000),
       supabase
         .from("encontros")
         .select("id,titulo,descricao,data,created_at")

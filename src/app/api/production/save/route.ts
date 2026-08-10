@@ -101,7 +101,14 @@ export async function POST(request: Request) {
       (row) => row.tri_ref !== input.quarterRef,
     );
     rows.push(aggregate);
-    return Response.json({ productionRows: rows, snapshot, profile, confirmed });
+    return Response.json({
+      studentId: input.studentId,
+      quarterRef: input.quarterRef,
+      productionRows: rows,
+      snapshot,
+      profile,
+      confirmed,
+    });
   } catch (error) {
     return productionErrorResponse(error);
   }
