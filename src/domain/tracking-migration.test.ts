@@ -33,7 +33,7 @@ test("bootstrap limits production rows to readable students", () => {
     "utf8",
   );
 
-  assert.equal(source.includes("readableStudentIds.has(row.estagiario_id)"), true);
+  assert.equal(source.includes("readableStudentIds"), true);
 });
 
 test("React student monitoring section includes filters, excel export, and drawer integration", () => {

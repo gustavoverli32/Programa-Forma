@@ -111,14 +111,20 @@ export async function authorizeStudentWrite(
   const permissions = (manager.permissoes ?? {}) as Record<string, unknown>;
   const profile = (student.perfil ?? {}) as Record<string, unknown>;
   const managerCode = String(manager.funcional ?? "");
-  const canWrite =
-    manager.tipo_gestor === "gga" ||
-    permissions.todos_estagiarios === true ||
-    String(profile.ga_funcional ?? "") === managerCode ||
-    String(profile.gga_funcional ?? "") === managerCode ||
-    String(student.gestor_funcional ?? "") === managerCode ||
-    (Boolean(manager.regional_id) &&
-      String(student.regional_id ?? "") === String(manager.regional_id));
+  const scopedToRegional =
+    String(permissions.escopo ?? "") === "regional" &&
+    Boolean(manager.regional_id);
+  const sameRegional =
+    Boolean(manager.regional_id) &&
+    String(student.regional_id ?? "") === String(manager.regional_id);
+  const canWrite = scopedToRegional
+    ? sameRegional
+    : manager.tipo_gestor === "gga" ||
+      permissions.todos_estagiarios === true ||
+      String(profile.ga_funcional ?? "") === managerCode ||
+      String(profile.gga_funcional ?? "") === managerCode ||
+      String(student.gestor_funcional ?? "") === managerCode ||
+      sameRegional;
 
   if (!canWrite) {
     throw new ProductionHttpError("Sem permissao para este estagiario.", 403);

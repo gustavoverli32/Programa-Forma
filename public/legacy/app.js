@@ -382,9 +382,6 @@ async function loadFromDB(){
 
     // Load regionais
     S.regionais = payload.regionais || [];
-    if(!S.selectedRegionalId && S.regionais.length > 0){
-      S.selectedRegionalId = S.regionais[0].id;
-    }
 
     // Load producao trimestral
     S.producao = payload.production || [];
@@ -400,17 +397,21 @@ async function loadFromDB(){
       editor = true;
       modoGestor = false;
       gestorLogado = null;
+      if(!S.selectedRegionalId) S.selectedRegionalId = 'all';
     } else if(payload.session && payload.session.role === 'gestor'){
       editor = false;
       modoGestor = true;
       gestorLogado = payload.session.manager || null;
       if(gestorLogado && gestorLogado.regional_id){
         S.selectedRegionalId = gestorLogado.regional_id;
+      } else if(!S.selectedRegionalId){
+        S.selectedRegionalId = 'all';
       }
     } else {
       editor = false;
       modoGestor = false;
       gestorLogado = null;
+      if(!S.selectedRegionalId) S.selectedRegionalId = 'all';
     }
     window.editor = editor;
     window.modoGestor = modoGestor;

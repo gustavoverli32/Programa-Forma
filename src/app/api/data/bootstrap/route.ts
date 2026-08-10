@@ -30,7 +30,7 @@ async function fetchAllStudents(
 
     if (error) {
       console.error("Erro ao paginar estagiarios:", error);
-      break;
+      throw error;
     }
 
     if (data && data.length > 0) {
@@ -73,7 +73,7 @@ async function fetchAllProductionForStudents(
 
       if (error) {
         console.error("Erro ao paginar producao_trimestral:", error);
-        break;
+        throw error;
       }
 
       if (data && data.length > 0) {
@@ -181,9 +181,13 @@ export async function GET(request: Request) {
         string,
         unknown
       >;
+      const scopedToRegional =
+        String(permissions.escopo ?? "") === "regional" &&
+        Boolean(currentManager.regional_id);
       const seesAll =
-        currentManager.tipo_gestor === "gga" ||
-        permissions.todos_estagiarios === true;
+        !scopedToRegional &&
+        (currentManager.tipo_gestor === "gga" ||
+          permissions.todos_estagiarios === true);
       readableStudentIds = new Set(
         rows
           .filter(

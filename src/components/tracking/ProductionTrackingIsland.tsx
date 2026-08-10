@@ -376,6 +376,7 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
   const [monthIndex, setMonthIndex] = useState(() => currentQuarterMonthIndex(payload.quarterRef));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState<Set<string>>(new Set());
   const months = quarterMonths(payload.quarterRef);
   const currentMonthIndex = currentQuarterMonthIndex(payload.quarterRef);
   const total = quarterCreditTotal(values, rows, payload.quarterRef);
@@ -387,6 +388,11 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
 
   const updateValue = (ref: string, value: number) => {
     setValues((current) => ({ ...current, [ref]: value }));
+    setDirty((current) => {
+      const next = new Set(current);
+      next.add(ref);
+      return next;
+    });
     setSaved(false);
   };
 
@@ -394,14 +400,18 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
     setSaving(true);
     setSaved(false);
     try {
+      const entries = monthEntries(values, payload.quarterRef, monthIndex).filter(
+        (entry) => dirty.has(entry.ref),
+      );
       const result = await nextuberProductionBridge.saveBatch({
         studentId: payload.student.id,
         quarterRef: payload.quarterRef,
         target,
-        entries: monthEntries(values, payload.quarterRef, monthIndex),
+        entries,
       });
       setRows(result.productionRows);
       setValues(productionValues(result.productionRows));
+      setDirty(new Set());
       setSaved(true);
       window.dispatchEvent(
         new CustomEvent("nextuber:production-saved", {
