@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     if (input.entries.length) {
       const rowsToSave = input.entries.map((entry) => ({
-        estagiario_id: input.studentId,
+        estagiario_id: student.id,
         tri_ref: entry.ref,
         meta: 0,
         producao: entry.value,
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const { data: productionRows, error: rowsError } = await supabase
       .from("producao_trimestral")
       .select("*")
-      .eq("estagiario_id", input.studentId)
+      .eq("estagiario_id", student.id)
       .like("tri_ref", `${input.quarterRef}%`);
     if (rowsError) throw rowsError;
 
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       .from("producao_trimestral")
       .upsert(
         {
-          estagiario_id: input.studentId,
+          estagiario_id: student.id,
           tri_ref: input.quarterRef,
           meta: input.target,
           producao: summary.credit,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       .from("snapshots")
       .upsert(
         {
-          estagiario_id: input.studentId,
+          estagiario_id: student.id,
           tri_ref: input.quarterRef,
           score: summary.score,
           score_producao: summary.creditScore,
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       const { error: profileError } = await supabase
         .from("estagiarios")
         .update({ perfil: profile as Json })
-        .eq("id", input.studentId);
+        .eq("id", student.id);
       if (profileError) throw profileError;
     }
 
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     );
     rows.push(aggregate);
     return Response.json({
-      studentId: input.studentId,
+      studentId: student.id,
       quarterRef: input.quarterRef,
       productionRows: rows,
       snapshot,

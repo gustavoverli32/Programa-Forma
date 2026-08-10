@@ -75,19 +75,34 @@ export async function authorizeStudentWrite(
   session: SessionPayload,
   studentId: string,
 ) {
-  const { data: student, error: studentError } = await supabase
+  const isUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      studentId,
+    );
+
+  let studentQuery = supabase
     .from("estagiarios")
-    .select("id,perfil")
-    .eq("id", studentId)
-    .maybeSingle();
+    .select("id,perfil,gestor_funcional,regional_id");
+
+  if (isUuid) {
+    studentQuery = studentQuery.eq("id", studentId);
+  } else {
+    studentQuery = studentQuery.or(
+      `id.eq.${studentId},perfil->>funcional.eq.${studentId}`,
+    );
+  }
+
+  const { data: student, error: studentError } =
+    await studentQuery.maybeSingle();
   if (studentError) throw studentError;
-  if (!student) throw new ProductionHttpError("Estagiario nao encontrado.", 404);
+  if (!student)
+    throw new ProductionHttpError("Estagiario nao encontrado.", 404);
 
   if (session.role === "tutora") return student;
 
   const { data: manager, error: managerError } = await supabase
     .from("gestores")
-    .select("id,funcional,permissoes,tipo_gestor")
+    .select("id,funcional,permissoes,tipo_gestor,regional_id")
     .eq("id", session.subject)
     .maybeSingle();
   if (managerError) throw managerError;
@@ -100,7 +115,10 @@ export async function authorizeStudentWrite(
     manager.tipo_gestor === "gga" ||
     permissions.todos_estagiarios === true ||
     String(profile.ga_funcional ?? "") === managerCode ||
-    String(profile.gga_funcional ?? "") === managerCode;
+    String(profile.gga_funcional ?? "") === managerCode ||
+    String(student.gestor_funcional ?? "") === managerCode ||
+    (Boolean(manager.regional_id) &&
+      String(student.regional_id ?? "") === String(manager.regional_id));
 
   if (!canWrite) {
     throw new ProductionHttpError("Sem permissao para este estagiario.", 403);

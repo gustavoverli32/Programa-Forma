@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const { error } = await supabase
       .from("estagiarios")
       .update({ perfil: verification.profile as Json })
-      .eq("id", studentId);
+      .eq("id", student.id);
     if (error) throw error;
 
     return Response.json(verification);

@@ -29,13 +29,13 @@ export async function POST(request: Request) {
     const student = await authorizeStudentWrite(supabase, session, input.studentId);
     const rowsToSave = [
       {
-        estagiario_id: input.studentId,
+        estagiario_id: student.id,
         tri_ref: "CONTATO-META",
         meta: input.dailyTarget,
         producao: 0,
       },
       ...input.days.map((day) => ({
-        estagiario_id: input.studentId,
+        estagiario_id: student.id,
         tri_ref: `CONTATO-${input.weekRef}-D${day.dayIndex}`,
         meta: 0,
         producao: day.value,
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const { error: profileError } = await supabase
       .from("estagiarios")
       .update({ perfil: profile as Json })
-      .eq("id", input.studentId);
+      .eq("id", student.id);
     if (profileError) throw profileError;
 
     return Response.json({ contactRows, profile });
