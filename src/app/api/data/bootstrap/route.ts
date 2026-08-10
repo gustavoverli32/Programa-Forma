@@ -11,6 +11,87 @@ import {
   productionErrorResponse,
 } from "@/server/production-access";
 
+async function fetchAllStudents(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+): Promise<StudentReadRow[]> {
+  const PAGE_SIZE = 1000;
+  let from = 0;
+  let hasMore = true;
+  const allStudents: StudentReadRow[] = [];
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("estagiarios")
+      .select(
+        "id,nome,meses,obs,atencao,perfil,trilha_checks,gestor_funcional,regional_id,created_at",
+      )
+      .order("created_at", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("Erro ao paginar estagiarios:", error);
+      break;
+    }
+
+    if (data && data.length > 0) {
+      allStudents.push(...(data as StudentReadRow[]));
+      if (data.length < PAGE_SIZE) {
+        hasMore = false;
+      } else {
+        from += PAGE_SIZE;
+      }
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allStudents;
+}
+
+async function fetchAllProductionForStudents(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  studentIds: string[],
+): Promise<unknown[]> {
+  if (studentIds.length === 0) return [];
+
+  const PAGE_SIZE = 1000;
+  const CHUNK_SIZE = 50;
+  const allRows: unknown[] = [];
+
+  for (let i = 0; i < studentIds.length; i += CHUNK_SIZE) {
+    const chunk = studentIds.slice(i, i + CHUNK_SIZE);
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from("producao_trimestral")
+        .select("id,estagiario_id,tri_ref,meta,producao,created_at")
+        .in("estagiario_id", chunk)
+        .order("id", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        console.error("Erro ao paginar producao_trimestral:", error);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allRows.push(...data);
+        if (data.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+  }
+
+  return allRows;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
@@ -22,7 +103,7 @@ export async function GET(request: Request) {
     const [
       settingsResult,
       descriptionsResult,
-      studentsResult,
+      rows,
       configResult,
       managersResult,
       meetingsResult,
@@ -36,12 +117,7 @@ export async function GET(request: Request) {
         .from("descricao_projeto")
         .select("id,titulo,conteudo,ordem,created_at")
         .order("ordem"),
-      supabase
-        .from("estagiarios")
-        .select(
-          "id,nome,meses,obs,atencao,perfil,trilha_checks,gestor_funcional,regional_id,created_at",
-        )
-        .order("created_at"),
+      fetchAllStudents(supabase),
       supabase
         .from("configuracoes")
         .select("valor")
@@ -51,7 +127,6 @@ export async function GET(request: Request) {
         .from("gestores")
         .select("id,nome,funcional,permissoes,tipo_gestor,regional_id,created_at")
         .order("nome"),
-
       supabase
         .from("encontros")
         .select("id,titulo,descricao,data,created_at")
@@ -66,8 +141,6 @@ export async function GET(request: Request) {
     const settings = new Map(
       (settingsResult.data ?? []).map((item) => [item.id, item.valor]),
     );
-
-    const rows = (studentsResult.data ?? []) as StudentReadRow[];
 
     if (!session) {
       return Response.json(
@@ -139,25 +212,10 @@ export async function GET(request: Request) {
       );
     }
 
-    let productionData: any[] = [];
-    const studentIdsArr = Array.from(readableStudentIds);
-    if (studentIdsArr.length > 0) {
-      const chunkSize = 50;
-      const promises = [];
-      for (let i = 0; i < studentIdsArr.length; i += chunkSize) {
-        promises.push(
-          supabase
-            .from("producao_trimestral")
-            .select("id,estagiario_id,tri_ref,meta,producao,created_at")
-            .in("estagiario_id", studentIdsArr.slice(i, i + chunkSize))
-            .limit(1000)
-        );
-      }
-      const results = await Promise.all(promises);
-      for (const res of results) {
-        if (res.data) productionData.push(...res.data);
-      }
-    }
+    const productionData = await fetchAllProductionForStudents(
+      supabase,
+      Array.from(readableStudentIds),
+    );
 
     return Response.json(
       {
