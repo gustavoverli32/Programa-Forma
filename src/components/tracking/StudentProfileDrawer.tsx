@@ -662,7 +662,7 @@ export function StudentProfileDrawer({
                 }}
               >
                 <div style={{ fontSize: "12px", color: "var(--ink3, #666)" }}>
-                  Produção e Metas Semanais
+                  Produção e Alvos Semanais
                 </div>
                 <div
                   style={{

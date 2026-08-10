@@ -1099,48 +1099,8 @@ async function loadSnapshotsHistory(eid){
 
 
 function renderAvaliacao(idx){
-  var el = document.getElementById('pAvaliacao'); if(!el) return;
-  var e = S.ests[idx], tri = trimestreRef();
-  var prod = getProducaoTri(e.id, tri);
-  var meta = parseFloat(prod.meta)||0;
-
-  // Crédito
-  var producaoCredito = getTotalTrimestreModalidades(e.id, tri);
-  if(producaoCredito === 0){
-    var totalMes = getTotalMensal(e.id, tri);
-    producaoCredito = totalMes > 0 ? totalMes : (parseFloat(prod.producao)||0);
-  }
-  var pctCredito = meta>0 ? Math.round(Math.min(producaoCredito/meta, 1)*100) : 0;
-  var fCredito = faixaRes(pctCredito);
-
-  // Produtos
-  var metaProdutos = meta * 0.2;
-  var producaoProdutos = getTotalTrimestreOutros(e.id, tri);
-  var pctProdutos = metaProdutos>0 ? Math.round(Math.min(producaoProdutos/metaProdutos, 1)*100) : 0;
-  var fProdutos = faixaRes(pctProdutos);
-
-  var nota = calcScore(e, tri), nc = scoreColor(nota);
-
-  el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-      +'<span style="font-size:12px;color:var(--ink2);">Crédito <span style="font-size:10px;color:var(--ink3);">(60%)</span></span>'
-      +'<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:'+fCredito.bg+';color:'+fCredito.cor+';">● '+fCredito.label+'</span>'
-    +'</div>'
-    +'<div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:3px;"><div style="width:'+Math.min(pctCredito,100)+'%;height:100%;background:'+fCredito.cor+';"></div></div>'
-    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:12px;">'+(meta>0 ? fmtMilhar(producaoCredito)+' / '+fmtMilhar(meta)+' ('+pctCredito+'%)' : 'Alvo não definido')+'</div>'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-      +'<span style="font-size:12px;color:var(--ink2);">Produtos <span style="font-size:10px;color:var(--ink3);">(40%)</span></span>'
-      +'<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:'+fProdutos.bg+';color:'+fProdutos.cor+';">● '+fProdutos.label+'</span>'
-    +'</div>'
-    +'<div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:3px;"><div style="width:'+Math.min(pctProdutos,100)+'%;height:100%;background:'+fProdutos.cor+';"></div></div>'
-    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:12px;">'+(metaProdutos>0 ? fmtMilhar(producaoProdutos)+' / '+fmtMilhar(metaProdutos)+' ('+pctProdutos+'%)' : 'Alvo de produtos: 20% do alvo de crédito')+'</div>'
-    +'<div style="border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;justify-content:space-between;">'
-      +'<span style="font-size:12px;color:var(--ink2);">Nota final</span>'
-      +'<span style="font-size:22px;font-weight:500;color:'+nc+';">'+nota+'<span style="font-size:13px;color:var(--ink3);">/10</span></span>'
-    +'</div></div>'
-    +'<div id="pEvolucaoChart" style="margin-top:14px;"></div>'
-    +'<div id="pContatos" style="margin-top:14px;"></div>';
-  loadEvolucaoChart(e.id);
+  var el = document.getElementById('pAvaliacao'); if(el) el.innerHTML = '';
+  var elEv = document.getElementById('pEvolucaoChart'); if(elEv) elEv.innerHTML = '';
   renderContatosCard(idx);
 }
 

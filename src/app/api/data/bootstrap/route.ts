@@ -96,7 +96,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    let session = await getProductionSession();
+    const session = await getProductionSession();
 
     const supabase = createSupabaseAdminClient();
 

@@ -13,7 +13,7 @@ export function AiAssistantModal() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     createChatMessage(
       "assistant",
-      "Olá! Sou o **Nextuber IA**, seu assistente de inteligência. Como posso ajudar com os acompanhamentos, metas ou trilhas hoje?",
+      "Olá! Sou o **Nextuber IA**, seu assistente de inteligência. Como posso ajudar com os acompanhamentos, alvos ou trilhas hoje?",
     ),
   ]);
   const [inputQuery, setInputQuery] = useState("");

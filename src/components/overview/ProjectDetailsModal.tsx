@@ -24,7 +24,7 @@ const DEFAULT_TEXTS: Required<ProjectTexts> = {
   sec_estrutura:
     "Jornada de 6 meses dividida em 3 Fases: Decolar (0-90d), Evoluir (91-180d) e Impactar (181d+). Acompanhamento semanal de alvos e encontros de aceleração.",
   sec_metodologia:
-    "Aprendizado prático orientado por metas graduais, reuniões de feedback constante, mentoria com tutora regional e simulações comerciais diárias.",
+    "Aprendizado prático orientado por alvos graduais, reuniões de feedback constante, mentoria com tutora regional e simulações comerciais diárias.",
   sec_avaliacao:
     "Composição de nota equilibrada: 60% alvos de Crédito (INSS, OP, EP, Creditário) + 40% Produtos (Seguros, PIC, Combinaqui, Consórcios e Engajamento).",
   sec_formatura:

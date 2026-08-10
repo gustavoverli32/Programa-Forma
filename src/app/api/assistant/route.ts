@@ -222,7 +222,7 @@ export async function POST(request: Request) {
     if (resJson.error === "Pergunta obrigatória") {
       delete resJson.error;
       resJson.reply =
-        "Olá! Estou pronto para analisar os dados dos estagiários, rankings, acompanhamentos e metas do programa Nextuber. Como posso ajudar com os estagiários hoje?";
+        "Olá! Estou pronto para analisar os dados dos estagiários, rankings, acompanhamentos e alvos do programa Nextuber. Como posso ajudar com os estagiários hoje?";
     }
 
     return new Response(JSON.stringify(resJson), {
