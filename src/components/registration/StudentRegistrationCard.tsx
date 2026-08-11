@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   cleanEmployeeCode,
   validateStudentRegistrationInput,
 } from "@/domain/registration";
 import { nextuberMutationBridge } from "@/services/admin-mutations-client";
+import { nextuberReadBridge } from "@/services/read-client";
 import type { StudentItem } from "@/domain/student-monitoring";
 
 type Props = {
@@ -17,6 +18,8 @@ export function StudentRegistrationCard({ onStudentCreated, canEdit = true }: Pr
   const [nome, setNome] = useState("");
   const [funcional, setFuncional] = useState("");
   const [agencia, setAgencia] = useState("");
+  const [regionalId, setRegionalId] = useState("");
+  const [regionais, setRegionais] = useState<Array<{ id: string; nome: string }>>([]);
   const [inicio, setInicio] = useState("");
   const [gaFuncional, setGaFuncional] = useState("");
   const [ggaFuncional, setGgaFuncional] = useState("");
@@ -27,6 +30,24 @@ export function StudentRegistrationCard({ onStudentCreated, canEdit = true }: Pr
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    nextuberReadBridge
+      .bootstrap()
+      .then((data) => {
+        if (!active) return;
+        const list = (data.regionais || []) as Array<{ id: string; nome: string }>;
+        setRegionais(list);
+        if (list.length > 0 && !regionalId) {
+          setRegionalId(list[0].id);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,6 +74,7 @@ export function StudentRegistrationCard({ onStudentCreated, canEdit = true }: Pr
         months: ["Mês 1", "Mês 2", "Mês 3", "Mês 4", "Mês 5", "Mês 6"],
         notes: "",
         attention: false,
+        regional_id: regionalId || undefined,
         profile: {
           funcional: cleanEmployeeCode(funcional),
           agencia: agencia.trim(),
@@ -206,6 +228,33 @@ export function StudentRegistrationCard({ onStudentCreated, canEdit = true }: Pr
             />
             {errors.funcional && <span style={{ color: "#DC2626", fontSize: "11px" }}>{errors.funcional}</span>}
           </div>
+
+          {regionais.length > 0 && (
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                Regional *
+              </label>
+              <select
+                value={regionalId}
+                onChange={(e) => setRegionalId(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border, #ccc)",
+                  fontSize: "13px",
+                  background: "var(--surface, #fff)",
+                  cursor: "pointer",
+                }}
+              >
+                {regionais.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>

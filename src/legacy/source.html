@@ -403,9 +403,13 @@
           <div class="field-lbl">Funcional (9 dígitos)</div>
           <input class="field-in" type="text" id="cadFunc" placeholder="000000000" maxlength="9" inputmode="numeric">
         </div>
+        <div class="field-grp" id="cadRegionalWrap">
+          <div class="field-lbl">Regional *</div>
+          <select class="field-in" id="cadRegional" style="cursor:pointer;"></select>
+        </div>
         <div class="field-grp">
           <div class="field-lbl">Agência</div>
-          <input class="field-in" type="text" id="cadAgencia" placeholder="0000" maxlength="6" inputmode="numeric">
+          <input class="field-in" type="text" id="cadAgencia" placeholder="Ex: 4815" maxlength="20">
         </div>
         <div class="field-grp">
           <div class="field-lbl">Data de início</div>
@@ -592,6 +596,7 @@
     <div class="psec">
       <div class="psec-ttl">Informações</div>
       <div class="prow"><span class="prow-lbl">Funcional</span><span class="prow-val" id="pFunc" style="font-family:monospace">—</span></div>
+      <div class="prow"><span class="prow-lbl">Regional</span><span class="prow-val" id="pRegional">—</span></div>
       <div class="prow"><span class="prow-lbl">Agência</span><span class="prow-val" id="pAgencia" style="font-family:monospace">—</span></div>
       <div class="prow"><span class="prow-lbl">Início</span><span class="prow-val" id="pInicio">—</span></div>
       <div class="prow"><span class="prow-lbl">Tempo no programa</span><span class="prow-val" id="pTempo">—</span></div>

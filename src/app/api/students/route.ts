@@ -36,6 +36,7 @@ export async function POST(request: Request) {
         atencao: input.attention,
         perfil: input.profile,
         trilha_checks: input.trailChecks,
+        regional_id: input.regionalId || session.regionalId || null,
       })
       .select()
       .single();

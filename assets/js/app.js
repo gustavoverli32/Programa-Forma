@@ -461,6 +461,7 @@ async function saveEstagiario(est){
   // Serializar tudo via JSON para garantir dados puros (evita DataCloneError)
   var data = JSON.parse(JSON.stringify({
     name:        String(est.nome||''),
+    regional_id: est.regional_id || S.selectedRegionalId || null,
     months:      est.meses||[],
     notes:       String(est.obs||''),
     attention:   !!est.atencao,
@@ -2389,6 +2390,9 @@ function openPanel(idx){
   document.getElementById('pFn').textContent=e.perfil&&e.perfil.funcional?'#'+e.perfil.funcional:'Sem funcional';
   // idade removida
   document.getElementById('pFunc').textContent=e.perfil&&e.perfil.funcional?e.perfil.funcional:'—';
+  var regObj = (S.regionais||[]).find(function(r){ return String(r.id) === String(e.regional_id); });
+  var pRegEl = document.getElementById('pRegional');
+  if(pRegEl) pRegEl.textContent = regObj ? regObj.nome : '—';
   var pAgEl = document.getElementById('pAgencia');
   if(pAgEl) pAgEl.textContent = e.perfil&&e.perfil.agencia?e.perfil.agencia:'—';
   // GA e GGA
@@ -2672,12 +2676,29 @@ function renderCadList(){
     });
   });
 }
+function populateCadRegionaisSelect(){
+  var sel = document.getElementById('cadRegional');
+  if(!sel) return;
+  var currentVal = sel.value;
+  sel.innerHTML = '';
+  (S.regionais||[]).forEach(function(r){
+    var opt = document.createElement('option');
+    opt.value = r.id;
+    opt.textContent = r.nome;
+    sel.appendChild(opt);
+  });
+  if(currentVal) sel.value = currentVal;
+  else if(S.selectedRegionalId) sel.value = S.selectedRegionalId;
+}
+
 function loadEditCad(idx){
   if(!editor && !isGGA()) return;
   var e = S.ests[idx];
   cadIdx = idx;
   document.getElementById('cadNome').value = e.nome;
-  // idade removida
+  populateCadRegionaisSelect();
+  var regEl = document.getElementById('cadRegional');
+  if(regEl && e.regional_id) regEl.value = e.regional_id;
   document.getElementById('cadFunc').value = e.perfil&&e.perfil.funcional?e.perfil.funcional:'';
   var agEl = document.getElementById('cadAgencia');
   if(agEl) agEl.value = e.perfil&&e.perfil.agencia?e.perfil.agencia:'';
@@ -2722,7 +2743,8 @@ async function savePerfil(){
   var nome = document.getElementById('cadNome').value.trim();
   if(!nome){ document.getElementById('cadNome').focus(); return; }
   var func = document.getElementById('cadFunc').value.replace(/[^0-9]/g,'').slice(0,9);
-  var agencia = ((document.getElementById('cadAgencia')||{}).value||'').replace(/[^0-9]/g,'').slice(0,6);
+  var agencia = ((document.getElementById('cadAgencia')||{}).value||'').trim();
+  var selectedRegionalId = (document.getElementById('cadRegional')||{}).value || S.selectedRegionalId;
   var gaVal = (document.getElementById('cadGAFunc')||{}).value||'';
   var ggaVal = (document.getElementById('cadGGAFunc')||{}).value||'';
   var anivDia = (document.getElementById('cadAnivDia')||{}).value||'';
@@ -2751,6 +2773,7 @@ async function savePerfil(){
       perfil.ultima_atualizacao_prod = S.ests[cadIdx].perfil.ultima_atualizacao_prod;
     }
     S.ests[cadIdx].nome = nome;
+    if(selectedRegionalId) S.ests[cadIdx].regional_id = selectedRegionalId;
     S.ests[cadIdx].perfil = perfil;
     estagiario = S.ests[cadIdx];
   } else {
@@ -2760,6 +2783,7 @@ async function savePerfil(){
     // Always create new (no slot recycling)
     estagiario = {
       nome: nome,
+      regional_id: selectedRegionalId,
       meses: Array(6).fill('⬜ Pendente'),
       obs: '',
       atencao: false,

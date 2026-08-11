@@ -71,7 +71,7 @@ function cleanStudentProfile(value: unknown) {
   const profile = asRecord(value, "Perfil do estagiario invalido.");
   const result: Record<string, Json | undefined> = {
     funcional: cleanDigits(profile.funcional, "Funcional", 9, true),
-    agencia: cleanDigits(profile.agencia, "Agencia", 6),
+    agencia: cleanString(profile.agencia, "Agencia", 60),
     inicio: profile.inicio ? parseYmd(profile.inicio, "Data de inicio") : "",
     ga_funcional: cleanDigits(profile.ga_funcional, "Funcional do GA", 9),
     gga_funcional: cleanDigits(profile.gga_funcional, "Funcional do GGA", 9),
@@ -109,6 +109,7 @@ export type StudentMutationInput = {
   attention: boolean;
   profile: Json;
   trailChecks: Json;
+  regionalId?: string | null;
 };
 
 export function parseStudentMutation(value: unknown): StudentMutationInput {
@@ -127,6 +128,7 @@ export function parseStudentMutation(value: unknown): StudentMutationInput {
     attention: body.attention === true,
     profile: cleanStudentProfile(body.profile),
     trailChecks: cleanTrailChecks(body.trailChecks),
+    regionalId: optionalUuid(body.regional_id ?? body.regionalId, "Regional"),
   };
 }
 

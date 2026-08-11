@@ -100,7 +100,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 }
 
 function buildFullUpdate(
-  current: { perfil: Json | null },
+  current: { perfil: Json | null; regional_id?: string | null },
   input: ReturnType<typeof parseStudentMutation>,
 ) {
   return {
@@ -113,5 +113,6 @@ function buildFullUpdate(
       ...(input.profile as Record<string, Json | undefined>),
     } as Json,
     trilha_checks: input.trailChecks,
+    ...(input.regionalId ? { regional_id: input.regionalId } : {}),
   };
 }
