@@ -576,12 +576,14 @@ export function HomeOverviewSection({
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink, #111)" }}>
+                    <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink, #111)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {item.studentName}
-                      <span style={{ fontSize: "12px", fontWeight: 400, color: "var(--ink3, #666)", marginLeft: "6px" }}>
-                        (Ag. {item.agency})
-                      </span>
                     </div>
+                    {item.agency && item.agency !== "Sem agência" && (
+                      <div style={{ fontSize: "11px", color: "var(--ink3, #666)" }}>
+                        Ag: {item.agency}
+                      </div>
+                    )}
                     <div style={{ fontSize: "11px", color: "var(--ink3, #666)" }}>
                       Funcional: {item.functional}
                     </div>

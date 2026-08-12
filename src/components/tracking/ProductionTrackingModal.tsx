@@ -5,7 +5,6 @@ import {
   useSyncExternalStore,
   type CSSProperties,
 } from "react";
-import { createPortal } from "react-dom";
 import type { ProductionRow } from "@/domain/production";
 import { quantityWeeksInMonth } from "@/domain/production-deadline";
 import {
@@ -457,39 +456,42 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
   );
 }
 
-export function ProductionTrackingIsland() {
+export function ProductionTrackingModal() {
   const payload = useSyncExternalStore(
     nextuberTrackingBridge.subscribe,
     nextuberTrackingBridge.getSnapshot,
     nextuberTrackingBridge.getServerSnapshot,
   );
-  const container = useSyncExternalStore(
-    subscribeToPortalTarget,
-    getPortalTarget,
-    getServerPortalTarget,
-  );
 
-  return container && payload
-    ? createPortal(
+  if (!payload) return null;
+
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+      backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9999,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      backdropFilter: "blur(4px)"
+    }}>
+      <div style={{
+        background: "var(--surface, #fff)", width: "100%", maxWidth: "800px",
+        maxHeight: "90vh", overflowY: "auto", borderRadius: "16px",
+        padding: "24px", position: "relative", boxShadow: "0 10px 40px rgba(0,0,0,0.2)"
+      }}>
+        <button
+          onClick={() => nextuberTrackingBridge.close()}
+          style={{
+            position: "absolute", top: "16px", right: "16px",
+            background: "transparent", border: "none", fontSize: "20px",
+            cursor: "pointer", color: "var(--ink3)"
+          }}
+        >
+          ✕
+        </button>
         <ProductionResults
           key={`${payload.student.id}:${payload.quarterRef}:${payload.revision}`}
           payload={payload}
-        />,
-        container,
-      )
-    : null;
-}
-
-function subscribeToPortalTarget(listener: () => void) {
-  const observer = new MutationObserver(listener);
-  observer.observe(document.body, { childList: true, subtree: true });
-  return () => observer.disconnect();
-}
-
-function getPortalTarget() {
-  return document.getElementById("pResultados");
-}
-
-function getServerPortalTarget() {
-  return null;
+        />
+      </div>
+    </div>
+  );
 }
