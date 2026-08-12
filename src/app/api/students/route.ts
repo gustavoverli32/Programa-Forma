@@ -2,6 +2,7 @@ import { parseStudentMutation } from "@/domain/admin-mutations";
 import { createSupabaseAdminClient } from "@/lib/supabase-server";
 import {
   assertSameOrigin,
+  loadSessionManager,
   ProductionHttpError,
   productionErrorResponse,
   requireProductionSession,
@@ -27,6 +28,12 @@ export async function POST(request: Request) {
     if (duplicateError) throw duplicateError;
     if (duplicate) throw new ProductionHttpError("Ja existe um estagiario com este funcional.", 409);
 
+    let defaultRegionalId: string | null = null;
+    if (session.role === "gestor") {
+      const manager = await loadSessionManager(supabase, session);
+      defaultRegionalId = manager.regional_id ?? null;
+    }
+
     const { data, error } = await supabase
       .from("estagiarios")
       .insert({
@@ -36,7 +43,7 @@ export async function POST(request: Request) {
         atencao: input.attention,
         perfil: input.profile,
         trilha_checks: input.trailChecks,
-        regional_id: input.regionalId || session.regionalId || null,
+        regional_id: input.regionalId || defaultRegionalId,
       })
       .select()
       .single();

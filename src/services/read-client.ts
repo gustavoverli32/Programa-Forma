@@ -1,4 +1,5 @@
 type BootstrapPayload = {
+  regionais?: Record<string, unknown>[];
   students: Record<string, unknown>[];
   timeline: unknown;
   config: Record<string, unknown>;

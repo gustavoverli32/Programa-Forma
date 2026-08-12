@@ -39,8 +39,8 @@ export function StudentRegistrationCard({ onStudentCreated, canEdit = true }: Pr
         if (!active) return;
         const list = (data.regionais || []) as Array<{ id: string; nome: string }>;
         setRegionais(list);
-        if (list.length > 0 && !regionalId) {
-          setRegionalId(list[0].id);
+        if (list.length > 0) {
+          setRegionalId((prev) => prev || list[0].id);
         }
       })
       .catch(() => {});
