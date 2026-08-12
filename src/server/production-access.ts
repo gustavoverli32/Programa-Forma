@@ -43,7 +43,7 @@ export async function loadSessionManager(
   }
   const { data: manager, error } = await supabase
     .from("gestores")
-    .select("id,nome,funcional,permissoes,tipo_gestor")
+    .select("id,nome,funcional,permissoes,tipo_gestor,regional_id")
     .eq("id", session.subject)
     .maybeSingle();
   if (error) throw error;
