@@ -120,8 +120,15 @@ export function calculateRankings(
       scoreOrValue = totals.credit;
       formattedValue = `R$ ${totals.credit.toLocaleString("pt-BR")}`;
     } else if (filterKey === "produtos") {
-      scoreOrValue = totals.products;
-      formattedValue = `${totals.products.toLocaleString("pt-BR")} un`;
+      const segVal = totals.itemValues["out_Seguros"] || 0;
+      const picVal = totals.itemValues["out_PIC"] || 0;
+      scoreOrValue = segVal + picVal;
+      formattedValue = `${scoreOrValue.toLocaleString("pt-BR")} un`;
+    } else if (filterKey === "engajamento_total" || filterKey === "engajamento") {
+      const combVal = totals.itemValues["out_Combinaqui"] || 0;
+      const engVal = totals.itemValues["out_Engajamento"] || totals.itemValues["out_Capitalização"] || 0;
+      scoreOrValue = combVal + engVal;
+      formattedValue = `${scoreOrValue.toLocaleString("pt-BR")} un`;
     } else if (totals.itemValues[filterKey] !== undefined) {
       scoreOrValue = totals.itemValues[filterKey];
       const isCreditItem = filterKey.startsWith("cred_");

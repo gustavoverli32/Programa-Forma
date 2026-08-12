@@ -1025,7 +1025,8 @@ function renderRanking(){
   // Mapear filtro para função de valor + config visual
   var configFiltros = {
     credito: {label: 'Crédito total', unidade: '', getValor: function(e){ return getTotalTrimestreModalidades(e.id, tri); }},
-    produtos: {label: 'Produtos total', unidade: '', getValor: function(e){ return getTotalTrimestreOutros(e.id, tri); }},
+    produtos: {label: 'Produtos total (Seg+PIC)', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 0) + getTotalTrimestreOutroProduto(e.id, tri, 1); }},
+    engajamento_total: {label: 'Engajamento total (Comb+Eng)', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 2) + getTotalTrimestreOutroProduto(e.id, tri, 3); }},
     cred_INSS: {label: 'INSS', unidade: '', getValor: function(e){ return getTotalTrimestreModalidade(e.id, tri, 0); }, cor: '#2196F3'},
     cred_OP: {label: 'OP', unidade: '', getValor: function(e){ return getTotalTrimestreModalidade(e.id, tri, 1); }, cor: '#FF9800'},
     cred_EP: {label: 'EP', unidade: '', getValor: function(e){ return getTotalTrimestreModalidade(e.id, tri, 2); }, cor: '#E91E63'},
@@ -1033,8 +1034,8 @@ function renderRanking(){
     out_Seguros: {label: 'Seguros', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 0); }, cor: '#8B5CF6'},
     out_PIC: {label: 'PIC', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 1); }, cor: '#06B6D4'},
     out_Combinaqui: {label: 'Combinaqui', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 2); }, cor: '#F97316'},
-    out_Consorcios: {label: 'Consórcios', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 3); }, cor: '#10B981'},
-    out_Engajamento: {label: 'Engajamento', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 4); }, cor: '#EC4899'}
+    out_Engajamento: {label: 'Engajamento', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 3); }, cor: '#EC4899'},
+    out_Consorcios: {label: 'Consórcios', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 4); }, cor: '#10B981'}
   };
 
   var config = configFiltros[filtro] || configFiltros.credito;
@@ -1064,9 +1065,13 @@ function renderRanking(){
       pct = valorMax > 0 ? Math.round((r.valor / valorMax) * 100) : 0;
     }
 
+    var agStr = (r.e.perfil && r.e.perfil.agencia) ? r.e.perfil.agencia : 'Sem agência';
+
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">'
       +'<div style="width:22px;height:22px;border-radius:50%;background:'+(i<2?corPos:'var(--bg)')+';color:'+(i<2?'#fff':'var(--ink3)')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+(i+1)+'</div>'
-      +'<div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(r.e.nome)+'</div>'
+      +'<div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+        +escapeHtml(r.e.nome)+' <span style="font-size:11px;color:var(--ink3);font-weight:400;">(Ag. '+escapeHtml(agStr)+')</span>'
+      +'</div>'
       +'<div style="width:80px;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;flex-shrink:0;"><div style="width:'+pct+'%;height:100%;background:'+corBarra+';"></div></div>'
       +'<div style="font-size:13px;font-weight:600;color:'+corBarra+';min-width:60px;text-align:right;flex-shrink:0;">'+valorDisplay+'</div>'
     +'</div>';

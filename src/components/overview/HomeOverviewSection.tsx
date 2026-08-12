@@ -518,9 +518,9 @@ export function HomeOverviewSection({
               }}
             >
               <optgroup label="Geral">
-                <option value="nota">🏆 Nota (Crédito + Produtos)</option>
                 <option value="credito">💳 Crédito total (INSS+OP+EP+Creditário)</option>
-                <option value="produtos">📦 Produtos total (Seg+PIC+Comb+Cons+Eng)</option>
+                <option value="produtos">📦 Produtos total (Seg+PIC)</option>
+                <option value="engajamento_total">🤝 Engajamento total (Comb+Eng)</option>
               </optgroup>
               <optgroup label="Crédito (por modalidade)">
                 <option value="cred_INSS">🔵 INSS</option>
@@ -578,9 +578,12 @@ export function HomeOverviewSection({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink, #111)" }}>
                       {item.studentName}
+                      <span style={{ fontSize: "12px", fontWeight: 400, color: "var(--ink3, #666)", marginLeft: "6px" }}>
+                        (Ag. {item.agency})
+                      </span>
                     </div>
                     <div style={{ fontSize: "11px", color: "var(--ink3, #666)" }}>
-                      Agência: {item.agency} | Funcional: {item.functional}
+                      Funcional: {item.functional}
                     </div>
                   </div>
 

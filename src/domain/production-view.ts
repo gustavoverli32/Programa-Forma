@@ -6,7 +6,7 @@ export const OTHER_PRODUCTS = [
   "Seguros",
   "PIC",
   "Combinaqui",
-  "Capitalização",
+  "Engajamento",
   "Consórcio",
 ] as const;
 
