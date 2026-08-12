@@ -18,7 +18,7 @@ test("Next.js runtime delegates authentication and production to protected bridg
 
 test("React production panel keeps the required save confirmation", () => {
   const source = readFileSync(
-    `${projectRoot}/src/components/tracking/ProductionTrackingModal.tsx`,
+    `${projectRoot}/src/components/tracking/ProductionTrackingIsland.tsx`,
     "utf8",
   );
 
@@ -137,10 +137,11 @@ test("React AI assistant includes floating drawer, suggested prompts, and secure
 
 test("Next.js runtime includes native React navigation decoupled from legacy app.js", () => {
   const runtimeSource = readFileSync(
-    `${projectRoot}/src/components/layout/AppLayout.tsx`,
+    `${projectRoot}/src/components/legacy/LegacyRuntime.tsx`,
     "utf8",
   );
 
-  assert.equal(runtimeSource.includes("activePage"), true);
-  assert.equal(runtimeSource.includes("setActivePage"), true);
+  assert.equal(runtimeSource.includes("handleNativeNavigation"), true);
+  assert.equal(runtimeSource.includes("dataset.page"), true);
+  assert.equal(runtimeSource.includes("Executando em modo 100% React nativo"), true);
 });

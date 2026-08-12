@@ -1,4 +1,4 @@
-export type BootstrapPayload = {
+type BootstrapPayload = {
   regionais?: Record<string, unknown>[];
   students: Record<string, unknown>[];
   timeline: unknown;

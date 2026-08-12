@@ -59,7 +59,6 @@ export function StudentMonitoringSection({
 
   async function handleExportExcel() {
     try {
-      // @ts-expect-error XLSX is loaded via a script tag globally
       const xlsx = window.XLSX || (await import("xlsx"));
       const exportData = filteredStudents.map((s) => {
         const prof = getStudentProfile(s);
