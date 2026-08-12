@@ -111,12 +111,12 @@ export async function authorizeStudentWrite(
   const permissions = (manager.permissoes ?? {}) as Record<string, unknown>;
   const profile = (student.perfil ?? {}) as Record<string, unknown>;
   const managerCode = String(manager.funcional ?? "");
-  const scopedToRegional =
-    String(permissions.escopo ?? "") === "regional" &&
-    Boolean(manager.regional_id);
-  const sameRegional =
-    Boolean(manager.regional_id) &&
-    String(student.regional_id ?? "") === String(manager.regional_id);
+  const hasRegional = Boolean(manager.regional_id);
+  const isLiderRegional = manager.tipo_gestor === "lider_regional" || manager.tipo_gestor === "gga";
+  const scopedToRegional = hasRegional && (String(permissions.escopo ?? "") === "regional" || isLiderRegional);
+  
+  const sameRegional = hasRegional && String(student.regional_id ?? "") === String(manager.regional_id);
+  
   const canWrite = scopedToRegional
     ? sameRegional
     : manager.tipo_gestor === "gga" ||

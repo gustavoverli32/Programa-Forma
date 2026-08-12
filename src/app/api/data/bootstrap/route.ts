@@ -1,5 +1,6 @@
 import {
   isStudentAssignedToManager,
+  isStudentInRegional,
   privateStudent,
   publicStudent,
   sanitizeProjectTexts,
@@ -146,7 +147,7 @@ export async function GET(request: Request) {
       return Response.json(
         {
           regionais: regionaisResult.data ?? [],
-          students: rows.map(publicStudent),
+          students: [],
           timeline: settings.get("timeline") ?? null,
           config: configResult.data?.valor ?? {},
           projectTexts: sanitizeProjectTexts(
@@ -155,7 +156,7 @@ export async function GET(request: Request) {
           managers: [],
           production: [],
           descriptions: descriptionsResult.data ?? [],
-          meetings: meetingsResult.data ?? [],
+          meetings: [],
           session: null,
         },
         { headers: { "Cache-Control": "private, no-store" } },
@@ -181,13 +182,12 @@ export async function GET(request: Request) {
         string,
         unknown
       >;
-      const scopedToRegional =
-        String(permissions.escopo ?? "") === "regional" &&
-        Boolean(currentManager.regional_id);
-      const seesAll =
-        !scopedToRegional &&
-        (currentManager.tipo_gestor === "gga" ||
-          permissions.todos_estagiarios === true);
+      const hasRegional = Boolean(currentManager.regional_id);
+      const isLiderRegional = currentManager.tipo_gestor === "lider_regional" || currentManager.tipo_gestor === "gga";
+      const scopedToRegional = hasRegional && (String(permissions.escopo ?? "") === "regional" || isLiderRegional);
+      
+      const seesAll = !scopedToRegional && (currentManager.tipo_gestor === "gga" || permissions.todos_estagiarios === true);
+      
       readableStudentIds = new Set(
         rows
           .filter(
@@ -197,9 +197,7 @@ export async function GET(request: Request) {
                 row,
                 String(currentManager.funcional ?? ""),
               ) ||
-              (Boolean(currentManager.regional_id) &&
-                String(row.regional_id ?? "") ===
-                  String(currentManager.regional_id)),
+              (scopedToRegional && isStudentInRegional(row, currentManager.regional_id))
           )
           .map((row) => row.id),
       );
