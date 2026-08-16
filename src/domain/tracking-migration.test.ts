@@ -13,7 +13,7 @@ test("Next.js runtime delegates authentication and production to protected bridg
   assert.equal(source.includes("window.nextuberAuth.loginTutor"), true);
   assert.equal(source.includes("window.nextuberAuth.loginManager"), true);
   assert.equal(source.includes("window.nextuberTracking.open"), true);
-  assert.equal(source.includes("window.nextuberProduction.verifyToday"), true);
+  assert.equal(source.includes("window.nextuberProduction.verifyToday"), false);
 });
 
 test("React production panel keeps the required save confirmation", () => {
@@ -25,6 +25,9 @@ test("React production panel keeps the required save confirmation", () => {
   assert.equal(source.includes("Dados salvos"), true);
   assert.equal(source.includes("quantityWeeksInMonth"), true);
   assert.equal(source.includes("nextuberProductionBridge.saveBatch"), true);
+  assert.equal(source.includes("Meta trimestral da agência (equilíbrio)"), true);
+  assert.equal(source.includes("productTargetsForQuarter"), true);
+  assert.equal(source.includes("DistributionChart"), false);
 });
 
 test("bootstrap limits production rows to readable students", () => {
@@ -51,7 +54,7 @@ test("React student monitoring section includes filters, excel export, and drawe
   assert.equal(sectionSource.includes("StudentProfileDrawer"), true);
 
   assert.equal(drawerSource.includes("Fase 1 | Decolar"), true);
-  assert.equal(drawerSource.includes("Marcar produção como verificada hoje"), true);
+  assert.equal(drawerSource.includes("Marcar produção como verificada hoje"), false);
   assert.equal(drawerSource.includes("handleToggleAttention"), true);
 });
 

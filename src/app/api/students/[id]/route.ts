@@ -1,4 +1,5 @@
 import { parseStudentMutation, parseUuid } from "@/domain/admin-mutations";
+import { didTrailChecklistChange } from "@/domain/monthly-checklist";
 import { createSupabaseAdminClient } from "@/lib/supabase-server";
 import {
   assertSameOrigin,
@@ -28,6 +29,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       .maybeSingle();
     if (currentError) throw currentError;
     if (!current) throw new ProductionHttpError("Estagiario nao encontrado.", 404);
+    const checklistChanged = didTrailChecklistChange(
+      current.trilha_checks,
+      input.trailChecks,
+    );
+    const checklistUpdatedAt = checklistChanged ? new Date().toISOString() : null;
 
     let update;
     let fullAccess = session.role === "tutora";
@@ -45,15 +51,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
           perfil: {
             ...currentProfile,
             trilha_manual: requestedProfile.trilha_manual ?? null,
+            ...(checklistUpdatedAt
+              ? { ultima_atualizacao_checklist_trilha: checklistUpdatedAt }
+              : {}),
           } as Json,
           trilha_checks: input.trailChecks,
         };
       } else {
         fullAccess = true;
-        update = buildFullUpdate(current, input);
+        update = buildFullUpdate(current, input, checklistUpdatedAt);
       }
     } else {
-      update = buildFullUpdate(current, input);
+      update = buildFullUpdate(current, input, checklistUpdatedAt);
     }
 
     if ("perfil" in update && fullAccess) {
@@ -102,6 +111,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 function buildFullUpdate(
   current: { perfil: Json | null; regional_id?: string | null },
   input: ReturnType<typeof parseStudentMutation>,
+  checklistUpdatedAt: string | null,
 ) {
   return {
     nome: input.name,
@@ -111,6 +121,9 @@ function buildFullUpdate(
     perfil: {
       ...((current.perfil ?? {}) as Record<string, Json | undefined>),
       ...(input.profile as Record<string, Json | undefined>),
+      ...(checklistUpdatedAt
+        ? { ultima_atualizacao_checklist_trilha: checklistUpdatedAt }
+        : {}),
     } as Json,
     trilha_checks: input.trailChecks,
     ...(input.regionalId ? { regional_id: input.regionalId } : {}),

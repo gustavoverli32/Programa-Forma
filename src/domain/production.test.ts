@@ -28,6 +28,29 @@ test("rejects references outside the selected quarter", () => {
   );
 });
 
+test("validates the five quarterly product targets", () => {
+  const parsed = parseProductionBatchInput({
+    studentId: "123",
+    quarterRef: "2026-Q3",
+    target: 1000,
+    productTargets: [10, 20, 30, 40, 50],
+    entries: [],
+  });
+  assert.deepEqual(parsed.productTargets, [10, 20, 30, 40, 50]);
+
+  assert.throws(
+    () =>
+      parseProductionBatchInput({
+        studentId: "123",
+        quarterRef: "2026-Q3",
+        target: 1000,
+        productTargets: [10, 20],
+        entries: [],
+      }),
+    /Metas de produtos invalidas/,
+  );
+});
+
 test("calculates the existing 6 plus 4 score composition", () => {
   const summary = summarizeProduction(
     [

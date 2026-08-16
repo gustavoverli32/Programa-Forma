@@ -20,12 +20,14 @@ import {
   OTHER_PRODUCT_COLORS,
   OTHER_PRODUCTS,
   parseAmount,
+  productTargetsForQuarter,
   productionRef,
   productionValues,
   quarterCreditTotal,
   quarterMonths,
   resultTone,
   targetForQuarter,
+  targetAchievementPercent,
   valueAt,
   weekTotal,
 } from "@/domain/production-view";
@@ -207,96 +209,29 @@ function ProductionTable({
   );
 }
 
-function DistributionChart({
-  labels,
-  colors,
-  kind,
-  values,
-  quarterRef,
-}: {
-  labels: readonly string[];
-  colors: readonly string[];
-  kind: "MOD" | "OUT";
-  values: Record<string, number>;
-  quarterRef: string;
-}) {
-  const items = labels.map((name, index) => ({
-    name,
-    color: colors[index],
-    value: itemQuarterTotal(values, quarterRef, kind, index),
-  }));
-  const total = items.reduce((sum, item) => sum + item.value, 0);
-  if (total === 0) {
-    return (
-      <div style={{ fontSize: 12, color: "var(--ink3)", fontStyle: "italic", padding: "10px 0" }}>
-        Sem vendas registradas ainda.
-      </div>
-    );
-  }
-
-  const circumference = 283;
-  const segmentData = items.map((item) => ({
-    ...item,
-    arc: (item.value / total) * circumference,
-  }));
-  const segments = segmentData.map((item, index) => {
-    const arc = item.arc;
-    const offset = segmentData
-      .slice(0, index)
-      .reduce((sum, previous) => sum + previous.arc, 0);
-    return (
-      <circle
-        key={item.name}
-        cx="60"
-        cy="60"
-        r="45"
-        fill="none"
-        stroke={item.color}
-        strokeWidth="22"
-        strokeDasharray={`${arc.toFixed(2)} ${(circumference - arc).toFixed(2)}`}
-        strokeDashoffset={`-${offset.toFixed(2)}`}
-        transform="rotate(-90 60 60)"
-      />
-    );
-  });
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
-      <svg viewBox="0 0 120 120" style={{ width: 150, height: 150, flexShrink: 0 }}>
-        {segments}
-      </svg>
-      <div style={{ flex: 1, minWidth: 140 }}>
-        {items.map((item) => (
-          <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, marginBottom: 6 }}>
-            <div style={{ width: 12, height: 12, borderRadius: 3, background: item.color, flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 500, color: "var(--ink)" }}>{item.name}</div>
-              <div style={{ fontSize: 10, color: "var(--ink3)" }}>
-                R$ {item.value.toLocaleString("pt-BR")} ({Math.round((item.value / total) * 100)}%)
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-
-
 function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) {
   const [rows, setRows] = useState<ProductionRow[]>(payload.productionRows);
   const [values, setValues] = useState(() => productionValues(payload.productionRows));
   const [target, setTarget] = useState(() => targetForQuarter(payload.productionRows, payload.quarterRef));
+  const [productTargets, setProductTargets] = useState(() =>
+    productTargetsForQuarter(payload.productionRows, payload.quarterRef),
+  );
   const [monthIndex, setMonthIndex] = useState(() => currentQuarterMonthIndex(payload.quarterRef));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [targetEditor, setTargetEditor] = useState<{
+    kind: "agency" | "product";
+    productIndex: number;
+    label: string;
+    value: number;
+  } | null>(null);
+  const [targetDraft, setTargetDraft] = useState("");
+  const [targetSaving, setTargetSaving] = useState(false);
+  const [targetSaved, setTargetSaved] = useState("");
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const months = quarterMonths(payload.quarterRef);
   const currentMonthIndex = currentQuarterMonthIndex(payload.quarterRef);
   const total = quarterCreditTotal(values, rows, payload.quarterRef);
-  const percent = target > 0 ? Math.round(Math.min(total / target, 1) * 100) : 0;
-  const tone = resultTone(percent);
   const selectedMonth = months[monthIndex - 1];
   const creditMonthTotal = monthTotal(values, payload.quarterRef, monthIndex, "MOD");
   const otherMonthTotal = monthTotal(values, payload.quarterRef, monthIndex, "OUT");
@@ -322,6 +257,7 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
         studentId: payload.student.id,
         quarterRef: payload.quarterRef,
         target,
+        productTargets,
         entries,
       });
       setRows(result.productionRows);
@@ -335,6 +271,7 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
             quarterRef: payload.quarterRef,
             productionRows: result.productionRows,
             profile: result.profile,
+            productionAuditHistory: result.productionAuditHistory,
           },
         }),
       );
@@ -351,25 +288,139 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
     }
   };
 
+  const openTargetEditor = (
+    kind: "agency" | "product",
+    productIndex: number,
+    label: string,
+    value: number,
+  ) => {
+    if (!payload.canEdit) return;
+    setTargetEditor({ kind, productIndex, label, value });
+    setTargetDraft(formatAmount(value));
+    setTargetSaved("");
+  };
+
+  const saveTarget = async () => {
+    if (!targetEditor) return;
+    const nextValue = parseAmount(targetDraft);
+    const nextTarget = targetEditor.kind === "agency" ? nextValue : target;
+    const nextProductTargets = [...productTargets];
+    if (targetEditor.kind === "product") {
+      nextProductTargets[targetEditor.productIndex] = nextValue;
+    }
+
+    setTargetSaving(true);
+    try {
+      const result = await nextuberProductionBridge.saveBatch({
+        studentId: payload.student.id,
+        quarterRef: payload.quarterRef,
+        target: nextTarget,
+        productTargets: nextProductTargets,
+        entries: [],
+      });
+      setTarget(nextTarget);
+      setProductTargets(nextProductTargets);
+      setRows(result.productionRows);
+      setTargetEditor(null);
+      setTargetSaved(`${targetEditor.label} salva`);
+      window.setTimeout(() => setTargetSaved(""), 2200);
+    } catch (error) {
+      console.error("Salvar meta trimestral:", error);
+      window.alert(
+        error instanceof Error ? error.message : "Não foi possível salvar a meta.",
+      );
+    } finally {
+      setTargetSaving(false);
+    }
+  };
+
+  const targetCards = [
+    {
+      kind: "agency" as const,
+      productIndex: -1,
+      label: "Meta trimestral da agência (equilíbrio)",
+      shortLabel: "Meta trimestral da agência (equilíbrio)",
+      value: target,
+      produced: total,
+      color: "var(--or)",
+      background: "var(--or-l)",
+    },
+    ...OTHER_PRODUCTS.map((product, productIndex) => ({
+      kind: "product" as const,
+      productIndex,
+      label: `Meta de ${product}`,
+      shortLabel: `Meta de ${product}`,
+      value: productTargets[productIndex] ?? 0,
+      produced: itemQuarterTotal(values, payload.quarterRef, "OUT", productIndex),
+      color: OTHER_PRODUCT_COLORS[productIndex],
+      background: "var(--surface)",
+    })),
+  ];
+
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
-        <div style={{ background: "var(--bg)", borderRadius: "var(--r2)", padding: 10, textAlign: "center" }}>
-          <div style={{ fontSize: 9, color: "var(--ink3)", marginBottom: 3 }}>Alvo trimestral</div>
-          <div style={{ fontSize: 14, fontWeight: 500 }}>{target.toLocaleString("pt-BR")}</div>
+      <section className="production-target-section" aria-labelledby="production-target-title">
+        <div className="production-target-heading">
+          <div>
+            <div id="production-target-title" className="production-target-title">Metas trimestrais</div>
+            <div className="production-target-help">
+              {payload.canEdit ? "Toque em um card para editar" : "Metas definidas para o trimestre"}
+            </div>
+          </div>
+          {targetSaved ? <span className="production-target-saved">✓ {targetSaved}</span> : null}
         </div>
-        <div style={{ background: "var(--bg)", borderRadius: "var(--r2)", padding: 10, textAlign: "center" }}>
-          <div style={{ fontSize: 9, color: "var(--ink3)", marginBottom: 3 }}>Total produzido</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: total > 0 ? tone.color : "var(--ink3)" }}>{total.toLocaleString("pt-BR")}</div>
+        <div className="production-target-grid">
+          {targetCards.map((card) => {
+            const cardPercent = targetAchievementPercent(card.produced, card.value);
+            const cardTone = resultTone(cardPercent);
+            const hasTarget = card.value > 0;
+            return (
+              <button
+                key={`${card.kind}-${card.productIndex}`}
+                type="button"
+                className={`production-target-card${card.kind === "agency" ? " agency" : ""}`}
+                disabled={!payload.canEdit}
+                aria-label={`${card.label}. Meta: ${card.value.toLocaleString("pt-BR") || "não definida"}. Produzido: ${card.produced.toLocaleString("pt-BR")}. Atingido: ${hasTarget ? `${cardPercent}%` : "não calculado"}`}
+                style={{ borderTopColor: card.color, background: card.background }}
+                onClick={() =>
+                  openTargetEditor(card.kind, card.productIndex, card.label, card.value)
+                }
+              >
+                <span className="production-target-card-label">{card.shortLabel}</span>
+                <span className="production-target-card-main">
+                  <span>
+                    <small>Meta</small>
+                    <strong style={{ color: card.value > 0 ? card.color : "var(--ink3)" }}>
+                      {card.value > 0 ? card.value.toLocaleString("pt-BR") : "Definir"}
+                    </strong>
+                  </span>
+                  <span
+                    className="production-target-percent"
+                    style={{
+                      color: hasTarget ? cardTone.color : "var(--ink3)",
+                      background: hasTarget ? cardTone.background : "var(--bg)",
+                    }}
+                  >
+                    {hasTarget ? `${cardPercent}%` : "—"}
+                  </span>
+                </span>
+                <span className="production-target-progress" aria-hidden="true">
+                  <span
+                    style={{
+                      width: `${cardPercent}%`,
+                      background: hasTarget ? cardTone.color : "var(--border2)",
+                    }}
+                  />
+                </span>
+                <span className="production-target-card-footer">
+                  <span>Produzido: <b>{card.produced.toLocaleString("pt-BR")}</b></span>
+                  {payload.canEdit ? <span className="production-target-edit">Editar</span> : null}
+                </span>
+              </button>
+            );
+          })}
         </div>
-        <div style={{ background: tone.background, borderRadius: "var(--r2)", padding: 10, textAlign: "center" }}>
-          <div style={{ fontSize: 9, color: tone.color, marginBottom: 3 }}>Atingido</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: tone.color }}>{target > 0 ? `${percent}%` : "—"}</div>
-        </div>
-      </div>
-      <div style={{ height: 5, background: "var(--bg)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
-        <div style={{ width: `${Math.min(percent, 100)}%`, height: "100%", background: tone.color }} />
-      </div>
+      </section>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10 }}>
         <button
@@ -395,25 +446,6 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
           Próximo →
         </button>
       </div>
-
-      {payload.canEdit ? (
-        <div className="field-grp" style={{ marginBottom: 14 }}>
-          <div className="field-lbl">Alvo do trimestre</div>
-          <input
-            aria-label="Alvo do trimestre"
-            className="field-in"
-            inputMode="numeric"
-            style={{ fontSize: 13 }}
-            type="text"
-            value={formatAmount(target)}
-            placeholder="0"
-            onChange={(event) => {
-              setTarget(parseAmount(event.target.value));
-              setSaved(false);
-            }}
-          />
-        </div>
-      ) : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: 14 }}>
         <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, background: "var(--bg)" }}>
@@ -443,16 +475,53 @@ function ProductionResults({ payload }: { payload: ProductionTrackingPayload }) 
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
-        <div>
-          <div style={{ fontSize: 11, color: "var(--ink3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 12 }}>Equilíbrio (trimestre)</div>
-          <DistributionChart labels={CREDIT_MODALITIES} colors={CREDIT_COLORS} kind="MOD" values={values} quarterRef={payload.quarterRef} />
+      {targetEditor ? (
+        <div
+          className="production-target-modal"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !targetSaving) setTargetEditor(null);
+          }}
+        >
+          <form
+            className="production-target-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="production-target-dialog-title"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveTarget();
+            }}
+          >
+            <div className="production-target-dialog-kicker">Meta trimestral</div>
+            <h3 id="production-target-dialog-title">{targetEditor.label}</h3>
+            <p>Informe o valor planejado para o trimestre selecionado.</p>
+            <input
+              autoFocus
+              aria-label={`Valor da ${targetEditor.label}`}
+              className="field-in"
+              inputMode="numeric"
+              type="text"
+              value={targetDraft}
+              placeholder="0"
+              onChange={(event) => setTargetDraft(formatAmount(parseAmount(event.target.value)))}
+            />
+            <div className="production-target-dialog-actions">
+              <button
+                type="button"
+                className="btn-sm"
+                disabled={targetSaving}
+                onClick={() => setTargetEditor(null)}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn-sm pr" disabled={targetSaving}>
+                {targetSaving ? "Salvando..." : "Salvar meta"}
+              </button>
+            </div>
+          </form>
         </div>
-        <div>
-          <div style={{ fontSize: 11, color: "var(--ink3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 12 }}>Outros Produtos (trimestre)</div>
-          <DistributionChart labels={OTHER_PRODUCTS} colors={OTHER_PRODUCT_COLORS} kind="OUT" values={values} quarterRef={payload.quarterRef} />
-        </div>
-      </div>
+      ) : null}
     </>
   );
 }

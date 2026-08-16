@@ -39,6 +39,10 @@ test("accepts only known legacy settings", () => {
     key: "timeline",
     value: [true, false, false, false, false, false],
   });
+  assert.deepEqual(
+    parseLegacySetting({ key: "checklist_mensal", value: { enabled: false } }),
+    { key: "checklist_mensal", value: { enabled: false } },
+  );
   assert.throws(() => parseLegacySetting({ key: "service_role", value: "secret" }));
 });
 

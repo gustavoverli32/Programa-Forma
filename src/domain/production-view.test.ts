@@ -7,11 +7,14 @@ import {
   monthEntries,
   monthTotal,
   parseAmount,
+  productTargetRef,
+  productTargetsForQuarter,
   productionRef,
   productionValues,
   quarterCreditTotal,
   quarterMonths,
   targetForQuarter,
+  targetAchievementPercent,
   weekTotal,
 } from "./production-view.ts";
 
@@ -75,4 +78,20 @@ test("preserves aggregate production and target from legacy records", () => {
     700,
   );
   assert.equal(parseAmount("R$ 1.234"), 1234);
+});
+
+test("maps the five quarterly product targets without mixing them with production", () => {
+  const rows: ProductionRow[] = [
+    { estagiario_id: "student-1", tri_ref: "2026-Q3-TARGET-P0", meta: 12, producao: 0 },
+    { estagiario_id: "student-1", tri_ref: "2026-Q3-TARGET-P3", meta: 30, producao: 0 },
+  ];
+
+  assert.equal(productTargetRef("2026-Q3", 4), "2026-Q3-TARGET-P4");
+  assert.deepEqual(productTargetsForQuarter(rows, "2026-Q3"), [12, 0, 0, 30, 0]);
+});
+
+test("calculates target achievement and caps the visual percentage at 100", () => {
+  assert.equal(targetAchievementPercent(50, 100), 50);
+  assert.equal(targetAchievementPercent(120, 100), 100);
+  assert.equal(targetAchievementPercent(50, 0), 0);
 });

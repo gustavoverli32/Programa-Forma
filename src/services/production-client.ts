@@ -17,6 +17,7 @@ export type ProductionBatchResult = {
   snapshot: Record<string, unknown>;
   profile: ProductionProfile;
   confirmed: boolean;
+  productionAuditHistory: Array<Record<string, unknown>>;
 };
 
 type VerificationResult = ReturnType<typeof markProductionVerified>;

@@ -198,7 +198,7 @@ function faixaComp(p){if(p>=75)return{cor:'#16A34A',bg:'#DCFCE7',label:'Acima do
 function faixaRes(p){if(p>=85)return{cor:'#16A34A',bg:'#DCFCE7',label:'Alvo atingido'};if(p>=50)return{cor:'#EC7000',bg:'#FFF3E8',label:'Em desenvolvimento'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Abaixo do alvo'};}
 
 // ── STATE ──────────────────────────────────────────────────────────────────
-var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{}, regionais:[], selectedRegionalId: null };
+var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{}, monthlyChecklist:{enabled:true}, productionAuditHistory:[], regionais:[], selectedRegionalId: null };
 window.S = S; // exposto pra IA e outros escopos
 var DB_LOADED = false;
 
@@ -358,6 +358,7 @@ function mkEstObj(row){
     atencao:      row.atencao || false,
     perfil:       row.perfil || {idade:'',funcional:'',inicio:''},
     trilhaChecks: row.trilha_checks || {},
+    gestor_funcional: row.gestor_funcional || null,
     regional_id:  row.regional_id || null,
     meta:         (row.perfil && row.perfil.meta) ? row.perfil.meta : '',
     resultado:    (row.perfil && row.perfil.resultado) ? row.perfil.resultado : ''
@@ -376,6 +377,8 @@ async function loadFromDB(){
 
     // Load cfg (recorrência de produção)
     S.cfg = payload.config || {};
+    S.monthlyChecklist = payload.monthlyChecklist || {enabled:true};
+    S.productionAuditHistory = payload.productionAuditHistory || [];
 
     // Load gestores
     S.gestores = payload.managers || [];
@@ -417,6 +420,15 @@ async function loadFromDB(){
     window.modoGestor = modoGestor;
     window.gestorLogado = gestorLogado;
 
+    if(editor && window.nextuberMutations && window.nextuberMutations.ensureProductionAudit){
+      try {
+        var auditResult = await window.nextuberMutations.ensureProductionAudit();
+        S.productionAuditHistory = auditResult.history || S.productionAuditHistory;
+      } catch(auditError) {
+        console.error('Histórico de pendências:', auditError);
+      }
+    }
+
     DB_LOADED = true;
   } catch(e) {
     console.error('Erro ao carregar dados:', e.message || e);
@@ -426,6 +438,7 @@ async function loadFromDB(){
   renderRegionalSelectorUI();
   updateMetrics(); renderCiclos(); renderCards(); renderTrilha();
   renderCadList(); renderTimeline(); renderGestoresList(); renderOverviewAll(); renderRanking();  updateProgress();
+  renderProductionAuditHistory();
   await loadTextosProjeto();
   applyMode(); // garantir que itens tutora-only fiquem escondidos no carregamento
 }
@@ -471,11 +484,17 @@ async function saveEstagiario(est){
   }));
   try {
     if(!window.nextuberMutations) throw new Error('Serviço de cadastro indisponível.');
+    var r;
     if(est.id){
-      await window.nextuberMutations.updateStudent(String(est.id), data);
+      r = await window.nextuberMutations.updateStudent(String(est.id), data);
     } else {
-      var r = await window.nextuberMutations.createStudent(data);
-      if(r.student) est.id = r.student.id;
+      r = await window.nextuberMutations.createStudent(data);
+    }
+    if(r && r.student){
+      est.id = r.student.id || est.id;
+      est.perfil = r.student.perfil || est.perfil;
+      est.trilhaChecks = r.student.trilha_checks || est.trilhaChecks;
+      est.gestor_funcional = r.student.gestor_funcional || est.gestor_funcional || null;
     }
     return true;
   } catch(e) {
@@ -838,6 +857,91 @@ function renderOverviewHeader(){
   if(triEl) triEl.textContent = fmtTrimestre(trimestreRef());
 }
 
+function isMonthlyChecklistWindow(){
+  var now = new Date();
+  var lastDay = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  return now.getDate() >= lastDay - 6;
+}
+
+function checklistUpdatedThisMonth(value){
+  if(!value) return false;
+  var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+  var now = new Date();
+  if(match) return Number(match[1]) === now.getFullYear() && Number(match[2]) === now.getMonth()+1;
+  var parsed = new Date(value);
+  return !isNaN(parsed.getTime()) && parsed.getFullYear() === now.getFullYear() && parsed.getMonth() === now.getMonth();
+}
+
+function getMonthlyChecklistPending(){
+  if(!modoGestor || !gestorLogado || !isMonthlyChecklistWindow()) return [];
+  if(S.monthlyChecklist && S.monthlyChecklist.enabled === false) return [];
+  var tipo = String(gestorLogado.tipo_gestor || '').toLowerCase();
+  var funcional = String(gestorLogado.funcional || '');
+  if((tipo !== 'ga' && tipo !== 'gga') || !funcional) return [];
+  return (S.ests || []).filter(function(e){
+    var perfil = e.perfil || {};
+    var vinculado = tipo === 'gga'
+      ? String(perfil.gga_funcional || '') === funcional
+      : (String(perfil.ga_funcional || '') === funcional || String(e.gestor_funcional || '') === funcional);
+    return vinculado && !checklistUpdatedThisMonth(perfil.ultima_atualizacao_checklist_trilha);
+  });
+}
+
+function renderMonthlyChecklistReminder(){
+  var el = document.getElementById('monthlyChecklistReminder');
+  if(!el) return;
+  var pendentes = getMonthlyChecklistPending();
+  if(!pendentes.length){
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  var total = pendentes.length;
+  el.innerHTML = '<div class="monthly-checklist-reminder-head">'
+    +'<div><div class="monthly-checklist-reminder-title"><span>☑</span><span>Checklist mensal da trilha</span></div>'
+    +'<div class="monthly-checklist-reminder-copy">Estamos na última semana do mês. Atualize o checklist dos seus estagiários pendentes.</div></div>'
+    +'<span class="monthly-checklist-reminder-count">'+total+' '+(total===1?'pendente':'pendentes')+'</span></div>'
+    +'<div class="monthly-checklist-reminder-list">'
+    +pendentes.map(function(e){ return '<button class="monthly-checklist-student" data-monthly-checklist-id="'+escapeAttr(e.id)+'">'+escapeHtml(e.nome)+' →</button>'; }).join('')
+    +'</div>';
+  el.style.display = 'block';
+  el.querySelectorAll('[data-monthly-checklist-id]').forEach(function(button){
+    button.addEventListener('click', function(){ openPanelById(this.dataset.monthlyChecklistId); });
+  });
+}
+
+function renderProductionAuditHistory(){
+  var el = document.getElementById('cfgProductionAuditHistory');
+  if(!el) return;
+  var history = (S.productionAuditHistory || []).filter(function(entry){
+    return entry && Array.isArray(entry.pending) && entry.pending.length > 0;
+  });
+  if(!history.length){
+    el.innerHTML = '<div class="production-audit-empty">✓ Nenhuma pendência registrada nas semanas encerradas.</div>';
+    return;
+  }
+  el.innerHTML = history.map(function(entry){
+    var count = entry.pending.length;
+    return '<div class="production-audit-week">'
+      +'<div class="production-audit-week-summary"><strong>Semana com prazo em '+escapeHtml(fmtDate(entry.deadline))+'</strong>'
+      +'<span>'+count+' '+(count===1?'pendente':'pendentes')+'</span></div>'
+      +'<div class="production-audit-students">'
+      +entry.pending.map(function(student){
+        var managers = Array.isArray(student.responsibleManagers) ? student.responsibleManagers : [];
+        var managerLabel = managers.length
+          ? managers.map(function(manager){ return escapeHtml(manager.nome)+' ('+escapeHtml(manager.tipo)+')'; }).join(', ')
+          : 'Gestor não vinculado no cadastro';
+        return '<button class="production-audit-student" data-audit-student-id="'+escapeAttr(student.id)+'">'
+          +'<span class="production-audit-student-info"><strong>'+escapeHtml(student.nome)+'</strong><small>Responsável: '+managerLabel+'</small></span>'
+          +'<span>Ver perfil →</span></button>';
+      }).join('')
+      +'</div></div>';
+  }).join('');
+  el.querySelectorAll('[data-audit-student-id]').forEach(function(button){
+    button.addEventListener('click', function(){ openPanelById(this.dataset.auditStudentId); });
+  });
+}
+
 function renderOverviewKpis(){
   var el = document.getElementById('overviewKpis');
   if(!el) return;
@@ -977,6 +1081,7 @@ function renderEncontros(){
 
 function renderOverviewAll(){
   renderOverviewHeader();
+  renderMonthlyChecklistReminder();
 
   var isAuthed = !!(editor || modoGestor);
 
@@ -1008,6 +1113,20 @@ function renderOverviewAll(){
   if(publicContent) publicContent.style.display = isAuthed ? 'none' : 'block';
 }
 
+function getPercentualAlvoRanking(e, tri){
+  var prod = getProducaoTri(e.id, tri);
+  var alvo = parseFloat(prod.meta) || 0;
+  if(alvo <= 0) return 0;
+
+  var totalModalidades = getTotalTrimestreModalidades(e.id, tri);
+  var totalMensalAntigo = getTotalMensal(e.id, tri);
+  var totalProduzido = totalModalidades > 0
+    ? totalModalidades
+    : (totalMensalAntigo > 0 ? totalMensalAntigo : (parseFloat(prod.producao) || 0));
+
+  return (totalProduzido / alvo) * 100;
+}
+
 
 function renderRanking(){
   var card = document.getElementById('cardRanking');
@@ -1025,8 +1144,7 @@ function renderRanking(){
   // Mapear filtro para função de valor + config visual
   var configFiltros = {
     credito: {label: 'Crédito total', unidade: '', getValor: function(e){ return getTotalTrimestreModalidades(e.id, tri); }},
-    produtos: {label: 'Produtos total (Seg+PIC)', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 0) + getTotalTrimestreOutroProduto(e.id, tri, 1); }},
-    engajamento_total: {label: 'Engajamento total (Comb+Eng)', unidade: '', getValor: function(e){ return getTotalTrimestreOutroProduto(e.id, tri, 2) + getTotalTrimestreOutroProduto(e.id, tri, 3); }},
+    percentual_alvo: {label: 'Percentual do alvo da agência', unidade: '%', isPercentual: true, getValor: function(e){ return getPercentualAlvoRanking(e, tri); }},
     cred_INSS: {label: 'INSS', unidade: '', getValor: function(e){ return getTotalTrimestreModalidade(e.id, tri, 0); }, cor: '#2196F3'},
     cred_OP: {label: 'OP', unidade: '', getValor: function(e){ return getTotalTrimestreModalidade(e.id, tri, 1); }, cor: '#FF9800'},
     cred_EP: {label: 'EP', unidade: '', getValor: function(e){ return getTotalTrimestreModalidade(e.id, tri, 2); }, cor: '#E91E63'},
@@ -1054,12 +1172,12 @@ function renderRanking(){
 
   el.innerHTML = ranked.map(function(r,i){
     var corPos = i===0?'var(--or)':i===1?'var(--ink2)':'var(--ink3)';
-    var corBarra = config.cor || corPos;
+    var corBarra = config.isPercentual ? faixaRes(Math.round(r.valor)).cor : (config.cor || corPos);
 
     var valorDisplay, pct;
-    if(config.isNota){
-      valorDisplay = r.valor + config.unidade;
-      pct = Math.round(r.valor * 10); // 0-10 → 0-100%
+    if(config.isPercentual){
+      valorDisplay = Math.round(r.valor) + config.unidade;
+      pct = Math.min(Math.round(r.valor), 100);
     } else {
       valorDisplay = fmtMilhar(r.valor);
       pct = valorMax > 0 ? Math.round((r.valor / valorMax) * 100) : 0;
@@ -1069,13 +1187,19 @@ function renderRanking(){
 
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">'
       +'<div style="width:22px;height:22px;border-radius:50%;background:'+(i<2?corPos:'var(--bg)')+';color:'+(i<2?'#fff':'var(--ink3)')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+(i+1)+'</div>'
-      +'<div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
-        +escapeHtml(r.e.nome)+' <span style="font-size:11px;color:var(--ink3);font-weight:400;">(Ag. '+escapeHtml(agStr)+')</span>'
-      +'</div>'
+      +'<button type="button" class="ranking-student-link" data-ranking-eid="'+escapeAttr(r.e.id)+'" style="border:0;background:none;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+        +'<span style="font-size:13px;font-weight:500;text-decoration:underline;text-decoration-color:rgba(236,112,0,.35);text-underline-offset:3px;">'+escapeHtml(r.e.nome)+'</span> <span style="font-size:11px;color:var(--ink3);font-weight:400;">(Ag. '+escapeHtml(agStr)+')</span>'
+      +'</button>'
       +'<div style="width:80px;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;flex-shrink:0;"><div style="width:'+pct+'%;height:100%;background:'+corBarra+';"></div></div>'
       +'<div style="font-size:13px;font-weight:600;color:'+corBarra+';min-width:60px;text-align:right;flex-shrink:0;">'+valorDisplay+'</div>'
     +'</div>';
   }).join('');
+
+  el.querySelectorAll('.ranking-student-link').forEach(function(link){
+    link.addEventListener('click', function(){
+      openPanelById(this.dataset.rankingEid);
+    });
+  });
 }
 
 async function salvarSnapshot(eid, tri){
@@ -1718,18 +1842,6 @@ function renderResultadosForTri(idx, tri){
     +'</tr>'
     +'</tbody></table></div></div>';
 
-  // Gráfico de pizza (todos os produtos)
-  h += '<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">'
-    +'<div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">Equilíbrio (trimestre)</div>'
-    +'<div id="pGraficoMod"></div>'
-    +'</div>';
-
-  // Gráfico de pizza - Outros Produtos
-  h += '<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">'
-    +'<div style="font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">Outros Produtos (trimestre)</div>'
-    +'<div id="pGraficoOutros"></div>'
-    +'</div>';
-
   h += '<div id="pHistoricoTri"></div>';
 
   el.innerHTML = h;
@@ -1784,11 +1896,6 @@ function renderResultadosForTri(idx, tri){
       atualizarTotaisOutrosProdutos(idx, tri);
     });
   });
-
-  if(canEdit){
-    renderGraficoPizzaModalidades(idx, tri);
-    renderGraficoPizzaOutros(idx, tri);
-  }
 
   var btn = document.getElementById('btnSalvarResultado');
   if(btn){
@@ -2230,7 +2337,7 @@ function renderPanelTrilha(idx){
   }
 
   el.querySelectorAll('input[type=checkbox]').forEach(function(cb){
-    cb.addEventListener('change', function(){
+    cb.addEventListener('change', async function(){
       var estIdx = parseInt(this.dataset.est);
       var trilhaKey = this.dataset.trilha;
       var topicoIdx = parseInt(this.dataset.topico);
@@ -2240,11 +2347,12 @@ function renderPanelTrilha(idx){
       if(!S.ests[estIdx].trilhaChecks) S.ests[estIdx].trilhaChecks = {};
       if(!S.ests[estIdx].trilhaChecks[ck]) S.ests[estIdx].trilhaChecks[ck] = Array(t2.topicos[topicoIdx].checks.length).fill(false);
       S.ests[estIdx].trilhaChecks[ck][checkIdx] = this.checked;
-      saveEstagiario(S.ests[estIdx]); persist(true);
+      await saveEstagiario(S.ests[estIdx]); persist(true);
       salvarSnapshot(S.ests[estIdx].id, trimestreRef());
       renderPanelTrilha(estIdx);
       renderAvaliacao(estIdx);
       renderCards();
+      renderOverviewAll();
     });
   });
 }
@@ -2443,12 +2551,6 @@ function openPanel(idx){
       var corSt2 = st==='atrasado'?'#DC2626':(st==='alerta'?'#F59E0B':'var(--ink3)');
       updEl.innerHTML = '<span style="color:'+corSt2+';font-size:12px;">Ainda não atualizada</span>';
     } else { updEl.textContent = '—'; }
-  }
-  // Botão "Marcar como atualizado" (só se tem prazo definido e usuário pode editar)
-  var wrapMarcar = document.getElementById('pMarcarAtualizadoWrap');
-  if(wrapMarcar){
-    var podeMarcar = (editor || (modoGestor && gestorLogado));
-    wrapMarcar.style.display = podeMarcar ? 'block' : 'none';
   }
   renderPanelTrilha(idx);
   updateAtencaoBtn(idx);
@@ -3541,59 +3643,6 @@ document.getElementById('btnObs').addEventListener('click', function(){
     var b=document.getElementById('obsSaved'); b.classList.add('show'); setTimeout(function(){b.classList.remove('show');},2000);
   });
 
-// Botão "Marcar produção como verificada hoje"
-var btnMarcarAtz = document.getElementById('btnMarcarAtualizado');
-if(btnMarcarAtz){
-  btnMarcarAtz.addEventListener('click', async function(){
-    var _pIdx = getPanelEstIdx();
-    if(_pIdx < 0) return;
-    if(!editor && !(modoGestor && gestorLogado)) return;
-    var e = S.ests[_pIdx];
-    if(!window.nextuberProduction) return;
-    var verificacao;
-    try {
-      verificacao = await window.nextuberProduction.verifyToday(String(e.id));
-      e.perfil = verificacao.profile;
-    } catch(error) {
-      console.error('Confirmar producao:', error);
-      alert((error && error.message) || 'Não foi possível confirmar a produção.');
-      return;
-    }
-    var confirmouNoPrazo = verificacao.confirmed;
-
-    // Feedback visual: pisca o botão em verde
-    var original = this.innerHTML;
-    var originalBg = this.style.background;
-    var originalColor = this.style.color;
-    var originalBorder = this.style.borderColor;
-    this.innerHTML = confirmouNoPrazo ? '✓ Marcado como verificado!' : 'Prazo desta semana vencido';
-    this.style.background = confirmouNoPrazo ? '#16A34A' : '#DC2626';
-    this.style.color = '#fff';
-    this.style.borderColor = confirmouNoPrazo ? '#16A34A' : '#DC2626';
-    var self = this;
-    setTimeout(function(){
-      self.innerHTML = original;
-      self.style.background = originalBg;
-      self.style.color = originalColor;
-      self.style.borderColor = originalBorder;
-    }, 1500);
-
-    // Re-render partes que dependem do status
-    renderCards();
-    // Reabrir painel para atualizar linha "última atualização"
-    setTimeout(function(){
-      if(getPanelEstIdx() >= 0){
-        // Re-preencher só a linha (sem fechar o painel)
-        var updEl = document.getElementById('pUltimaAtualizacao');
-        if(updEl){
-          var statusTexto = confirmouNoPrazo ? '<span style="color:#16A34A;font-size:11px;font-weight:600;"> (em dia)</span>' : '<span style="color:#DC2626;font-size:11px;font-weight:600;"> (prazo vencido)</span>';
-          updEl.innerHTML = fmtDate(e.perfil.ultima_atualizacao_prod) + ' ' + statusTexto;
-        }
-      }
-    }, 100);
-  });
-}
-
   // Permissões do gestor (tutora)
   var btnFecharP = document.getElementById('btnFecharPermissoes');
   if(btnFecharP) btnFecharP.addEventListener('click', function(){
@@ -3717,6 +3766,42 @@ if(btnMarcarAtz){
     renderPrazoAtual();
   });
 
+  // Configurações — lembrete mensal do checklist de trilha
+  function renderChecklistMensalConfig(){
+    var enabled = !S.monthlyChecklist || S.monthlyChecklist.enabled !== false;
+    var statusEl = document.getElementById('cfgChecklistMensalStatus');
+    var button = document.getElementById('btnCfgChecklistMensal');
+    if(statusEl){
+      statusEl.textContent = enabled ? 'Ativa · últimos 7 dias do mês' : 'Desativada';
+      statusEl.style.color = enabled ? '#15803d' : '#b91c1c';
+    }
+    if(button){
+      button.textContent = enabled ? 'Desativar programação' : 'Ativar programação';
+      button.style.background = enabled ? 'var(--surface)' : '#15803d';
+      button.style.color = enabled ? 'var(--ink2)' : '#fff';
+      button.style.borderColor = enabled ? 'var(--border2)' : '#15803d';
+    }
+  }
+  renderChecklistMensalConfig();
+
+  var btnChecklistMensal = document.getElementById('btnCfgChecklistMensal');
+  if(btnChecklistMensal) btnChecklistMensal.addEventListener('click', async function(){
+    var enabled = !S.monthlyChecklist || S.monthlyChecklist.enabled !== false;
+    this.disabled = true;
+    try {
+      var result = await window.nextuberMutations.saveSetting('checklist_mensal', {enabled: !enabled});
+      S.monthlyChecklist = result.value || {enabled: !enabled};
+      renderChecklistMensalConfig();
+      renderMonthlyChecklistReminder();
+      showToast();
+    } catch(error) {
+      console.error('Programação do checklist:', error);
+      alert((error && error.message) || 'Não foi possível salvar a programação.');
+    } finally {
+      this.disabled = false;
+    }
+  });
+
   // Encontros
   var btnAddE = document.getElementById('btnAddEncontro');
   if(btnAddE) btnAddE.addEventListener('click', function(){
@@ -3836,6 +3921,10 @@ if(btnMarcarAtz){
     if(evt.detail.profile){
       var est = S.ests.find(function(e){ return String(e.id) === String(studentId); });
       if(est) est.perfil = evt.detail.profile;
+    }
+    if(evt.detail.productionAuditHistory){
+      S.productionAuditHistory = evt.detail.productionAuditHistory;
+      renderProductionAuditHistory();
     }
 
     // Re-renderizar indicadores e listas

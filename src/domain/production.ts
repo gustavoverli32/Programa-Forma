@@ -7,6 +7,7 @@ export type ProductionBatchInput = {
   studentId: string;
   quarterRef: string;
   target: number;
+  productTargets?: number[];
   entries: ProductionEntry[];
 };
 
@@ -45,11 +46,20 @@ export function parseProductionBatchInput(body: unknown): ProductionBatchInput {
   const studentId = String(candidate.studentId ?? "");
   const quarterRef = String(candidate.quarterRef ?? "");
   const target = candidate.target;
+  const rawProductTargets = candidate.productTargets;
   const rawEntries = candidate.entries;
 
   if (!STUDENT_ID_PATTERN.test(studentId)) throw new Error("Estagiario invalido.");
   if (!QUARTER_PATTERN.test(quarterRef)) throw new Error("Trimestre invalido.");
   if (!isValidValue(target)) throw new Error("Alvo invalido.");
+  if (
+    rawProductTargets !== undefined &&
+    (!Array.isArray(rawProductTargets) ||
+      rawProductTargets.length !== 5 ||
+      rawProductTargets.some((value) => !isValidValue(value)))
+  ) {
+    throw new Error("Metas de produtos invalidas.");
+  }
   if (!Array.isArray(rawEntries) || rawEntries.length > MAX_ENTRIES) {
     throw new Error("Lista de producao invalida.");
   }
@@ -67,7 +77,13 @@ export function parseProductionBatchInput(body: unknown): ProductionBatchInput {
     entries.set(ref, { ref, value: entry.value });
   }
 
-  return { studentId, quarterRef, target, entries: [...entries.values()] };
+  return {
+    studentId,
+    quarterRef,
+    target,
+    productTargets: rawProductTargets as number[] | undefined,
+    entries: [...entries.values()],
+  };
 }
 
 function numberValue(value: unknown) {

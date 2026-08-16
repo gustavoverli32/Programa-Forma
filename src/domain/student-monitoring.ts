@@ -15,6 +15,7 @@ export type StudentProfile = {
   gga_funcional?: string;
   trilha_manual?: string;
   ultima_atualizacao_producao?: string;
+  ultima_atualizacao_checklist_trilha?: string;
 };
 
 export type StudentItem = {

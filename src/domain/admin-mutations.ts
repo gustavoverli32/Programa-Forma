@@ -203,6 +203,13 @@ export function parseLegacySetting(value: unknown) {
     for (const key of allowed) result[key] = cleanString(texts[key], "Texto", 6_000, true);
     return { key: "textos_projeto" as const, value: cleanJson(result, "Textos", 30_000) };
   }
+  if (body.key === "checklist_mensal") {
+    const config = asRecord(body.value, "Programacao do checklist invalida.");
+    return {
+      key: "checklist_mensal" as const,
+      value: { enabled: config.enabled !== false } as Json,
+    };
+  }
   throw new Error("Configuracao nao permitida.");
 }
 

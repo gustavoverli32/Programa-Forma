@@ -1,4 +1,5 @@
 import { parseProductionBatchInput, summarizeProduction } from "@/domain/production";
+import { productTargetRef } from "@/domain/production-view";
 import { markProductionVerified } from "@/domain/production-deadline";
 import { createSupabaseAdminClient } from "@/lib/supabase-server";
 import {
@@ -9,6 +10,7 @@ import {
   requireProductionSession,
 } from "@/server/production-access";
 import { loadProductionConfig } from "@/server/production-context";
+import { ensureLatestProductionAudit } from "@/server/production-audit";
 import type { Json } from "@/types/database";
 
 export async function POST(request: Request) {
@@ -29,6 +31,10 @@ export async function POST(request: Request) {
     const supabase = createSupabaseAdminClient();
     const student = await authorizeStudentWrite(supabase, session, input.studentId);
     const config = await loadProductionConfig(supabase);
+    const productionAuditHistory = await ensureLatestProductionAudit(
+      supabase,
+      config,
+    );
 
     if (input.entries.length) {
       const rowsToSave = input.entries.map((entry) => ({
@@ -40,6 +46,19 @@ export async function POST(request: Request) {
       const { error } = await supabase.from("producao_trimestral").upsert(rowsToSave, {
         onConflict: "estagiario_id,tri_ref",
       });
+      if (error) throw error;
+    }
+
+    if (input.productTargets) {
+      const productTargetRows = input.productTargets.map((target, itemIndex) => ({
+        estagiario_id: student.id,
+        tri_ref: productTargetRef(input.quarterRef, itemIndex),
+        meta: target,
+        producao: 0,
+      }));
+      const { error } = await supabase
+        .from("producao_trimestral")
+        .upsert(productTargetRows, { onConflict: "estagiario_id,tri_ref" });
       if (error) throw error;
     }
 
@@ -108,6 +127,7 @@ export async function POST(request: Request) {
       snapshot,
       profile,
       confirmed,
+      productionAuditHistory,
     });
   } catch (error) {
     return productionErrorResponse(error);

@@ -257,16 +257,13 @@
       </div>
     </div>
 
+    <!-- Lembrete mensal do checklist para GA/GGA -->
+    <div id="monthlyChecklistReminder" class="monthly-checklist-reminder" style="display:none;" aria-live="polite"></div>
+
     <!-- KPIs / Cards de números -->
     <div id="overviewKpisSection" style="margin-bottom:18px;">
       <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;">Visão consolidada</div>
       <div id="overviewKpis" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;"></div>
-    </div>
-
-    <!-- Distribuição por trilha (gráfico) -->
-    <div class="card" id="overviewTrilhaCard" style="margin-bottom:16px;">
-      <div class="card-ttl">Distribuição por trilha</div>
-      <div id="overviewTrilhaChart"></div>
     </div>
 
     <!-- Próximos encontros -->
@@ -297,8 +294,7 @@
           <select id="filtroRanking" style="font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer;">
             <optgroup label="Geral">
               <option value="credito" selected>💳 Crédito total (INSS+OP+EP+Creditário)</option>
-              <option value="produtos">📦 Produtos total (Seg+PIC)</option>
-              <option value="engajamento_total">🤝 Engajamento total (Comb+Eng)</option>
+              <option value="percentual_alvo">🎯 Percentual do alvo da agência</option>
             </optgroup>
             <optgroup label="Crédito (por modalidade)">
               <option value="cred_INSS">🔵 INSS</option>
@@ -317,6 +313,12 @@
         </div>
       </div>
       <div id="rankingList"></div>
+    </div>
+
+    <!-- Distribuição por trilha (gráfico) -->
+    <div class="card" id="overviewTrilhaCard" style="margin-bottom:16px;">
+      <div class="card-ttl">Distribuição por trilha</div>
+      <div id="overviewTrilhaChart"></div>
     </div>
   </section>
 
@@ -539,11 +541,35 @@
           <span class="obs-saved" id="cfgPrazoSaved">✓ Salvo</span>
         </div>
         <div id="cfgPrazoAtual" style="margin-top:12px;font-size:12px;color:var(--ink3);display:none;"></div>
+
+        <div class="production-audit-history">
+          <div class="production-audit-history-head">
+            <div>
+              <strong>Histórico de pendências</strong>
+              <span>Produções não atualizadas pelos gestores até o prazo</span>
+            </div>
+          </div>
+          <div id="cfgProductionAuditHistory"></div>
+        </div>
       </div>
 
-      <!-- Placeholder para futuras configs -->
-      <div style="background:var(--surface);border:1px dashed var(--border);border-radius:12px;padding:20px;text-align:center;color:var(--ink3);font-size:13px;">
-        Mais configurações em breve.
+      <!-- Programação mensal do checklist de trilha -->
+      <div class="monthly-checklist-config">
+        <div class="monthly-checklist-config-head">
+          <span class="monthly-checklist-config-icon">☑</span>
+          <div>
+            <h3>Checklist mensal da trilha</h3>
+            <p>Na última semana de cada mês, GA e GGA recebem um lembrete para atualizar o checklist dos seus estagiários.</p>
+          </div>
+        </div>
+        <div class="monthly-checklist-config-status">
+          <div>
+            <span>Programação atual</span>
+            <strong id="cfgChecklistMensalStatus">Ativa · últimos 7 dias do mês</strong>
+          </div>
+          <button class="btn-sm" id="btnCfgChecklistMensal">Desativar programação</button>
+        </div>
+        <div class="monthly-checklist-config-note">O lembrete desaparece individualmente quando algum item do checklist do estagiário é atualizado no mês vigente.</div>
       </div>
     </div>
   </section>
@@ -606,12 +632,6 @@
       <div class="prow"><span class="prow-lbl">Certificação</span><span class="prow-val" id="pCertificacao">—</span></div>
       <div class="prow"><span class="prow-lbl">Aniversário</span><span class="prow-val" id="pNascimento">—</span></div>
       <div class="prow"><span class="prow-lbl">Última atualização de produção</span><span class="prow-val" id="pUltimaAtualizacao">—</span></div>
-      <div id="pMarcarAtualizadoWrap" style="display:none;padding:8px 0 4px;">
-        <button id="btnMarcarAtualizado" style="font-size:12px;padding:6px 14px;border:1px solid var(--or);border-radius:8px;background:var(--surface);color:var(--or);font-weight:600;cursor:pointer;">
-          ✓ Marcar produção como verificada hoje
-        </button>
-        <div style="font-size:10px;color:var(--ink3);margin-top:4px;">Use quando você já conferiu a produção mas não teve alteração de valores.</div>
-      </div>
     </div>
     <!-- RESULTADOS TRIMESTRAIS -->
     <div class="psec psec-full">

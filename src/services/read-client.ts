@@ -4,6 +4,8 @@ type BootstrapPayload = {
   timeline: unknown;
   config: Record<string, unknown>;
   projectTexts: Record<string, unknown>;
+  monthlyChecklist: { enabled?: boolean };
+  productionAuditHistory: Array<Record<string, unknown>>;
   managers: Record<string, unknown>[];
   production: Record<string, unknown>[];
   descriptions: Record<string, unknown>[];

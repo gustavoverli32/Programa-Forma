@@ -84,6 +84,24 @@ export function targetForQuarter(rows: ProductionRow[], quarterRef: string) {
   return numberValue(aggregate?.meta);
 }
 
+export function productTargetRef(quarterRef: string, itemIndex: number) {
+  return `${quarterRef}-TARGET-P${itemIndex}`;
+}
+
+export function productTargetsForQuarter(rows: ProductionRow[], quarterRef: string) {
+  return OTHER_PRODUCTS.map((_product, itemIndex) => {
+    const row = rows.find(
+      (candidate) => candidate.tri_ref === productTargetRef(quarterRef, itemIndex),
+    );
+    return numberValue(row?.meta);
+  });
+}
+
+export function targetAchievementPercent(produced: number, target: number) {
+  if (target <= 0) return 0;
+  return Math.round(Math.min(Math.max(produced, 0) / target, 1) * 100);
+}
+
 export function productionRef(
   quarterRef: string,
   monthIndex: number,

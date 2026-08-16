@@ -44,11 +44,17 @@ export const nextuberMutationBridge = {
   deleteManager(id: string) {
     return requestJson<{ ok: true }>(`/api/managers/${encodeURIComponent(id)}`, "DELETE");
   },
-  saveSetting(key: "timeline" | "textos_projeto", value: unknown) {
+  saveSetting(key: "timeline" | "textos_projeto" | "checklist_mensal", value: unknown) {
     return requestJson<{ ok: true; value: unknown }>("/api/settings/legacy", "POST", {
       key,
       value,
     });
+  },
+  ensureProductionAudit() {
+    return requestJson<{ history: Array<Record<string, unknown>> }>(
+      "/api/settings/production-audit",
+      "POST",
+    );
   },
   createMeeting(input: unknown) {
     return requestJson<{ meeting: Record<string, unknown> }>("/api/meetings", "POST", input);

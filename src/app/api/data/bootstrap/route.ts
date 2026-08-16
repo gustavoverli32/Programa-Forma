@@ -6,6 +6,7 @@ import {
   sanitizeProjectTexts,
   type StudentReadRow,
 } from "@/domain/read-model";
+import { normalizeProductionAuditHistory } from "@/domain/production-audit";
 import { createSupabaseAdminClient } from "@/lib/supabase-server";
 import {
   getProductionSession,
@@ -113,7 +114,12 @@ export async function GET(request: Request) {
       supabase
         .from("configuracoes")
         .select("id,valor")
-        .in("id", ["timeline", "textos_projeto"]),
+        .in("id", [
+          "timeline",
+          "textos_projeto",
+          "checklist_mensal",
+          "historico_pendencias_producao",
+        ]),
       supabase
         .from("descricao_projeto")
         .select("id,titulo,conteudo,ordem,created_at")
@@ -153,6 +159,8 @@ export async function GET(request: Request) {
           projectTexts: sanitizeProjectTexts(
             settings.get("textos_projeto") ?? null,
           ),
+          monthlyChecklist: settings.get("checklist_mensal") ?? { enabled: true },
+          productionAuditHistory: [],
           managers: [],
           production: [],
           descriptions: descriptionsResult.data ?? [],
@@ -228,6 +236,13 @@ export async function GET(request: Request) {
         projectTexts: sanitizeProjectTexts(
           settings.get("textos_projeto") ?? null,
         ),
+        monthlyChecklist: settings.get("checklist_mensal") ?? { enabled: true },
+        productionAuditHistory:
+          session.role === "tutora"
+            ? normalizeProductionAuditHistory(
+                settings.get("historico_pendencias_producao"),
+              )
+            : [],
         managers,
         production: productionData,
         descriptions: descriptionsResult.data ?? [],

@@ -127,8 +127,6 @@ export function StudentProfileDrawer({
   >("info");
   const [saving, setSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [verifySuccess, setVerifySuccess] = useState(false);
 
   if (!student) return null;
   const activeStudent = student;
@@ -241,35 +239,6 @@ export function StudentProfileDrawer({
       console.error(e);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleVerifyProduction() {
-    if (!canEdit || verifying) return;
-    try {
-      setVerifying(true);
-      const res = await fetch("/api/production/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: activeStudent.id }),
-      });
-      if (res.ok) {
-        setVerifySuccess(true);
-        const todayStr = new Date().toISOString();
-        const updatedStudent: StudentItem = {
-          ...activeStudent,
-          perfil: {
-            ...profile,
-            ultima_atualizacao_producao: todayStr,
-          },
-        };
-        if (onStudentUpdated) onStudentUpdated(updatedStudent);
-        setTimeout(() => setVerifySuccess(false), 4000);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setVerifying(false);
     }
   }
 
@@ -486,30 +455,6 @@ export function StudentProfileDrawer({
                     ? new Date(profile.ultima_atualizacao_producao).toLocaleDateString("pt-BR")
                     : "Sem registro"}
                 </div>
-                {canEdit && (
-                  <button
-                    onClick={handleVerifyProduction}
-                    disabled={verifying}
-                    style={{
-                      marginTop: "8px",
-                      padding: "6px 12px",
-                      border: "1px solid var(--or, #EC7000)",
-                      borderRadius: "6px",
-                      background: "var(--surface, #fff)",
-                      color: "var(--or, #EC7000)",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      fontSize: "11px",
-                    }}
-                  >
-                    {verifying ? "Atualizando..." : "✓ Marcar produção como verificada hoje"}
-                  </button>
-                )}
-                {verifySuccess && (
-                  <span style={{ color: "#166534", fontSize: "11px", marginLeft: "8px" }}>
-                    ✓ Atualizado!
-                  </span>
-                )}
               </div>
 
               {whatsappUrl && (
