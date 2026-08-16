@@ -2561,8 +2561,117 @@ function openPanel(idx){
   document.getElementById('btnObs').disabled=!editor;
   document.getElementById('obsHint').textContent=editor?'Salvo localmente no navegador.':'Entre como tutora para editar.';
   document.getElementById('obsSaved').classList.remove('show');
+  var editInfoBtn = document.getElementById('btnEditarInfoEstagiario');
+  if(editInfoBtn) editInfoBtn.style.display = (editor || isGGA()) ? 'inline-flex' : 'none';
+  setPanelInfoEditing(false);
+  var editInfoSaved = document.getElementById('pEditSaved');
+  if(editInfoSaved) editInfoSaved.classList.remove('show');
   document.getElementById('overlay').classList.add('open');
   document.getElementById('panel').classList.add('open');
+}
+function setPanelInfoEditing(open){
+  var form = document.getElementById('pInfoEditor');
+  var trigger = document.getElementById('btnEditarInfoEstagiario');
+  var error = document.getElementById('pEditError');
+  if(!form) return;
+  form.hidden = !open;
+  if(trigger) trigger.textContent = open ? '✕ Fechar edição' : '✎ Editar informações';
+  if(error){ error.textContent=''; error.classList.remove('show'); }
+  if(open) populatePanelInfoEditor();
+}
+function populatePanelInfoEditor(){
+  var idx = getPanelEstIdx();
+  var e = idx >= 0 ? S.ests[idx] : null;
+  if(!e) return;
+  var perfil = e.perfil || {};
+  document.getElementById('pEditNome').value = e.nome || '';
+  document.getElementById('pEditFunc').value = perfil.funcional || '';
+  document.getElementById('pEditAgencia').value = perfil.agencia || '';
+  document.getElementById('pEditInicio').value = perfil.inicio || '';
+  document.getElementById('pEditGA').value = perfil.ga_funcional || '';
+  document.getElementById('pEditGGA').value = perfil.gga_funcional || '';
+  document.getElementById('pEditCert').value = perfil.certificacao || '';
+
+  var regional = document.getElementById('pEditRegional');
+  regional.innerHTML = '';
+  (S.regionais||[]).forEach(function(r){
+    var option = document.createElement('option');
+    option.value = r.id;
+    option.textContent = r.nome;
+    regional.appendChild(option);
+  });
+  if(e.regional_id) regional.value = e.regional_id;
+
+  var day = document.getElementById('pEditDia');
+  if(day.options.length === 1){
+    for(var d=1; d<=31; d++){
+      var dayOption = document.createElement('option');
+      dayOption.value = String(d);
+      dayOption.textContent = String(d);
+      day.appendChild(dayOption);
+    }
+  }
+  var birthday = perfil.mes_aniversario ? String(perfil.mes_aniversario).split('-') : [];
+  day.value = birthday[0] || '';
+  document.getElementById('pEditMes').value = birthday[1] || '';
+}
+async function savePanelInfo(){
+  if(!editor && !isGGA()) return;
+  var idx = getPanelEstIdx();
+  if(idx < 0) return;
+  var error = document.getElementById('pEditError');
+  var saveButton = document.getElementById('pEditSave');
+  var cancelButton = document.getElementById('pEditCancel');
+  function showError(message){ error.textContent=message; error.classList.add('show'); }
+  error.textContent=''; error.classList.remove('show');
+
+  var nome = document.getElementById('pEditNome').value.trim();
+  var funcional = document.getElementById('pEditFunc').value.replace(/[^0-9]/g,'').slice(0,9);
+  var ga = document.getElementById('pEditGA').value.replace(/[^0-9]/g,'').slice(0,9);
+  var gga = document.getElementById('pEditGGA').value.replace(/[^0-9]/g,'').slice(0,9);
+  if(!nome){ showError('Informe o nome completo.'); document.getElementById('pEditNome').focus(); return; }
+  if(funcional.length !== 9){ showError('O funcional deve ter 9 dígitos.'); document.getElementById('pEditFunc').focus(); return; }
+  if(ga && ga.length !== 9){ showError('O funcional do GA deve ter 9 dígitos.'); return; }
+  if(gga && gga.length !== 9){ showError('O funcional do GGA deve ter 9 dígitos.'); return; }
+  var duplicate = S.ests.find(function(item){
+    return item.id !== S.ests[idx].id && item.perfil && String(item.perfil.funcional) === funcional;
+  });
+  if(duplicate){ showError('Já existe outro estagiário com este funcional.'); return; }
+
+  var current = S.ests[idx];
+  var previous = JSON.parse(JSON.stringify(current));
+  var day = document.getElementById('pEditDia').value;
+  var month = document.getElementById('pEditMes').value;
+  current.nome = nome;
+  current.regional_id = document.getElementById('pEditRegional').value || current.regional_id;
+  current.perfil = Object.assign({}, current.perfil || {}, {
+    funcional: funcional,
+    agencia: document.getElementById('pEditAgencia').value.trim(),
+    inicio: document.getElementById('pEditInicio').value,
+    ga_funcional: ga,
+    gga_funcional: gga,
+    certificacao: document.getElementById('pEditCert').value || null,
+    mes_aniversario: (day && month) ? day+'-'+month : null
+  });
+
+  saveButton.disabled = true;
+  cancelButton.disabled = true;
+  saveButton.textContent = 'Salvando...';
+  var saved = await saveEstagiario(current);
+  saveButton.disabled = false;
+  cancelButton.disabled = false;
+  saveButton.textContent = 'Salvar alterações';
+  if(!saved){
+    S.ests[idx] = previous;
+    showError('Não foi possível salvar as informações. Tente novamente.');
+    return;
+  }
+  persist(true);
+  renderCards();
+  renderCadList();
+  openPanel(idx);
+  var success = document.getElementById('pEditSaved');
+  if(success){ success.classList.add('show'); setTimeout(function(){ success.classList.remove('show'); },2500); }
 }
 function closePanel(){
   panelIdx=-1;
@@ -2681,19 +2790,36 @@ function temPermissao(perm){
 }
 
 
+function normalizeGestorBusca(value){
+  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
 function renderGestoresList(){
   var sec = document.getElementById('gestoresSection');
   if(sec) sec.style.display = editor ? 'block' : 'none';
   var el = document.getElementById('gestoresList');
   var countEl = document.getElementById('gestoresCount');
+  var searchInput = document.getElementById('gestorBusca');
+  var searchWrap = searchInput ? searchInput.closest('.gestor-search-wrap') : null;
+  var searchSummary = document.getElementById('gestorBuscaResumo');
   if(!el) return;
   var gestoresAtivos = (typeof getGestoresAtivos === 'function') ? getGestoresAtivos() : S.gestores;
-  if(countEl) countEl.textContent = (gestoresAtivos||[]).length;
-  if(!gestoresAtivos || !gestoresAtivos.length){
-    el.innerHTML = '<div class="cad-list-empty">Nenhum gestor cadastrado nesta regional.</div>';
+  gestoresAtivos = gestoresAtivos || [];
+  var searchTerm = normalizeGestorBusca(searchInput ? searchInput.value : '');
+  var gestoresFiltrados = searchTerm ? gestoresAtivos.filter(function(g){
+    return normalizeGestorBusca(g.nome).includes(searchTerm) || normalizeGestorBusca(g.funcional).includes(searchTerm);
+  }) : gestoresAtivos;
+  if(searchWrap) searchWrap.classList.toggle('has-value', !!searchTerm);
+  if(countEl) countEl.textContent = gestoresFiltrados.length;
+  if(searchSummary){
+    searchSummary.textContent = searchTerm
+      ? gestoresFiltrados.length+' de '+gestoresAtivos.length+' gestor'+(gestoresAtivos.length===1?'':'es')+' encontrado'+(gestoresFiltrados.length===1?'':'s')
+      : '';
+  }
+  if(!gestoresFiltrados.length){
+    el.innerHTML = '<div class="cad-list-empty">'+(searchTerm?'Nenhum gestor encontrado para esta busca.':'Nenhum gestor cadastrado nesta regional.')+'</div>';
     return;
   }
-  el.innerHTML = gestoresAtivos.map(function(g){
+  el.innerHTML = gestoresFiltrados.map(function(g){
     var perms = g.permissoes || {};
     var pCount = Object.keys(perms).filter(function(k){ return perms[k]; }).length;
     var tipo = g.tipo_gestor || 'ga';
@@ -3622,6 +3748,12 @@ onNextuberReady(function(){
   // Panel
   document.getElementById('overlay').addEventListener('click', closePanel);
   document.getElementById('panelClose').addEventListener('click', closePanel);
+  document.getElementById('btnEditarInfoEstagiario').addEventListener('click', function(){
+    var form = document.getElementById('pInfoEditor');
+    setPanelInfoEditing(form.hidden);
+  });
+  document.getElementById('pEditCancel').addEventListener('click', function(){ setPanelInfoEditing(false); });
+  document.getElementById('pEditSave').addEventListener('click', savePanelInfo);
   // Salvamento do alvo tratado por renderResultados
 
   // Atenção button
@@ -3843,6 +3975,14 @@ document.getElementById('btnObs').addEventListener('click', function(){
   document.getElementById('cadAddBtn').addEventListener('click', savePerfil);
 
   // Gestores
+  var gestorBusca = document.getElementById('gestorBusca');
+  var gestorBuscaLimpar = document.getElementById('gestorBuscaLimpar');
+  if(gestorBusca) gestorBusca.addEventListener('input', renderGestoresList);
+  if(gestorBuscaLimpar) gestorBuscaLimpar.addEventListener('click', function(){
+    gestorBusca.value = '';
+    gestorBusca.focus();
+    renderGestoresList();
+  });
   document.getElementById('btnAddGestor').addEventListener('click', async function(){
     var nome = document.getElementById('gestorNome').value.trim();
     var func = document.getElementById('gestorFunc').value.replace(/[^0-9]/g,'').slice(0,9);

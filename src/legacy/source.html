@@ -488,6 +488,12 @@
           <span class="saved-lbl" id="gestorSaved">✓ Adicionado</span>
         </div>
       </div>
+      <div class="gestor-search-wrap">
+        <span class="gestor-search-icon" aria-hidden="true">⌕</span>
+        <input type="search" id="gestorBusca" placeholder="Procurar gestor por nome ou funcional" autocomplete="off" aria-label="Procurar gestor por nome ou funcional">
+        <button type="button" id="gestorBuscaLimpar" aria-label="Limpar busca" title="Limpar busca">✕</button>
+      </div>
+      <div class="gestor-search-summary" id="gestorBuscaResumo"></div>
       <div id="gestoresList"></div>
     </div>
   </section>
@@ -621,7 +627,10 @@
   </div>
   <div class="panel-body">
     <div class="psec">
-      <div class="psec-ttl">Informações</div>
+      <div class="psec-ttl pinfo-title">
+        <span>Informações</span>
+        <button type="button" class="pinfo-edit-trigger" id="btnEditarInfoEstagiario">✎ Editar informações</button>
+      </div>
       <div class="prow"><span class="prow-lbl">Funcional</span><span class="prow-val" id="pFunc" style="font-family:monospace">—</span></div>
       <div class="prow"><span class="prow-lbl">Regional</span><span class="prow-val" id="pRegional">—</span></div>
       <div class="prow"><span class="prow-lbl">Agência</span><span class="prow-val" id="pAgencia" style="font-family:monospace">—</span></div>
@@ -632,6 +641,25 @@
       <div class="prow"><span class="prow-lbl">Certificação</span><span class="prow-val" id="pCertificacao">—</span></div>
       <div class="prow"><span class="prow-lbl">Aniversário</span><span class="prow-val" id="pNascimento">—</span></div>
       <div class="prow"><span class="prow-lbl">Última atualização de produção</span><span class="prow-val" id="pUltimaAtualizacao">—</span></div>
+      <div class="pinfo-editor" id="pInfoEditor" hidden>
+        <div class="pinfo-editor-grid">
+          <label class="pinfo-field pinfo-field-wide"><span>Nome completo</span><input class="field-in" id="pEditNome" maxlength="120"></label>
+          <label class="pinfo-field"><span>Funcional (9 dígitos)</span><input class="field-in" id="pEditFunc" maxlength="9" inputmode="numeric"></label>
+          <label class="pinfo-field"><span>Regional</span><select class="field-in" id="pEditRegional"></select></label>
+          <label class="pinfo-field"><span>Agência</span><input class="field-in" id="pEditAgencia" maxlength="60"></label>
+          <label class="pinfo-field"><span>Data de início</span><input class="field-in" type="date" id="pEditInicio"></label>
+          <label class="pinfo-field"><span>Funcional GA</span><input class="field-in" id="pEditGA" maxlength="9" inputmode="numeric"></label>
+          <label class="pinfo-field"><span>Funcional GGA</span><input class="field-in" id="pEditGGA" maxlength="9" inputmode="numeric"></label>
+          <label class="pinfo-field"><span>Certificação</span><select class="field-in" id="pEditCert"><option value="">Nenhuma</option><option value="CPA">CPA</option><option value="C-PRO R">C-PRO R</option><option value="C-PRO I">C-PRO I</option></select></label>
+          <div class="pinfo-field"><span>Aniversário</span><div class="pinfo-birthday"><select class="field-in" id="pEditDia"><option value="">Dia</option></select><select class="field-in" id="pEditMes"><option value="">Mês</option><option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select></div></div>
+        </div>
+        <div class="pinfo-editor-error" id="pEditError" role="alert"></div>
+        <div class="pinfo-editor-actions">
+          <button type="button" class="pinfo-cancel" id="pEditCancel">Cancelar</button>
+          <button type="button" class="pinfo-save" id="pEditSave">Salvar alterações</button>
+        </div>
+      </div>
+      <div class="pinfo-saved" id="pEditSaved" role="status">✓ Informações atualizadas</div>
     </div>
     <!-- RESULTADOS TRIMESTRAIS -->
     <div class="psec psec-full">

@@ -39,3 +39,19 @@ test("keeps the active ranking implementation synchronized", () => {
 
   assert.equal(getRankingSection(runtimeApp), getRankingSection(sourceApp));
 });
+
+test("edits student registration data directly from the profile panel", () => {
+  assert.match(sourceHtml, /id="btnEditarInfoEstagiario"/);
+  assert.match(sourceHtml, /id="pInfoEditor"/);
+  assert.match(sourceApp, /async function savePanelInfo\(\)/);
+  assert.match(sourceApp, /await saveEstagiario\(current\)/);
+  assert.equal(runtimeApp.includes("async function savePanelInfo()"), true);
+});
+
+test("filters managers by name or employee code in registration", () => {
+  assert.match(sourceHtml, /id="gestorBusca"/);
+  assert.match(sourceApp, /function normalizeGestorBusca\(value\)/);
+  assert.match(sourceApp, /normalizeGestorBusca\(g\.nome\)\.includes\(searchTerm\)/);
+  assert.match(sourceApp, /normalizeGestorBusca\(g\.funcional\)\.includes\(searchTerm\)/);
+  assert.equal(runtimeApp.includes("function normalizeGestorBusca(value)"), true);
+});
