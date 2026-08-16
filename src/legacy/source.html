@@ -482,16 +482,25 @@
             <div class="field-lbl">Funcional (9 dígitos)</div>
             <input class="field-in" type="text" id="gestorFunc" placeholder="000000000" maxlength="9" inputmode="numeric">
           </div>
+          <div class="field-grp" style="grid-column:1/-1;">
+            <div class="field-lbl">Agência</div>
+            <input class="field-in" type="text" id="gestorAgencia" placeholder="Ex.: 4563" maxlength="60">
+          </div>
         </div>
         <div class="cad-single-footer">
           <button class="btn-cad-add" id="btnAddGestor">+ Adicionar gestor</button>
           <span class="saved-lbl" id="gestorSaved">✓ Adicionado</span>
         </div>
       </div>
-      <div class="gestor-search-wrap">
-        <span class="gestor-search-icon" aria-hidden="true">⌕</span>
-        <input type="search" id="gestorBusca" placeholder="Procurar gestor por nome ou funcional" autocomplete="off" aria-label="Procurar gestor por nome ou funcional">
-        <button type="button" id="gestorBuscaLimpar" aria-label="Limpar busca" title="Limpar busca">✕</button>
+      <div class="gestor-filter-bar">
+        <div class="gestor-search-wrap">
+          <span class="gestor-search-icon" aria-hidden="true">⌕</span>
+          <input type="search" id="gestorBusca" placeholder="Procurar gestor por nome ou funcional" autocomplete="off" aria-label="Procurar gestor por nome ou funcional">
+          <button type="button" id="gestorBuscaLimpar" aria-label="Limpar busca" title="Limpar busca">✕</button>
+        </div>
+        <select id="gestorFiltroAgencia" class="gestor-agency-filter" aria-label="Filtrar gestores por agência">
+          <option value="">Todas as agências</option>
+        </select>
       </div>
       <div class="gestor-search-summary" id="gestorBuscaResumo"></div>
       <div id="gestoresList"></div>
@@ -852,6 +861,26 @@
     <input type="hidden" id="permGestorId" value="">
     <button class="btn-login" id="btnSalvarPermissoes" style="margin-top:18px;">Salvar alterações</button>
     <button class="btn-cancel" id="btnFecharPermissoes">Cancelar</button>
+  </div>
+</div>
+
+<!-- EDITAR GESTOR -->
+<div class="login-ov" id="editarGestorOv">
+  <div class="login-box" style="max-width:480px;">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:4px;">Editar gestor</h3>
+    <p style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Atualize o nome e a agência do gestor.</p>
+    <div class="field-grp" style="margin-bottom:12px;">
+      <div class="field-lbl">Nome do gestor</div>
+      <input class="field-in" type="text" id="editarGestorNome" maxlength="120">
+    </div>
+    <div class="field-grp" style="margin-bottom:12px;">
+      <div class="field-lbl">Agência</div>
+      <input class="field-in" type="text" id="editarGestorAgencia" maxlength="60" placeholder="Ex.: 4563">
+    </div>
+    <div class="gestor-edit-functional" id="editarGestorFuncional"></div>
+    <input type="hidden" id="editarGestorId" value="">
+    <button class="btn-login" id="btnSalvarGestor" style="margin-top:18px;">Salvar alterações</button>
+    <button class="btn-cancel" id="btnFecharEditarGestor">Cancelar</button>
   </div>
 </div>
 

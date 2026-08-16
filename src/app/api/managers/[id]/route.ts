@@ -1,4 +1,8 @@
-import { parseManagerAdmin, parseUuid } from "@/domain/admin-mutations";
+import {
+  parseManagerAdmin,
+  parseManagerProfileAdmin,
+  parseUuid,
+} from "@/domain/admin-mutations";
 import { createSupabaseAdminClient } from "@/lib/supabase-server";
 import { hashManagerPassword, safeManager } from "@/server/manager-security";
 import {
@@ -17,18 +21,29 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const session = await requireProductionSession();
     requireTutorSession(session);
     const id = parseUuid((await params).id, "Gestor");
-    const input = parseManagerAdmin(await request.json().catch(() => null));
-    const update = {
-      permissoes: input.permissions as Json,
-      tipo_gestor: input.managerType,
-      ...(input.password ? { senha_hash: hashManagerPassword(input.password) } : {}),
-    };
+    const body = await request.json().catch(() => null);
+    const isProfileUpdate = Boolean(
+      body && typeof body === "object" && ("name" in body || "agency" in body),
+    );
+    const update = isProfileUpdate
+      ? (() => {
+          const input = parseManagerProfileAdmin(body);
+          return { nome: input.name, agencia: input.agency };
+        })()
+      : (() => {
+          const input = parseManagerAdmin(body);
+          return {
+            permissoes: input.permissions as Json,
+            tipo_gestor: input.managerType,
+            ...(input.password ? { senha_hash: hashManagerPassword(input.password) } : {}),
+          };
+        })();
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("gestores")
       .update(update)
       .eq("id", id)
-      .select("id,nome,funcional,permissoes,tipo_gestor")
+      .select("id,nome,funcional,agencia,permissoes,tipo_gestor")
       .single();
     if (error) throw error;
     return Response.json({ manager: safeManager(data) });

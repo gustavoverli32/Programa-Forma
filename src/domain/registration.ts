@@ -13,6 +13,7 @@ export type StudentRegistrationInput = {
 export type ManagerRegistrationInput = {
   nome: string;
   funcional: string;
+  agencia: string;
   tipo_gestor: "ga" | "gga" | "tutor";
   permissoes?: {
     trilhas?: boolean;
@@ -78,6 +79,10 @@ export function validateManagerRegistrationInput(input: Partial<ManagerRegistrat
   const func = cleanEmployeeCode(input.funcional);
   if (!func || func.length !== 9) {
     errors.funcional = "Funcional deve conter exatamente 9 dígitos numéricos.";
+  }
+
+  if (!input.agencia || input.agencia.trim().length === 0) {
+    errors.agencia = "Informe a agência do gestor.";
   }
 
   if (!input.tipo_gestor || !["ga", "gga", "tutor"].includes(input.tipo_gestor)) {

@@ -132,7 +132,7 @@ export async function GET(request: Request) {
         .maybeSingle(),
       supabase
         .from("gestores")
-        .select("id,nome,funcional,permissoes,tipo_gestor,regional_id,created_at")
+        .select("id,nome,funcional,agencia,permissoes,tipo_gestor,regional_id,created_at")
         .order("nome"),
       supabase
         .from("encontros")

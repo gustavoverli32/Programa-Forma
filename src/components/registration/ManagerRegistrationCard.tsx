@@ -11,6 +11,7 @@ type ManagerItem = {
   id: string;
   nome: string;
   funcional: string;
+  agencia: string;
   tipo_gestor: "ga" | "gga" | "tutor";
   permissoes?: Record<string, boolean>;
 };
@@ -23,6 +24,7 @@ type Props = {
 export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Props) {
   const [nome, setNome] = useState("");
   const [funcional, setFuncional] = useState("");
+  const [agencia, setAgencia] = useState("");
   const [tipoGestor, setTipoGestor] = useState<"ga" | "gga" | "tutor">("ga");
   const [permTrilhas, setPermTrilhas] = useState(true);
   const [permAgendamentos, setPermAgendamentos] = useState(true);
@@ -39,6 +41,7 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
     const validation = validateManagerRegistrationInput({
       nome,
       funcional,
+      agencia,
       tipo_gestor: tipoGestor,
     });
 
@@ -53,6 +56,7 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
       const res = await nextuberMutationBridge.createManager({
         name: nome.trim(),
         employeeCode: cleanEmployeeCode(funcional),
+        agency: agencia.trim(),
         managerType: tipoGestor,
         permissions: {
           trilhas: permTrilhas,
@@ -67,6 +71,7 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
         // Clear Form
         setNome("");
         setFuncional("");
+        setAgencia("");
         setTipoGestor("ga");
         setTimeout(() => setSavedSuccess(false), 3500);
       }
@@ -192,6 +197,28 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
               }}
             />
             {errors.funcional && <span style={{ color: "#DC2626", fontSize: "11px" }}>{errors.funcional}</span>}
+          </div>
+
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+              Agência *
+            </label>
+            <input
+              type="text"
+              required
+              value={agencia}
+              onChange={(e) => setAgencia(e.target.value)}
+              placeholder="Ex.: 4563"
+              maxLength={60}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "6px",
+                border: `1px solid ${errors.agencia ? "#DC2626" : "var(--border, #ccc)"}`,
+                fontSize: "13px",
+              }}
+            />
+            {errors.agencia && <span style={{ color: "#DC2626", fontSize: "11px" }}>{errors.agencia}</span>}
           </div>
 
           <div>

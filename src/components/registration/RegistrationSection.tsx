@@ -11,6 +11,7 @@ type ManagerItem = {
   id: string;
   nome: string;
   funcional: string;
+  agencia?: string;
   tipo_gestor: "ga" | "gga" | "tutor";
   permissoes?: Record<string, boolean>;
 };
@@ -300,7 +301,7 @@ export function RegistrationSection({
                           </span>
                         </div>
                         <div style={{ fontSize: "11.5px", color: "var(--ink3, #666)", fontFamily: "monospace" }}>
-                          Funcional: {cleanEmployeeCode(m.funcional)}
+                          Funcional: {cleanEmployeeCode(m.funcional)} | Agência: {m.agencia || "—"}
                         </div>
                       </div>
 

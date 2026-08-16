@@ -28,9 +28,10 @@ export async function POST(request: Request) {
       .insert({
         nome: input.name,
         funcional: input.employeeCode,
+        agencia: input.agency,
         senha_hash: hashManagerPassword(input.employeeCode.slice(0, 4)),
       })
-      .select("id,nome,funcional,permissoes,tipo_gestor")
+      .select("id,nome,funcional,agencia,permissoes,tipo_gestor")
       .single();
     if (error) throw error;
     return Response.json({ manager: safeManager(data) }, { status: 201 });

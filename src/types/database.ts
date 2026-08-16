@@ -240,6 +240,7 @@ export type Database = {
       }
       gestores: {
         Row: {
+          agencia: string
           created_at: string | null
           funcional: string
           id: string
@@ -250,6 +251,7 @@ export type Database = {
           tipo_gestor: string | null
         }
         Insert: {
+          agencia?: string
           created_at?: string | null
           funcional: string
           id?: string
@@ -260,6 +262,7 @@ export type Database = {
           tipo_gestor?: string | null
         }
         Update: {
+          agencia?: string
           created_at?: string | null
           funcional?: string
           id?: string

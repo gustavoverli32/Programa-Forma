@@ -12,6 +12,7 @@ export function safeManager<T extends {
   id: string;
   nome: string;
   funcional: string;
+  agencia?: string | null;
   permissoes: unknown;
   tipo_gestor: string | null;
 }>(manager: T) {
@@ -19,6 +20,7 @@ export function safeManager<T extends {
     id: manager.id,
     nome: manager.nome,
     funcional: manager.funcional,
+    agencia: manager.agencia || "",
     permissoes: manager.permissoes,
     tipo_gestor: manager.tipo_gestor,
   };

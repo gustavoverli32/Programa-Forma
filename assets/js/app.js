@@ -527,10 +527,10 @@ async function updateMeuPerfil(nome, funcional, senha){
   return null;
 }
 
-async function saveGestor(nome, funcional){
+async function saveGestor(nome, funcional, agencia){
   try {
     if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
-    var r = await window.nextuberMutations.createManager({name:nome, employeeCode:funcional});
+    var r = await window.nextuberMutations.createManager({name:nome, employeeCode:funcional, agency:agencia});
     if(r.manager){ S.gestores.push(r.manager); return r.manager; }
   } catch(error) {
     console.error('saveGestor error:', error);
@@ -2793,30 +2793,81 @@ function temPermissao(perm){
 function normalizeGestorBusca(value){
   return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 }
+
+function abrirEditarGestor(id){
+  var g = S.gestores.find(function(item){ return String(item.id) === String(id); });
+  if(!g || !editor) return;
+  document.getElementById('editarGestorId').value = g.id;
+  document.getElementById('editarGestorNome').value = g.nome || '';
+  document.getElementById('editarGestorAgencia').value = g.agencia || '';
+  document.getElementById('editarGestorFuncional').textContent = 'Funcional: #' + (g.funcional || '—');
+  document.getElementById('editarGestorOv').classList.add('open');
+  setTimeout(function(){ document.getElementById('editarGestorNome').focus(); }, 80);
+}
+
+async function salvarDadosGestor(){
+  var id = document.getElementById('editarGestorId').value;
+  var nome = document.getElementById('editarGestorNome').value.trim();
+  var agencia = document.getElementById('editarGestorAgencia').value.trim();
+  if(!nome){ alert('Preencha o nome do gestor.'); return; }
+  if(!agencia){ alert('Preencha a agência do gestor.'); return; }
+  var btn = document.getElementById('btnSalvarGestor');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  try {
+    if(!window.nextuberMutations) throw new Error('Serviço de gestores indisponível.');
+    var r = await window.nextuberMutations.updateManager(String(id), {name:nome, agency:agencia});
+    if(r.manager){
+      var idx = S.gestores.findIndex(function(g){ return String(g.id) === String(id); });
+      if(idx >= 0) S.gestores[idx] = r.manager;
+      if(gestorLogado && String(gestorLogado.id) === String(id)) gestorLogado = r.manager;
+    }
+    document.getElementById('editarGestorOv').classList.remove('open');
+    renderGestoresList();
+    alert('Dados do gestor salvos.');
+  } catch(error) {
+    alert('Erro ao salvar: ' + (error.message || error));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Salvar alterações';
+  }
+}
+
 function renderGestoresList(){
   var sec = document.getElementById('gestoresSection');
   if(sec) sec.style.display = editor ? 'block' : 'none';
   var el = document.getElementById('gestoresList');
   var countEl = document.getElementById('gestoresCount');
   var searchInput = document.getElementById('gestorBusca');
+  var agencyFilter = document.getElementById('gestorFiltroAgencia');
   var searchWrap = searchInput ? searchInput.closest('.gestor-search-wrap') : null;
   var searchSummary = document.getElementById('gestorBuscaResumo');
   if(!el) return;
   var gestoresAtivos = (typeof getGestoresAtivos === 'function') ? getGestoresAtivos() : S.gestores;
   gestoresAtivos = gestoresAtivos || [];
+  var selectedAgency = agencyFilter ? agencyFilter.value : '';
+  if(agencyFilter){
+    var agencies = Array.from(new Set(gestoresAtivos.map(function(g){ return String(g.agencia||'').trim(); }).filter(Boolean))).sort(function(a,b){ return a.localeCompare(b, 'pt-BR', {numeric:true}); });
+    agencyFilter.innerHTML = '<option value="">Todas as agências</option>' + agencies.map(function(agency){
+      return '<option value="'+escapeAttr(agency)+'"'+(agency===selectedAgency?' selected':'')+'>Agência '+escapeHtml(agency)+'</option>';
+    }).join('');
+    if(selectedAgency && agencies.indexOf(selectedAgency) === -1){ selectedAgency = ''; agencyFilter.value = ''; }
+  }
   var searchTerm = normalizeGestorBusca(searchInput ? searchInput.value : '');
-  var gestoresFiltrados = searchTerm ? gestoresAtivos.filter(function(g){
-    return normalizeGestorBusca(g.nome).includes(searchTerm) || normalizeGestorBusca(g.funcional).includes(searchTerm);
-  }) : gestoresAtivos;
+  var gestoresFiltrados = gestoresAtivos.filter(function(g){
+    var matchesSearch = !searchTerm || normalizeGestorBusca(g.nome).includes(searchTerm) || normalizeGestorBusca(g.funcional).includes(searchTerm);
+    var matchesAgency = !selectedAgency || String(g.agencia||'').trim() === selectedAgency;
+    return matchesSearch && matchesAgency;
+  });
   if(searchWrap) searchWrap.classList.toggle('has-value', !!searchTerm);
   if(countEl) countEl.textContent = gestoresFiltrados.length;
   if(searchSummary){
-    searchSummary.textContent = searchTerm
+    searchSummary.textContent = (searchTerm || selectedAgency)
       ? gestoresFiltrados.length+' de '+gestoresAtivos.length+' gestor'+(gestoresAtivos.length===1?'':'es')+' encontrado'+(gestoresFiltrados.length===1?'':'s')
       : '';
   }
   if(!gestoresFiltrados.length){
-    el.innerHTML = '<div class="cad-list-empty">'+(searchTerm?'Nenhum gestor encontrado para esta busca.':'Nenhum gestor cadastrado nesta regional.')+'</div>';
+    el.innerHTML = '<div class="cad-list-empty">'+((searchTerm||selectedAgency)?'Nenhum gestor encontrado com os filtros selecionados.':'Nenhum gestor cadastrado nesta regional.')+'</div>';
     return;
   }
   el.innerHTML = gestoresFiltrados.map(function(g){
@@ -2831,9 +2882,10 @@ function renderGestoresList(){
       +'<div class="cad-list-av" style="background:var(--ink);color:#fff;">'+escapeHtml(g.nome[0].toUpperCase())+'</div>'
       +'<div class="cad-list-info">'
         +'<div class="cad-list-name">'+escapeHtml(g.nome)+'</div>'
-        +'<div class="cad-list-meta"><span>#'+escapeHtml(g.funcional)+'</span><span style="background:'+tipoBg+';color:'+tipoColor+';padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">'+tipoLabel+'</span>'+(pCount>0?'<span style="color:var(--or);font-weight:500;">'+pCount+' acesso'+(pCount>1?'s':'')+' extra</span>':'')+'</div>'
+        +'<div class="cad-list-meta"><span>#'+escapeHtml(g.funcional)+'</span><span>Ag. '+escapeHtml(g.agencia||'não informada')+'</span><span style="background:'+tipoBg+';color:'+tipoColor+';padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">'+tipoLabel+'</span>'+(pCount>0?'<span style="color:var(--or);font-weight:500;">'+pCount+' acesso'+(pCount>1?'s':'')+' extra</span>':'')+'</div>'
       +'</div>'
-      +'<div style="display:flex;gap:6px;">'
+      +'<div class="gestor-row-actions">'
+        +'<button class="cad-list-btn" data-editgestor="'+escapeAttr(g.id)+'" style="color:var(--ink2);">✎ Editar</button>'
         +'<button class="cad-list-btn" data-permgestor="'+escapeAttr(g.id)+'" style="color:var(--or);border-color:rgba(236,112,0,.3);'+(editor?'':'opacity:.5;cursor:default;pointer-events:none;')+'">⚙ Permissões</button>'
         +'<button class="cad-list-btn cad-del-btn" data-delgestor="'+escapeAttr(g.id)+'" style="color:#DC2626;border-color:#FECACA;">Remover</button>'
       +'</div>'
@@ -2853,6 +2905,9 @@ function renderGestoresList(){
       if(!editor) return; // Apenas tutora pode gerenciar permissões
       abrirPermissoesGestor(this.dataset.permgestor);
     });
+  });
+  el.querySelectorAll('[data-editgestor]').forEach(function(btn){
+    btn.addEventListener('click', function(){ abrirEditarGestor(this.dataset.editgestor); });
   });
 }
 
@@ -3782,6 +3837,13 @@ document.getElementById('btnObs').addEventListener('click', function(){
   var btnSalvarP = document.getElementById('btnSalvarPermissoes');
   if(btnSalvarP) btnSalvarP.addEventListener('click', salvarPermissoesGestor);
 
+  var btnFecharEditarGestor = document.getElementById('btnFecharEditarGestor');
+  if(btnFecharEditarGestor) btnFecharEditarGestor.addEventListener('click', function(){
+    document.getElementById('editarGestorOv').classList.remove('open');
+  });
+  var btnSalvarGestor = document.getElementById('btnSalvarGestor');
+  if(btnSalvarGestor) btnSalvarGestor.addEventListener('click', salvarDadosGestor);
+
   // Editar banner do projeto (tutora)
   var btnEdBanner = document.getElementById('btnEditarBanner');
   if(btnEdBanner) btnEdBanner.addEventListener('click', function(){
@@ -3977,7 +4039,9 @@ document.getElementById('btnObs').addEventListener('click', function(){
   // Gestores
   var gestorBusca = document.getElementById('gestorBusca');
   var gestorBuscaLimpar = document.getElementById('gestorBuscaLimpar');
+  var gestorFiltroAgencia = document.getElementById('gestorFiltroAgencia');
   if(gestorBusca) gestorBusca.addEventListener('input', renderGestoresList);
+  if(gestorFiltroAgencia) gestorFiltroAgencia.addEventListener('change', renderGestoresList);
   if(gestorBuscaLimpar) gestorBuscaLimpar.addEventListener('click', function(){
     gestorBusca.value = '';
     gestorBusca.focus();
@@ -3986,16 +4050,19 @@ document.getElementById('btnObs').addEventListener('click', function(){
   document.getElementById('btnAddGestor').addEventListener('click', async function(){
     var nome = document.getElementById('gestorNome').value.trim();
     var func = document.getElementById('gestorFunc').value.replace(/[^0-9]/g,'').slice(0,9);
+    var agencia = document.getElementById('gestorAgencia').value.trim();
     if(!nome){ alert('Preencha o nome do gestor.'); return; }
     if(func.length < 9){ alert('Funcional deve ter 9 dígitos.'); return; }
+    if(!agencia){ alert('Preencha a agência do gestor.'); return; }
     if(S.gestores.find(function(g){ return g.funcional === func; })){
       alert('Já existe um gestor com este funcional.');
       return;
     }
-    var r = await saveGestor(nome, func);
+    var r = await saveGestor(nome, func, agencia);
     if(r){
       document.getElementById('gestorNome').value = '';
       document.getElementById('gestorFunc').value = '';
+      document.getElementById('gestorAgencia').value = '';
       renderGestoresList();
       var sv = document.getElementById('gestorSaved');
       if(sv){ sv.classList.add('show'); setTimeout(function(){ sv.classList.remove('show'); }, 2500); }

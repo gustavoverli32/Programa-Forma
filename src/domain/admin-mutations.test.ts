@@ -4,6 +4,8 @@ import {
   parseAppointment,
   parseLegacySetting,
   parseManagerAdmin,
+  parseManagerCreate,
+  parseManagerProfileAdmin,
   parseMeeting,
   parseStudentMutation,
 } from "./admin-mutations.ts";
@@ -44,6 +46,20 @@ test("accepts only known legacy settings", () => {
     { key: "checklist_mensal", value: { enabled: false } },
   );
   assert.throws(() => parseLegacySetting({ key: "service_role", value: "secret" }));
+});
+
+test("requires agency when creating or editing a manager", () => {
+  assert.deepEqual(
+    parseManagerCreate({ name: "Maria", employeeCode: "123456789", agency: "4563" }),
+    { name: "Maria", employeeCode: "123456789", agency: "4563" },
+  );
+  assert.deepEqual(parseManagerProfileAdmin({ name: "Maria Silva", agency: "3185" }), {
+    name: "Maria Silva",
+    agency: "3185",
+  });
+  assert.throws(() =>
+    parseManagerCreate({ name: "Maria", employeeCode: "123456789", agency: "" }),
+  );
 });
 
 test("rejects appointments with invalid student ids", () => {
