@@ -61,3 +61,17 @@ test("filters managers and edits their name and agency in registration", () => {
   assert.equal(runtimeApp.includes("function normalizeGestorBusca(value)"), true);
   assert.equal(runtimeApp.includes("function salvarDadosGestor()"), true);
 });
+
+test("opens the tutor dashboard with all regions consolidated", () => {
+  assert.match(
+    sourceApp,
+    /payload\.session && payload\.session\.role === 'tutora'[\s\S]*?S\.selectedRegionalId = 'all'/,
+  );
+  assert.equal(runtimeApp.includes("S.selectedRegionalId = 'all';"), true);
+});
+
+test("keeps the manager permissions modal compact and scrollable", () => {
+  assert.match(sourceHtml, /class="permissions-manager-type"/);
+  assert.match(sourceHtml, /class="permissions-access-list"/);
+  assert.match(sourceHtml, /class="permissions-password"/);
+});

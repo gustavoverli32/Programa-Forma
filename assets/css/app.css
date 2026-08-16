@@ -455,6 +455,24 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
 .login-ov,.modal-ov{position:fixed;inset:0;background:rgba(26,25,22,.55);z-index:300;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:16px;}
 .login-ov.open,.modal-ov.open{display:flex;}
 .login-box,.modal-box{background:var(--surface);border-radius:var(--r);padding:30px 32px;width:100%;max-width:340px;box-shadow:0 24px 80px rgba(0,0,0,.2);}
+#permissoesOv{overflow-y:auto;overscroll-behavior:contain;}
+#permissoesOv .login-box{width:min(460px,calc(100vw - 32px));max-width:460px !important;max-height:calc(100dvh - 32px);overflow-y:auto;padding:20px 22px !important;}
+#permissoesOv .login-box h3{font-size:18px !important;line-height:1.15;}
+#permissoesOv .login-box > p{font-size:12px !important;margin-bottom:12px !important;}
+#permissoesOv .permissions-manager-type{gap:7px !important;margin-bottom:12px !important;padding:11px !important;}
+#permissoesOv .permissions-manager-type > p{margin-bottom:5px !important;}
+#permissoesOv .permissions-manager-type label,
+#permissoesOv .permissions-access-list label{padding:8px 10px !important;}
+#permissoesOv .permissions-manager-type label div div:first-child,
+#permissoesOv .permissions-access-list label div div:first-child{font-size:12px !important;}
+#permissoesOv .permissions-manager-type label div div:last-child,
+#permissoesOv .permissions-access-list label div div:last-child{font-size:10.5px !important;line-height:1.3;}
+#permissoesOv .permissions-access-list{gap:7px !important;margin-bottom:10px !important;}
+#permissoesOv .permissions-password{margin-top:12px !important;padding-top:12px !important;}
+#permissoesOv .permissions-password > p{margin-bottom:7px !important;}
+#permissoesOv #permNovaSenha{padding:9px 10px;font-size:14px;}
+#permissoesOv #btnSalvarPermissoes{margin-top:12px !important;padding:10px;font-size:14px;}
+#permissoesOv #btnFecharPermissoes{padding:8px;}
 .login-logo{display:flex;align-items:center;gap:11px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);}
 .login-logo img{width:48px;}
 .login-brand{font-family:var(--font-dm-serif),serif;font-size:15px;color:var(--ink);line-height:1.25;}
@@ -588,6 +606,18 @@ textarea.obs:disabled{opacity:.5;cursor:not-allowed;}
   /* Telas muito pequenas */
   #overviewKpis{grid-template-columns:1fr !important;}
   #pResultados > div:first-child{grid-template-columns:1fr !important;}
+}
+
+@media(max-width:600px){
+  #permissoesOv{align-items:flex-start;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom));}
+  #permissoesOv .login-box{width:100%;max-width:440px !important;max-height:calc(100dvh - 16px);padding:14px !important;border-radius:10px;}
+  #permissoesOv .login-box h3{font-size:17px !important;}
+  #permissoesOv .permissions-manager-type{padding:9px !important;}
+  #permissoesOv .permissions-manager-type label,
+  #permissoesOv .permissions-access-list label{padding:7px 8px !important;}
+  #permissoesOv .permissions-manager-type input,
+  #permissoesOv .permissions-access-list input{width:16px !important;height:16px !important;}
+  #permissoesOv .permissions-password{margin-top:9px !important;padding-top:9px !important;}
 }
 
 

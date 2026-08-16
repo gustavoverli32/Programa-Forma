@@ -403,6 +403,7 @@ async function loadFromDB(){
       editor = true;
       modoGestor = false;
       gestorLogado = null;
+      S.selectedRegionalId = 'all';
     } else if(payload.session && payload.session.role === 'gestor'){
       editor = false;
       modoGestor = true;
