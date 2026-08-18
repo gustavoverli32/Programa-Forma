@@ -9,8 +9,10 @@ const bootstrap = readFileSync("src/app/api/data/bootstrap/route.ts", "utf8");
 test("oferece arquivamento no perfil e histórico por seis meses", () => {
   assert.match(html, /id="btnArchiveStudent"/);
   assert.match(html, /id="archivedStudentsSection"/);
+  assert.doesNotMatch(html, /id="archivedStudentsSection"[^>]*display\s*:\s*none/);
   assert.match(html, /histórico continuará disponível por 6 meses/i);
   assert.match(app, /archiveStudent\(/);
+  assert.match(app, /section\.style\.display\s*=\s*['"]block['"]/);
   assert.match(bootstrap, /archivedStudents/);
 });
 
