@@ -2705,7 +2705,7 @@ function renderArchivedStudents(){
     return !S.selectedRegionalId || S.selectedRegionalId === 'all' ||
       String(e.regional_id || '') === String(S.selectedRegionalId);
   });
-  section.style.display = 'block';
+  section.style.display = editor ? 'block' : 'none';
   count.textContent = String(archived.length);
   if(!archived.length){
     list.innerHTML = '<div class="archived-students-empty">Nenhum estagiário arquivado.</div>';

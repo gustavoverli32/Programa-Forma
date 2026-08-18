@@ -203,7 +203,7 @@ export async function GET(request: Request) {
       const seesAll = !scopedToRegional && (currentManager.tipo_gestor === "gga" || permissions.todos_estagiarios === true);
       
       readableStudentIds = new Set(
-        rows
+        activeRows
           .filter(
             (row) =>
               seesAll ||
@@ -226,9 +226,7 @@ export async function GET(request: Request) {
           ? privateStudent(row)
           : publicStudent(row),
       );
-      archivedStudents = archivedRows
-        .filter((row) => readableStudentIds.has(row.id))
-        .map(privateStudent);
+      archivedStudents = [];
     }
 
     const productionData = await fetchAllProductionForStudents(
