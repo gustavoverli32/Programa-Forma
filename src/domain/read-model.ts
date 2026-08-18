@@ -11,6 +11,10 @@ export type StudentReadRow = {
   gestor_funcional: string | null;
   regional_id?: string | null;
   created_at: string | null;
+  arquivado_em?: string | null;
+  arquivado_por?: string | null;
+  motivo_arquivamento?: string | null;
+  excluir_em?: string | null;
 };
 
 const PUBLIC_PROFILE_FIELDS = [
@@ -53,6 +57,8 @@ export function publicStudent(row: StudentReadRow) {
     trilha_checks: {},
     regional_id: row.regional_id ?? null,
     created_at: row.created_at,
+    arquivado_em: row.arquivado_em ?? null,
+    excluir_em: row.excluir_em ?? null,
   };
 }
 
@@ -68,6 +74,10 @@ export function privateStudent(row: StudentReadRow) {
     gestor_funcional: row.gestor_funcional,
     regional_id: row.regional_id ?? null,
     created_at: row.created_at,
+    arquivado_em: row.arquivado_em ?? null,
+    arquivado_por: row.arquivado_por ?? null,
+    motivo_arquivamento: row.motivo_arquivamento ?? null,
+    excluir_em: row.excluir_em ?? null,
   };
 }
 

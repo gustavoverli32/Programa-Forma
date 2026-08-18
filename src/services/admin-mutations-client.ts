@@ -50,6 +50,13 @@ export const nextuberMutationBridge = {
       value,
     });
   },
+  archiveStudent(id: string, reason: string) {
+    return requestJson<{ student: Record<string, unknown> }>(
+      `/api/students/${encodeURIComponent(id)}/archive`,
+      "POST",
+      { reason },
+    );
+  },
   ensureProductionAudit() {
     return requestJson<{ history: Array<Record<string, unknown>> }>(
       "/api/settings/production-audit",

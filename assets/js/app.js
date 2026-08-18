@@ -198,7 +198,7 @@ function faixaComp(p){if(p>=75)return{cor:'#16A34A',bg:'#DCFCE7',label:'Acima do
 function faixaRes(p){if(p>=85)return{cor:'#16A34A',bg:'#DCFCE7',label:'Alvo atingido'};if(p>=50)return{cor:'#EC7000',bg:'#FFF3E8',label:'Em desenvolvimento'};return{cor:'#DC2626',bg:'#FEE2E2',label:'Abaixo do alvo'};}
 
 // ── STATE ──────────────────────────────────────────────────────────────────
-var S = { ests:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{}, monthlyChecklist:{enabled:true}, productionAuditHistory:[], regionais:[], selectedRegionalId: null };
+var S = { ests:[], archived:[], tl:Array(6).fill(false), gestores:[], producao:[], descricao:[], encontros:[], cfg:{}, monthlyChecklist:{enabled:true}, productionAuditHistory:[], regionais:[], selectedRegionalId: null };
 window.S = S; // exposto pra IA e outros escopos
 var DB_LOADED = false;
 
@@ -362,6 +362,10 @@ function mkEstObj(row){
     regional_id:  row.regional_id || null,
     meta:         (row.perfil && row.perfil.meta) ? row.perfil.meta : '',
     resultado:    (row.perfil && row.perfil.resultado) ? row.perfil.resultado : ''
+    ,arquivado_em: row.arquivado_em || null
+    ,arquivado_por: row.arquivado_por || null
+    ,motivo_arquivamento: row.motivo_arquivamento || null
+    ,excluir_em: row.excluir_em || null
   };
 }
 
@@ -371,6 +375,7 @@ async function loadFromDB(){
     // Load estagiarios
     var payload = await window.nextuberReads.bootstrap();
     S.ests = (payload.students||[]).map(mkEstObj);
+    S.archived = (payload.archivedStudents||[]).map(mkEstObj);
 
     // Load timeline — use maybeSingle to avoid error when row doesn't exist
     S.tl = Array.isArray(payload.timeline) ? payload.timeline : Array(6).fill(false);
@@ -439,6 +444,7 @@ async function loadFromDB(){
   updateMetrics(); renderCiclos(); renderCards(); renderTrilha();
   renderCadList(); renderTimeline(); renderGestoresList(); renderOverviewAll(); renderRanking();  updateProgress();
   renderProductionAuditHistory();
+  renderArchivedStudents();
   await loadTextosProjeto();
   applyMode(); // garantir que itens tutora-only fiquem escondidos no carregamento
 }
@@ -2564,6 +2570,8 @@ function openPanel(idx){
   document.getElementById('obsSaved').classList.remove('show');
   var editInfoBtn = document.getElementById('btnEditarInfoEstagiario');
   if(editInfoBtn) editInfoBtn.style.display = (editor || isGGA()) ? 'inline-flex' : 'none';
+  var archiveAction = document.getElementById('archiveStudentAction');
+  if(archiveAction) archiveAction.style.display = (editor || modoGestor) ? 'flex' : 'none';
   setPanelInfoEditing(false);
   var editInfoSaved = document.getElementById('pEditSaved');
   if(editInfoSaved) editInfoSaved.classList.remove('show');
@@ -2688,6 +2696,98 @@ function openPanelById(eid){
 }
 if(typeof window !== 'undefined') window.openPanelById = openPanelById;
 
+function renderArchivedStudents(){
+  var section = document.getElementById('archivedStudentsSection');
+  var list = document.getElementById('archivedStudentsList');
+  var count = document.getElementById('archivedStudentsCount');
+  if(!section || !list || !count) return;
+  var archived = (S.archived || []).filter(function(e){
+    return !S.selectedRegionalId || S.selectedRegionalId === 'all' ||
+      String(e.regional_id || '') === String(S.selectedRegionalId);
+  });
+  section.style.display = (editor || modoGestor) ? 'block' : 'none';
+  count.textContent = String(archived.length);
+  if(!archived.length){
+    list.innerHTML = '<div class="archived-students-empty">Nenhum estagiário arquivado.</div>';
+    return;
+  }
+  list.innerHTML = archived.map(function(e){
+    var reason = e.motivo_arquivamento || 'Outro';
+    return '<button type="button" class="archived-student-row" data-archived-id="'+escapeAttr(e.id)+'">'
+      +'<span><strong>'+escapeHtml(e.nome)+'</strong><small>'+escapeHtml(reason)+' · arquivado em '+escapeHtml(fmtDate(e.arquivado_em))+'</small></span>'
+      +'<span>Ver histórico →</span></button>';
+  }).join('');
+  list.querySelectorAll('[data-archived-id]').forEach(function(button){
+    button.addEventListener('click', function(){ openArchivedHistory(this.dataset.archivedId); });
+  });
+}
+
+function openArchivedHistory(id){
+  var student = (S.archived || []).find(function(e){ return String(e.id) === String(id); });
+  if(!student) return;
+  document.getElementById('archiveHistoryName').textContent = student.nome;
+  document.getElementById('archiveHistoryMeta').textContent =
+    (student.motivo_arquivamento || 'Arquivado')+' · exclusão programada para '+fmtDate(student.excluir_em);
+  var rows = (S.producao || []).filter(function(row){
+    return String(row.estagiario_id) === String(student.id);
+  });
+  var quarters = rows.filter(function(row){ return /^\d{4}-Q[1-4]$/.test(String(row.tri_ref)); })
+    .sort(function(a,b){ return String(b.tri_ref).localeCompare(String(a.tri_ref)); });
+  var profile = student.perfil || {};
+  var html = '<div class="archive-history-info">'
+    +'<span><small>Funcional</small><strong>'+escapeHtml(profile.funcional || '—')+'</strong></span>'
+    +'<span><small>Agência</small><strong>'+escapeHtml(profile.agencia || '—')+'</strong></span>'
+    +'<span><small>Início</small><strong>'+escapeHtml(fmtDate(profile.inicio))+'</strong></span>'
+    +'</div><div class="archive-history-results"><strong>Resultados trimestrais</strong>';
+  if(!quarters.length){
+    html += '<div class="archived-students-empty">Nenhum resultado trimestral registrado.</div>';
+  } else {
+    html += quarters.map(function(row){
+      var produced = parseFloat(row.producao)||0;
+      var target = parseFloat(row.meta)||0;
+      var percent = target > 0 ? Math.round((produced/target)*100) : 0;
+      return '<div class="archive-history-quarter"><span><strong>'+escapeHtml(fmtTrimestre(row.tri_ref))+'</strong><small>Alvo: '+escapeHtml(fmtMilhar(target))+'</small></span>'
+        +'<span><strong>'+escapeHtml(fmtMilhar(produced))+'</strong><small>'+percent+'% atingido</small></span></div>';
+    }).join('');
+  }
+  document.getElementById('archiveHistoryContent').innerHTML = html+'</div>';
+  document.getElementById('archiveHistoryOv').classList.add('open');
+}
+
+function openArchiveStudent(){
+  if(getPanelEstIdx() < 0 || (!editor && !modoGestor)) return;
+  document.getElementById('archiveStudentReason').value = 'Promovido';
+  document.getElementById('archiveStudentOv').classList.add('open');
+}
+
+async function confirmArchiveStudent(){
+  var idx = getPanelEstIdx();
+  if(idx < 0 || !window.nextuberMutations) return;
+  var button = document.getElementById('btnConfirmArchiveStudent');
+  button.disabled = true;
+  button.textContent = 'Arquivando...';
+  try {
+    var result = await window.nextuberMutations.archiveStudent(
+      String(S.ests[idx].id),
+      document.getElementById('archiveStudentReason').value
+    );
+    S.archived.push(mkEstObj(result.student));
+    S.ests.splice(idx, 1);
+    document.getElementById('archiveStudentOv').classList.remove('open');
+    closePanel();
+    renderArchivedStudents();
+    renderCadList();
+    renderOverviewAll();
+    renderRanking();
+    alert('Estagiário arquivado. O histórico ficará disponível por 6 meses.');
+  } catch(error) {
+    alert(error.message || 'Não foi possível arquivar o estagiário.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Confirmar arquivamento';
+  }
+}
+
 // ── CADASTRO ───────────────────────────────────────────────────────────────
 
 
@@ -2708,6 +2808,7 @@ function abrirPermissoesGestor(id){
   document.getElementById('permTrilhas').checked = !!perms.trilhas;
   document.getElementById('permRanking').checked = !!perms.ranking;
   document.getElementById('permTodosEstag').checked = !!perms.todos_estagiarios;
+  document.getElementById('permConfiguracoes').checked = !!perms.configuracoes;
 
   // Limpar campo de nova senha sempre que abrir
   document.getElementById('permNovaSenha').value = '';
@@ -2719,6 +2820,7 @@ function abrirPermissoesGestor(id){
       document.getElementById('permTrilhas').disabled = false;
       document.getElementById('permRanking').disabled = false;
       document.getElementById('permTodosEstag').disabled = false;
+      document.getElementById('permConfiguracoes').disabled = false;
     }
   });
 
@@ -2728,10 +2830,12 @@ function abrirPermissoesGestor(id){
       document.getElementById('permTrilhas').checked = true;
       document.getElementById('permRanking').checked = true;
       document.getElementById('permTodosEstag').checked = true;
+      document.getElementById('permConfiguracoes').checked = true;
       // Ainda permite o usuário desmarcar se quiser
       document.getElementById('permTrilhas').disabled = false;
       document.getElementById('permRanking').disabled = false;
       document.getElementById('permTodosEstag').disabled = false;
+      document.getElementById('permConfiguracoes').disabled = false;
     }
   });
 
@@ -2752,7 +2856,8 @@ async function salvarPermissoesGestor(){
   var permissoes = {
     trilhas: document.getElementById('permTrilhas').checked,
     ranking: document.getElementById('permRanking').checked,
-    todos_estagiarios: document.getElementById('permTodosEstag').checked
+    todos_estagiarios: document.getElementById('permTodosEstag').checked,
+    configuracoes: document.getElementById('permConfiguracoes').checked
   };
 
   var r;
@@ -3146,7 +3251,8 @@ function goPage(id){
   var paginasSoTutora = ['configuracoes'];
   var paginasTutoraOuGGA = ['cadastro'];
   if(paginasSoTutora.indexOf(id) >= 0 && !editor){
-    id = 'overview';
+    var managerPermissions = (gestorLogado && gestorLogado.permissoes) || {};
+    if(!modoGestor || managerPermissions.configuracoes !== true) id = 'overview';
   }
   if(paginasTutoraOuGGA.indexOf(id) >= 0 && !editor && !(modoGestor && isGGA())){
     id = 'overview';
@@ -3179,6 +3285,7 @@ function goPage(id){
       if(lock) lock.style.display='none';
       if(content) content.style.display='block';
       renderCards();
+      renderArchivedStudents();
     } else {
       if(lock) lock.style.display='flex';
       if(content) content.style.display='none';
@@ -3810,6 +3917,17 @@ onNextuberReady(function(){
   });
   document.getElementById('pEditCancel').addEventListener('click', function(){ setPanelInfoEditing(false); });
   document.getElementById('pEditSave').addEventListener('click', savePanelInfo);
+  document.getElementById('btnArchiveStudent').addEventListener('click', openArchiveStudent);
+  document.getElementById('btnCancelArchiveStudent').addEventListener('click', function(){
+    document.getElementById('archiveStudentOv').classList.remove('open');
+  });
+  document.getElementById('btnConfirmArchiveStudent').addEventListener('click', confirmArchiveStudent);
+  document.getElementById('btnCloseArchiveHistory').addEventListener('click', function(){
+    document.getElementById('archiveHistoryOv').classList.remove('open');
+  });
+  document.getElementById('archiveHistoryOv').addEventListener('click', function(event){
+    if(event.target === this) this.classList.remove('open');
+  });
   // Salvamento do alvo tratado por renderResultados
 
   // Atenção button
@@ -3975,6 +4093,13 @@ document.getElementById('btnObs').addEventListener('click', function(){
       button.style.color = enabled ? 'var(--ink2)' : '#fff';
       button.style.borderColor = enabled ? 'var(--border2)' : '#15803d';
     }
+  }
+  if(p.configuracoes){
+    var configNavSection = document.getElementById('configNavSection');
+    var configDrawerLabel = document.getElementById('configDrawerLabel');
+    if(configNavSection) configNavSection.style.display = '';
+    if(configDrawerLabel) configDrawerLabel.style.display = '';
+    document.querySelectorAll('[data-page="configuracoes"]').forEach(function(el){ el.style.display=''; });
   }
   renderChecklistMensalConfig();
 
@@ -5039,9 +5164,6 @@ async function aiSendMessage(){
   aiShowTyping();
 
   try {
-    // Gera contexto atualizado
-    var contexto = gerarContextoIA();
-
     // Chama a rota segura do Next.js
     var response = await fetch(AI_EDGE_FUNCTION_URL, {
       method: 'POST',
@@ -5050,7 +5172,6 @@ async function aiSendMessage(){
       },
       body: JSON.stringify({
         pergunta: msg,
-        contexto: contexto,
         historico: aiChatHistory.slice(-10) // últimas 10 mensagens
       })
     });

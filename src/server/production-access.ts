@@ -34,6 +34,20 @@ export function requireTutorSession(session: SessionPayload) {
   }
 }
 
+export async function requireTutorOrManagerPermission(
+  supabase: SupabaseClient,
+  session: SessionPayload,
+  permission: string,
+) {
+  if (session.role === "tutora") return null;
+  const manager = await loadSessionManager(supabase, session);
+  const permissions = (manager.permissoes ?? {}) as Record<string, unknown>;
+  if (permissions[permission] !== true) {
+    throw new ProductionHttpError("Sem permissao para acessar esta area.", 403);
+  }
+  return manager;
+}
+
 export async function loadSessionManager(
   supabase: SupabaseClient,
   session: SessionPayload,

@@ -25,7 +25,7 @@ test("sanitizes a complete student mutation", () => {
 
 test("blocks invalid manager permissions and accepts known fields", () => {
   const manager = parseManagerAdmin({
-    permissions: { trilhas: true, ranking: false, todos_estagiarios: true, admin: true },
+    permissions: { trilhas: true, ranking: false, todos_estagiarios: true, configuracoes: true, admin: true },
     managerType: "gga",
     password: "1234",
   });
@@ -33,6 +33,7 @@ test("blocks invalid manager permissions and accepts known fields", () => {
     trilhas: true,
     ranking: false,
     todos_estagiarios: true,
+    configuracoes: true,
   });
 });
 

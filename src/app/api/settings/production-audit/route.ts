@@ -3,7 +3,7 @@ import {
   assertSameOrigin,
   productionErrorResponse,
   requireProductionSession,
-  requireTutorSession,
+  requireTutorOrManagerPermission,
 } from "@/server/production-access";
 import { ensureLatestProductionAudit } from "@/server/production-audit";
 import { loadProductionConfig } from "@/server/production-context";
@@ -12,8 +12,8 @@ export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
     const session = await requireProductionSession();
-    requireTutorSession(session);
     const supabase = createSupabaseAdminClient();
+    await requireTutorOrManagerPermission(supabase, session, "configuracoes");
     const config = await loadProductionConfig(supabase);
     const history = await ensureLatestProductionAudit(supabase, config);
     return Response.json({ history });
@@ -21,4 +21,3 @@ export async function POST(request: Request) {
     return productionErrorResponse(error);
   }
 }
-

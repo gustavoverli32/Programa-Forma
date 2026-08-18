@@ -5,6 +5,7 @@ import {
   ProductionHttpError,
   productionErrorResponse,
   requireProductionSession,
+  requireTutorOrManagerPermission,
 } from "@/server/production-access";
 import { loadProductionConfig } from "@/server/production-context";
 
@@ -12,9 +13,6 @@ export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
     const session = await requireProductionSession();
-    if (session.role !== "tutora") {
-      throw new ProductionHttpError("Apenas a tutora pode alterar o prazo.", 403);
-    }
     const body = (await request.json().catch(() => null)) as
       | { deadline?: unknown }
       | null;
@@ -23,6 +21,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = createSupabaseAdminClient();
+    await requireTutorOrManagerPermission(supabase, session, "configuracoes");
     const current = await loadProductionConfig(supabase);
     const config = {
       ...current,

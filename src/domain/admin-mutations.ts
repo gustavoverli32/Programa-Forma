@@ -157,7 +157,12 @@ export function parseManagerSelf(value: unknown): ManagerSelfInput {
 }
 
 export type ManagerAdminInput = {
-  permissions: { trilhas: boolean; ranking: boolean; todos_estagiarios: boolean };
+  permissions: {
+    trilhas: boolean;
+    ranking: boolean;
+    todos_estagiarios: boolean;
+    configuracoes: boolean;
+  };
   managerType: "ga" | "gga";
   password: string;
 };
@@ -173,6 +178,7 @@ export function parseManagerAdmin(value: unknown): ManagerAdminInput {
       trilhas: permissions.trilhas === true,
       ranking: permissions.ranking === true,
       todos_estagiarios: permissions.todos_estagiarios === true,
+      configuracoes: permissions.configuracoes === true,
     },
     managerType,
     password,

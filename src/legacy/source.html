@@ -33,7 +33,7 @@
     <div class="nav-item" data-page="trilhas" data-tutora="only">◑ Trilhas</div>
     <div class="nav-item" data-page="agendamentos">◉ Agendamentos</div>
   </div>
-  <div class="nav-section" data-tutora="only">
+  <div class="nav-section" id="configNavSection" data-tutora="only">
     <div class="nav-lbl">Sistema</div>
     <div class="nav-item" data-page="configuracoes" data-tutora="only">⚙ Configurações</div>
   </div>
@@ -89,7 +89,7 @@
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><circle cx="8" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><circle cx="16" cy="14" r="1"/></svg>
         Agendamentos
       </div>
-      <div class="drawer-section-lbl" data-tutora="only">Sistema</div>
+      <div class="drawer-section-lbl" id="configDrawerLabel" data-tutora="only">Sistema</div>
       <div class="drawer-item" data-page="configuracoes" data-tutora="only">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8l2.8-2.8M17 7l2.8-2.8"/></svg>
         Configurações
@@ -381,6 +381,13 @@
       </div>
 
       <div id="notionGrid"></div>
+      <div class="archived-students-section" id="archivedStudentsSection" style="display:none;">
+        <div class="archived-students-head">
+          <div><strong>Estagiários arquivados</strong><span>Histórico disponível por 6 meses</span></div>
+          <span id="archivedStudentsCount">0</span>
+        </div>
+        <div id="archivedStudentsList"></div>
+      </div>
     </div>
 
   </section>
@@ -700,6 +707,41 @@
         <span class="obs-saved" id="obsSaved">✓ Salvo</span>
       </div>
     </div>
+    <div class="psec psec-full archive-student-action" id="archiveStudentAction">
+      <div>
+        <strong>Arquivar estagiário</strong>
+        <span>Remove das listas ativas e mantém todo o histórico por 6 meses.</span>
+      </div>
+      <button type="button" id="btnArchiveStudent">Arquivar</button>
+    </div>
+  </div>
+</div>
+
+<div class="login-ov" id="archiveStudentOv">
+  <div class="login-box archive-confirm-box">
+    <h3>Arquivar estagiário</h3>
+    <p>O perfil sairá da plataforma ativa, mas o histórico continuará disponível por 6 meses.</p>
+    <div class="field-grp">
+      <div class="field-lbl">Motivo</div>
+      <select class="field-in" id="archiveStudentReason">
+        <option value="Promovido">Promovido</option>
+        <option value="Desligado">Desligado</option>
+        <option value="Outro">Outro</option>
+      </select>
+    </div>
+    <div class="archive-confirm-warning">Após 6 meses, o perfil e todo o histórico serão excluídos definitivamente.</div>
+    <button class="btn-login" id="btnConfirmArchiveStudent">Confirmar arquivamento</button>
+    <button class="btn-cancel" id="btnCancelArchiveStudent">Cancelar</button>
+  </div>
+</div>
+
+<div class="login-ov" id="archiveHistoryOv">
+  <div class="login-box archive-history-box">
+    <div class="archive-history-head">
+      <div><h3 id="archiveHistoryName">Histórico</h3><p id="archiveHistoryMeta"></p></div>
+      <button type="button" id="btnCloseArchiveHistory">✕</button>
+    </div>
+    <div id="archiveHistoryContent"></div>
   </div>
 </div>
 
@@ -829,6 +871,13 @@
         <div style="flex:1;">
           <div style="font-size:13.5px;font-weight:500;color:var(--ink);">◑ Trilhas</div>
           <div style="font-size:11.5px;color:var(--ink3);">Visualizar conteúdo das trilhas de aprendizado</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+        <input type="checkbox" id="permConfiguracoes" style="width:18px;height:18px;accent-color:var(--or);flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-size:13.5px;font-weight:500;color:var(--ink);">⚙ Configurações</div>
+          <div style="font-size:11.5px;color:var(--ink3);">Acessar prazos, programação mensal e histórico de pendências</div>
         </div>
       </label>
       <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;">

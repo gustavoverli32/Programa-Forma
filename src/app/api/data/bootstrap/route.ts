@@ -25,7 +25,7 @@ async function fetchAllStudents(
     const { data, error } = await supabase
       .from("estagiarios")
       .select(
-        "id,nome,meses,obs,atencao,perfil,trilha_checks,gestor_funcional,regional_id,created_at",
+        "id,nome,meses,obs,atencao,perfil,trilha_checks,gestor_funcional,regional_id,created_at,arquivado_em,arquivado_por,motivo_arquivamento,excluir_em",
       )
       .order("created_at", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
@@ -154,6 +154,7 @@ export async function GET(request: Request) {
         {
           regionais: regionaisResult.data ?? [],
           students: [],
+          archivedStudents: [],
           timeline: settings.get("timeline") ?? null,
           config: configResult.data?.valor ?? {},
           projectTexts: sanitizeProjectTexts(
@@ -181,15 +182,20 @@ export async function GET(request: Request) {
       return Response.json({ error: "Gestor nao encontrado." }, { status: 403 });
     }
 
+    const activeRows = rows.filter((row) => !row.arquivado_em);
+    const archivedRows = rows.filter((row) => Boolean(row.arquivado_em));
     let students: Array<
       ReturnType<typeof publicStudent> | ReturnType<typeof privateStudent>
-    > = rows.map(privateStudent);
+    > = activeRows.map(privateStudent);
+    let archivedStudents = archivedRows.map(privateStudent);
     let readableStudentIds = new Set(rows.map((row) => row.id));
+    let canAccessSettings = session.role === "tutora";
     if (session.role === "gestor" && currentManager) {
       const permissions = (currentManager.permissoes ?? {}) as Record<
         string,
         unknown
       >;
+      canAccessSettings = permissions.configuracoes === true;
       const hasRegional = Boolean(currentManager.regional_id);
       const isLiderRegional = currentManager.tipo_gestor === "lider_regional" || currentManager.tipo_gestor === "gga";
       const scopedToRegional = hasRegional && (String(permissions.escopo ?? "") === "regional" || isLiderRegional);
@@ -209,7 +215,7 @@ export async function GET(request: Request) {
           )
           .map((row) => row.id),
       );
-      students = rows.map((row) =>
+      students = activeRows.map((row) =>
         seesAll ||
         isStudentAssignedToManager(
           row,
@@ -220,6 +226,9 @@ export async function GET(request: Request) {
           ? privateStudent(row)
           : publicStudent(row),
       );
+      archivedStudents = archivedRows
+        .filter((row) => readableStudentIds.has(row.id))
+        .map(privateStudent);
     }
 
     const productionData = await fetchAllProductionForStudents(
@@ -231,6 +240,7 @@ export async function GET(request: Request) {
       {
         regionais: regionaisResult.data ?? [],
         students,
+        archivedStudents,
         timeline: settings.get("timeline") ?? null,
         config: configResult.data?.valor ?? {},
         projectTexts: sanitizeProjectTexts(
@@ -238,7 +248,7 @@ export async function GET(request: Request) {
         ),
         monthlyChecklist: settings.get("checklist_mensal") ?? { enabled: true },
         productionAuditHistory:
-          session.role === "tutora"
+          canAccessSettings
             ? normalizeProductionAuditHistory(
                 settings.get("historico_pendencias_producao"),
               )

@@ -154,11 +154,15 @@ export type Database = {
       }
       estagiarios: {
         Row: {
+          arquivado_em: string | null
+          arquivado_por: string | null
           atencao: boolean | null
           created_at: string | null
+          excluir_em: string | null
           gestor_funcional: string | null
           id: string
           meses: string[] | null
+          motivo_arquivamento: string | null
           nome: string
           obs: string | null
           perfil: Json | null
@@ -167,11 +171,15 @@ export type Database = {
           trilha_checks: Json | null
         }
         Insert: {
+          arquivado_em?: string | null
+          arquivado_por?: string | null
           atencao?: boolean | null
           created_at?: string | null
+          excluir_em?: string | null
           gestor_funcional?: string | null
           id?: string
           meses?: string[] | null
+          motivo_arquivamento?: string | null
           nome: string
           obs?: string | null
           perfil?: Json | null
@@ -180,11 +188,15 @@ export type Database = {
           trilha_checks?: Json | null
         }
         Update: {
+          arquivado_em?: string | null
+          arquivado_por?: string | null
           atencao?: boolean | null
           created_at?: string | null
+          excluir_em?: string | null
           gestor_funcional?: string | null
           id?: string
           meses?: string[] | null
+          motivo_arquivamento?: string | null
           nome?: string
           obs?: string | null
           perfil?: Json | null
