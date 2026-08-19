@@ -4,7 +4,12 @@ import { readFileSync } from "node:fs";
 
 const html = readFileSync("src/legacy/source.html", "utf8");
 const app = readFileSync("assets/js/app.js", "utf8");
+const deployedApp = readFileSync("public/legacy/app.js", "utf8");
 const bootstrap = readFileSync("src/app/api/data/bootstrap/route.ts", "utf8");
+
+test("publica no Next.js o mesmo runtime legado validado pelos testes", () => {
+  assert.equal(deployedApp, app);
+});
 
 test("oferece arquivamento no perfil e histórico por seis meses", () => {
   assert.match(html, /id="btnArchiveStudent"/);
