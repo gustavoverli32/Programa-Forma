@@ -13,6 +13,30 @@ function onNextuberReady(callback){
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', callback, {once:true});
   else callback();
 }
+
+// Ações críticas usam delegação para continuar funcionando mesmo se outro
+// módulo da tela falhar durante a inicialização.
+document.addEventListener('click', function(event){
+  var target = event.target && event.target.closest ? event.target.closest('button') : null;
+  if(!target) return;
+  if(target.id === 'btnArchiveStudent'){
+    event.preventDefault();
+    event.stopPropagation();
+    openArchiveStudent();
+  } else if(target.id === 'btnCancelArchiveStudent'){
+    var archiveOverlay = document.getElementById('archiveStudentOv');
+    if(archiveOverlay){
+      archiveOverlay.classList.remove('open');
+      delete archiveOverlay.dataset.studentId;
+    }
+  } else if(target.id === 'btnConfirmArchiveStudent'){
+    event.preventDefault();
+    confirmArchiveStudent();
+  } else if(target.id === 'btnSalvarPermissoes'){
+    event.preventDefault();
+    salvarPermissoesGestor();
+  }
+});
 var SOPTS = ['⬜ Pendente','🔄 Em andamento','✅ Concluído','⚠️ Atenção','🔁 Renovado'];
 var ML = ['Mês 1','Mês 2','Mês 3','Mês 4','Mês 5','Mês 6'];
 
@@ -2572,6 +2596,8 @@ function openPanel(idx){
   if(editInfoBtn) editInfoBtn.style.display = (editor || isGGA()) ? 'inline-flex' : 'none';
   var archiveAction = document.getElementById('archiveStudentAction');
   if(archiveAction) archiveAction.style.display = (editor || modoGestor) ? 'flex' : 'none';
+  var archiveButton = document.getElementById('btnArchiveStudent');
+  if(archiveButton) archiveButton.dataset.studentId = String(e.id);
   setPanelInfoEditing(false);
   var editInfoSaved = document.getElementById('pEditSaved');
   if(editInfoSaved) editInfoSaved.classList.remove('show');
@@ -2755,14 +2781,25 @@ function openArchivedHistory(id){
 }
 
 function openArchiveStudent(){
-  if(getPanelEstIdx() < 0 || (!editor && !modoGestor)) return;
-  if(!confirm('Tem certeza de que deseja arquivar este estagiário?')) return;
+  if(!editor && !modoGestor) return;
+  var button = document.getElementById('btnArchiveStudent');
+  var studentId = button ? button.dataset.studentId : '';
+  var student = S.ests.find(function(e){ return String(e.id) === String(studentId); });
+  if(!student){
+    alert('Não foi possível identificar o estagiário. Feche o perfil e tente novamente.');
+    return;
+  }
+  var overlay = document.getElementById('archiveStudentOv');
+  overlay.dataset.studentId = String(student.id);
+  document.getElementById('archiveStudentName').textContent = student.nome;
   document.getElementById('archiveStudentReason').value = 'Promovido';
-  document.getElementById('archiveStudentOv').classList.add('open');
+  overlay.classList.add('open');
 }
 
 async function confirmArchiveStudent(){
-  var idx = getPanelEstIdx();
+  var overlay = document.getElementById('archiveStudentOv');
+  var studentId = overlay.dataset.studentId || '';
+  var idx = S.ests.findIndex(function(e){ return String(e.id) === String(studentId); });
   if(idx < 0 || !window.nextuberMutations) return;
   var button = document.getElementById('btnConfirmArchiveStudent');
   button.disabled = true;
@@ -2774,7 +2811,8 @@ async function confirmArchiveStudent(){
     );
     S.archived.push(mkEstObj(result.student));
     S.ests.splice(idx, 1);
-    document.getElementById('archiveStudentOv').classList.remove('open');
+    overlay.classList.remove('open');
+    delete overlay.dataset.studentId;
     closePanel();
     renderArchivedStudents();
     renderCadList();
@@ -2887,6 +2925,8 @@ async function salvarPermissoesGestor(){
 
   if(novaSenha){
     alert('Senha redefinida com sucesso! A nova senha é: ' + novaSenha.slice(0,4));
+  } else {
+    alert('Permissões salvas com sucesso!');
   }
 }
 
@@ -3351,6 +3391,14 @@ function applyModoGestor(){
   if(p.trilhas){
     document.querySelectorAll('[data-page="trilhas"]').forEach(function(el){ el.style.display=''; });
   }
+  var podeVerConfiguracoes = p.configuracoes === true;
+  var configNavSection = document.getElementById('configNavSection');
+  var configDrawerLabel = document.getElementById('configDrawerLabel');
+  if(configNavSection) configNavSection.style.display = podeVerConfiguracoes ? '' : 'none';
+  if(configDrawerLabel) configDrawerLabel.style.display = podeVerConfiguracoes ? '' : 'none';
+  document.querySelectorAll('[data-page="configuracoes"]').forEach(function(el){
+    el.style.display = podeVerConfiguracoes ? '' : 'none';
+  });
   // GGA: acesso a cadastro e todos os estagiários
   if(isGGA()){
     document.querySelectorAll('[data-page="cadastro"]').forEach(function(el){ el.style.display=''; });
@@ -3732,7 +3780,6 @@ function exportToExcelSync(){
 
 // ── EVENT LISTENERS ────────────────────────────────────────────────────────
 onNextuberReady(function(){
-
   // Navigation — sidebar
   document.querySelectorAll('.nav-item[data-page]').forEach(function(el){
     el.addEventListener('click', function(){ goPage(this.dataset.page); });
@@ -3918,15 +3965,6 @@ onNextuberReady(function(){
   });
   document.getElementById('pEditCancel').addEventListener('click', function(){ setPanelInfoEditing(false); });
   document.getElementById('pEditSave').addEventListener('click', savePanelInfo);
-  document.getElementById('btnArchiveStudent').addEventListener('click', function(event){
-    event.preventDefault();
-    event.stopPropagation();
-    openArchiveStudent();
-  });
-  document.getElementById('btnCancelArchiveStudent').addEventListener('click', function(){
-    document.getElementById('archiveStudentOv').classList.remove('open');
-  });
-  document.getElementById('btnConfirmArchiveStudent').addEventListener('click', confirmArchiveStudent);
   document.getElementById('btnCloseArchiveHistory').addEventListener('click', function(){
     document.getElementById('archiveHistoryOv').classList.remove('open');
   });
@@ -3958,9 +3996,6 @@ document.getElementById('btnObs').addEventListener('click', function(){
   if(btnFecharP) btnFecharP.addEventListener('click', function(){
     document.getElementById('permissoesOv').classList.remove('open');
   });
-  var btnSalvarP = document.getElementById('btnSalvarPermissoes');
-  if(btnSalvarP) btnSalvarP.addEventListener('click', salvarPermissoesGestor);
-
   var btnFecharEditarGestor = document.getElementById('btnFecharEditarGestor');
   if(btnFecharEditarGestor) btnFecharEditarGestor.addEventListener('click', function(){
     document.getElementById('editarGestorOv').classList.remove('open');
@@ -4098,13 +4133,6 @@ document.getElementById('btnObs').addEventListener('click', function(){
       button.style.color = enabled ? 'var(--ink2)' : '#fff';
       button.style.borderColor = enabled ? 'var(--border2)' : '#15803d';
     }
-  }
-  if(p.configuracoes){
-    var configNavSection = document.getElementById('configNavSection');
-    var configDrawerLabel = document.getElementById('configDrawerLabel');
-    if(configNavSection) configNavSection.style.display = '';
-    if(configDrawerLabel) configDrawerLabel.style.display = '';
-    document.querySelectorAll('[data-page="configuracoes"]').forEach(function(el){ el.style.display=''; });
   }
   renderChecklistMensalConfig();
 

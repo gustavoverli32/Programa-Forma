@@ -12,8 +12,12 @@ test("oferece arquivamento no perfil e histórico por seis meses", () => {
   assert.match(html, /id="archivedStudentsSection"[^>]*display\s*:\s*none/);
   assert.match(html, /histórico continuará disponível por 6 meses/i);
   assert.match(app, /archiveStudent\(/);
-  assert.match(app, /confirm\(['"]Tem certeza de que deseja arquivar este estagiário\?['"]\)/);
+  assert.match(html, /Tem certeza de que deseja arquivar\?/);
+  assert.match(html, /id="archiveStudentName"/);
+  assert.match(app, /archiveButton\.dataset\.studentId\s*=\s*String\(e\.id\)/);
+  assert.match(app, /overlay\.dataset\.studentId\s*=\s*String\(student\.id\)/);
   assert.match(app, /btnArchiveStudent[\s\S]*?event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)/);
+  assert.ok(app.indexOf("target.id === 'btnArchiveStudent'") < app.indexOf("onNextuberReady(function(){"));
   assert.match(app, /getElementById\(['"]cadList['"]\)\.querySelectorAll\(['"]\.cad-list-btn:not\(\.cad-del-btn\)['"]\)/);
   assert.match(app, /section\.style\.display\s*=\s*editor\s*\?\s*['"]block['"]\s*:\s*['"]none['"]/);
   assert.match(bootstrap, /archivedStudents\s*=\s*\[\]/);
@@ -24,6 +28,10 @@ test("inclui configuracoes entre as permissoes conhecidas do gestor", () => {
   assert.match(html, /id="permConfiguracoes"/);
   assert.match(app, /perms\.configuracoes/);
   assert.match(app, /p\.configuracoes/);
+  assert.match(app, /podeVerConfiguracoes\s*=\s*p\.configuracoes\s*===\s*true/);
+  assert.match(app, /data-page="configuracoes"[\s\S]*?podeVerConfiguracoes\s*\?\s*['"]['"]\s*:\s*['"]none['"]/);
+  assert.ok(app.indexOf("target.id === 'btnSalvarPermissoes'") < app.indexOf("onNextuberReady(function(){"));
+  assert.match(app, /Permissões salvas com sucesso!/);
 });
 
 test("o navegador nao envia contexto de estagiarios para a rota da IA", () => {
