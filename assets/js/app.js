@@ -2756,6 +2756,7 @@ function openArchivedHistory(id){
 
 function openArchiveStudent(){
   if(getPanelEstIdx() < 0 || (!editor && !modoGestor)) return;
+  if(!confirm('Tem certeza de que deseja arquivar este estagiário?')) return;
   document.getElementById('archiveStudentReason').value = 'Promovido';
   document.getElementById('archiveStudentOv').classList.add('open');
 }
@@ -3047,10 +3048,10 @@ function renderCadList(){
       +'</div>'
       +'</div>';
   }).join('');
-  document.querySelectorAll('.cad-list-btn:not(.cad-del-btn)').forEach(function(btn){
+  document.getElementById('cadList').querySelectorAll('.cad-list-btn:not(.cad-del-btn)').forEach(function(btn){
     btn.addEventListener('click', function(){ loadEditCad(parseInt(this.dataset.idx)); });
   });
-  document.querySelectorAll('.cad-del-btn').forEach(function(btn){
+  document.getElementById('cadList').querySelectorAll('.cad-del-btn').forEach(function(btn){
     btn.addEventListener('click', async function(){
       var idx = parseInt(this.dataset.delidx);
       var e = S.ests[idx];
@@ -3917,7 +3918,11 @@ onNextuberReady(function(){
   });
   document.getElementById('pEditCancel').addEventListener('click', function(){ setPanelInfoEditing(false); });
   document.getElementById('pEditSave').addEventListener('click', savePanelInfo);
-  document.getElementById('btnArchiveStudent').addEventListener('click', openArchiveStudent);
+  document.getElementById('btnArchiveStudent').addEventListener('click', function(event){
+    event.preventDefault();
+    event.stopPropagation();
+    openArchiveStudent();
+  });
   document.getElementById('btnCancelArchiveStudent').addEventListener('click', function(){
     document.getElementById('archiveStudentOv').classList.remove('open');
   });

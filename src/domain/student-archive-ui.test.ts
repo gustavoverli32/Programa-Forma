@@ -12,6 +12,9 @@ test("oferece arquivamento no perfil e histórico por seis meses", () => {
   assert.match(html, /id="archivedStudentsSection"[^>]*display\s*:\s*none/);
   assert.match(html, /histórico continuará disponível por 6 meses/i);
   assert.match(app, /archiveStudent\(/);
+  assert.match(app, /confirm\(['"]Tem certeza de que deseja arquivar este estagiário\?['"]\)/);
+  assert.match(app, /btnArchiveStudent[\s\S]*?event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)/);
+  assert.match(app, /getElementById\(['"]cadList['"]\)\.querySelectorAll\(['"]\.cad-list-btn:not\(\.cad-del-btn\)['"]\)/);
   assert.match(app, /section\.style\.display\s*=\s*editor\s*\?\s*['"]block['"]\s*:\s*['"]none['"]/);
   assert.match(bootstrap, /archivedStudents\s*=\s*\[\]/);
   assert.match(bootstrap, /readableStudentIds\s*=\s*new Set\(\s*activeRows/);
