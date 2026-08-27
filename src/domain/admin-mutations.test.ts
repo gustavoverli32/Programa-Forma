@@ -50,16 +50,21 @@ test("accepts only known legacy settings", () => {
 });
 
 test("requires agency when creating or editing a manager", () => {
+  const regionalId = "123e4567-e89b-42d3-a456-426614174000";
   assert.deepEqual(
-    parseManagerCreate({ name: "Maria", employeeCode: "123456789", agency: "4563" }),
-    { name: "Maria", employeeCode: "123456789", agency: "4563" },
+    parseManagerCreate({ name: "Maria", employeeCode: "123456789", agency: "4563", regionalId }),
+    { name: "Maria", employeeCode: "123456789", agency: "4563", regionalId },
   );
-  assert.deepEqual(parseManagerProfileAdmin({ name: "Maria Silva", agency: "3185" }), {
+  assert.deepEqual(parseManagerProfileAdmin({ name: "Maria Silva", agency: "3185", regionalId }), {
     name: "Maria Silva",
     agency: "3185",
+    regionalId,
   });
   assert.throws(() =>
-    parseManagerCreate({ name: "Maria", employeeCode: "123456789", agency: "" }),
+    parseManagerCreate({ name: "Maria", employeeCode: "123456789", agency: "", regionalId }),
+  );
+  assert.throws(() =>
+    parseManagerCreate({ name: "Maria", employeeCode: "123456789", agency: "4563", regionalId: "" }),
   );
 });
 

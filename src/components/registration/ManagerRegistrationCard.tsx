@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   cleanEmployeeCode,
   validateManagerRegistrationInput,
 } from "@/domain/registration";
 import { nextuberMutationBridge } from "@/services/admin-mutations-client";
+import { nextuberReadBridge } from "@/services/read-client";
 
 type ManagerItem = {
   id: string;
   nome: string;
   funcional: string;
   agencia: string;
+  regional_id?: string | null;
   tipo_gestor: "ga" | "gga" | "tutor";
   permissoes?: Record<string, boolean>;
 };
@@ -25,6 +27,8 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
   const [nome, setNome] = useState("");
   const [funcional, setFuncional] = useState("");
   const [agencia, setAgencia] = useState("");
+  const [regionalId, setRegionalId] = useState("");
+  const [regionais, setRegionais] = useState<Array<{ id: string; nome: string }>>([]);
   const [tipoGestor, setTipoGestor] = useState<"ga" | "gga" | "tutor">("ga");
   const [permTrilhas, setPermTrilhas] = useState(true);
   const [permAgendamentos, setPermAgendamentos] = useState(true);
@@ -34,6 +38,22 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    nextuberReadBridge
+      .bootstrap()
+      .then((data) => {
+        if (!active) return;
+        const list = (data.regionais || []) as Array<{ id: string; nome: string }>;
+        setRegionais(list);
+        if (list.length > 0) setRegionalId((previous) => previous || list[0].id);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canEdit || saving) return;
@@ -42,6 +62,7 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
       nome,
       funcional,
       agencia,
+      regional_id: regionalId,
       tipo_gestor: tipoGestor,
     });
 
@@ -57,6 +78,7 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
         name: nome.trim(),
         employeeCode: cleanEmployeeCode(funcional),
         agency: agencia.trim(),
+        regionalId,
         managerType: tipoGestor,
         permissions: {
           trilhas: permTrilhas,
@@ -219,6 +241,35 @@ export function ManagerRegistrationCard({ onManagerCreated, canEdit = true }: Pr
               }}
             />
             {errors.agencia && <span style={{ color: "#DC2626", fontSize: "11px" }}>{errors.agencia}</span>}
+          </div>
+
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+              Regional *
+            </label>
+            <select
+              required
+              value={regionalId}
+              onChange={(e) => setRegionalId(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "6px",
+                border: `1px solid ${errors.regional_id ? "#DC2626" : "var(--border, #ccc)"}`,
+                fontSize: "13px",
+                background: "var(--surface, #fff)",
+              }}
+            >
+              <option value="">Selecione a regional</option>
+              {regionais.map((regional) => (
+                <option key={regional.id} value={regional.id}>
+                  {regional.nome}
+                </option>
+              ))}
+            </select>
+            {errors.regional_id && (
+              <span style={{ color: "#DC2626", fontSize: "11px" }}>{errors.regional_id}</span>
+            )}
           </div>
 
           <div>

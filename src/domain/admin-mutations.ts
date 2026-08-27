@@ -132,7 +132,12 @@ export function parseStudentMutation(value: unknown): StudentMutationInput {
   };
 }
 
-export type ManagerCreateInput = { name: string; employeeCode: string; agency: string };
+export type ManagerCreateInput = {
+  name: string;
+  employeeCode: string;
+  agency: string;
+  regionalId: string;
+};
 
 export function parseManagerCreate(value: unknown): ManagerCreateInput {
   const body = asRecord(value, "Dados do gestor invalidos.");
@@ -140,10 +145,13 @@ export function parseManagerCreate(value: unknown): ManagerCreateInput {
     name: cleanString(body.name, "Nome", 120, true),
     employeeCode: cleanDigits(body.employeeCode, "Funcional", 9, true),
     agency: cleanString(body.agency, "Agencia", 60, true),
+    regionalId: parseUuid(body.regionalId ?? body.regional_id, "Regional"),
   };
 }
 
-export type ManagerSelfInput = Omit<ManagerCreateInput, "agency"> & { password: string };
+export type ManagerSelfInput = Omit<ManagerCreateInput, "agency" | "regionalId"> & {
+  password: string;
+};
 
 export function parseManagerSelf(value: unknown): ManagerSelfInput {
   const body = asRecord(value, "Dados do gestor invalidos.");
@@ -223,13 +231,14 @@ export function parseLegacySetting(value: unknown) {
   throw new Error("Configuracao nao permitida.");
 }
 
-export type ManagerProfileAdminInput = { name: string; agency: string };
+export type ManagerProfileAdminInput = { name: string; agency: string; regionalId: string };
 
 export function parseManagerProfileAdmin(value: unknown): ManagerProfileAdminInput {
   const body = asRecord(value, "Dados do gestor invalidos.");
   return {
     name: cleanString(body.name, "Nome", 120, true),
     agency: cleanString(body.agency, "Agencia", 60, true),
+    regionalId: parseUuid(body.regionalId ?? body.regional_id, "Regional"),
   };
 }
 

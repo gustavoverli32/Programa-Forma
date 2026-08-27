@@ -14,6 +14,7 @@ export type ManagerRegistrationInput = {
   nome: string;
   funcional: string;
   agencia: string;
+  regional_id: string;
   tipo_gestor: "ga" | "gga" | "tutor";
   permissoes?: {
     trilhas?: boolean;
@@ -83,6 +84,10 @@ export function validateManagerRegistrationInput(input: Partial<ManagerRegistrat
 
   if (!input.agencia || input.agencia.trim().length === 0) {
     errors.agencia = "Informe a agência do gestor.";
+  }
+
+  if (!input.regional_id || input.regional_id.trim().length === 0) {
+    errors.regional_id = "Selecione a regional do gestor.";
   }
 
   if (!input.tipo_gestor || !["ga", "gga", "tutor"].includes(input.tipo_gestor)) {

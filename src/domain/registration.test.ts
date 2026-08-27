@@ -38,18 +38,21 @@ test("validates manager registration input", () => {
     nome: "",
     funcional: "abc",
     agencia: "",
+    regional_id: "",
     tipo_gestor: undefined,
   });
   assert.equal(invalid.valid, false);
   assert.ok(invalid.errors.nome);
   assert.ok(invalid.errors.funcional);
   assert.ok(invalid.errors.agencia);
+  assert.ok(invalid.errors.regional_id);
   assert.ok(invalid.errors.tipo_gestor);
 
   const valid = validateManagerRegistrationInput({
     nome: "Mariana Costa",
     funcional: "111222333",
     agencia: "4563",
+    regional_id: "123e4567-e89b-42d3-a456-426614174000",
     tipo_gestor: "gga",
   });
   assert.equal(valid.valid, true);

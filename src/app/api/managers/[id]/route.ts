@@ -23,12 +23,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const id = parseUuid((await params).id, "Gestor");
     const body = await request.json().catch(() => null);
     const isProfileUpdate = Boolean(
-      body && typeof body === "object" && ("name" in body || "agency" in body),
+      body &&
+        typeof body === "object" &&
+        ("name" in body || "agency" in body || "regionalId" in body || "regional_id" in body),
     );
     const update = isProfileUpdate
       ? (() => {
           const input = parseManagerProfileAdmin(body);
-          return { nome: input.name, agencia: input.agency };
+          return {
+            nome: input.name,
+            agencia: input.agency,
+            regional_id: input.regionalId,
+          };
         })()
       : (() => {
           const input = parseManagerAdmin(body);
@@ -43,7 +49,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       .from("gestores")
       .update(update)
       .eq("id", id)
-      .select("id,nome,funcional,agencia,permissoes,tipo_gestor")
+      .select("id,nome,funcional,agencia,permissoes,tipo_gestor,regional_id")
       .single();
     if (error) throw error;
     return Response.json({ manager: safeManager(data) });

@@ -48,16 +48,20 @@ test("edits student registration data directly from the profile panel", () => {
   assert.equal(runtimeApp.includes("async function savePanelInfo()"), true);
 });
 
-test("filters managers and edits their name and agency in registration", () => {
+test("filters managers and creates or edits them with an assigned region", () => {
   assert.match(sourceHtml, /id="gestorBusca"/);
   assert.match(sourceHtml, /id="gestorFiltroAgencia"/);
+  assert.match(sourceHtml, /id="gestorRegional"/);
   assert.match(sourceHtml, /id="editarGestorOv"/);
+  assert.match(sourceHtml, /id="editarGestorRegional"/);
   assert.match(sourceApp, /function normalizeGestorBusca\(value\)/);
   assert.match(sourceApp, /normalizeGestorBusca\(g\.nome\)\.includes\(searchTerm\)/);
   assert.match(sourceApp, /normalizeGestorBusca\(g\.funcional\)\.includes\(searchTerm\)/);
   assert.match(sourceApp, /function abrirEditarGestor\(id\)/);
   assert.match(sourceApp, /async function salvarDadosGestor\(\)/);
+  assert.match(sourceApp, /function populateGestorRegionalSelect\(selectId, selectedValue\)/);
   assert.match(sourceApp, /agency:agencia/);
+  assert.match(sourceApp, /regionalId:regionalId/);
   assert.equal(runtimeApp.includes("function normalizeGestorBusca(value)"), true);
   assert.equal(runtimeApp.includes("function salvarDadosGestor()"), true);
 });

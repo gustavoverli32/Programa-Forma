@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const supabase = createSupabaseAdminClient();
     const { data: gestor, error } = await supabase
       .from("gestores")
-      .select("id,nome,funcional,agencia,senha_hash,permissoes,tipo_gestor")
+      .select("id,nome,funcional,agencia,senha_hash,permissoes,tipo_gestor,regional_id")
       .eq("funcional", funcional)
       .maybeSingle();
 

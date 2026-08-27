@@ -33,7 +33,7 @@ export async function PATCH(request: Request) {
       .from("gestores")
       .update(update)
       .eq("id", manager.id)
-      .select("id,nome,funcional,agencia,permissoes,tipo_gestor")
+      .select("id,nome,funcional,agencia,permissoes,tipo_gestor,regional_id")
       .single();
     if (error) throw error;
     return Response.json({ manager: safeManager(data) });

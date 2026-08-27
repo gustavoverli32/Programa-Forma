@@ -12,6 +12,7 @@ type ManagerItem = {
   nome: string;
   funcional: string;
   agencia?: string;
+  regional_id?: string | null;
   tipo_gestor: "ga" | "gga" | "tutor";
   permissoes?: Record<string, boolean>;
 };
