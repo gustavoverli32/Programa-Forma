@@ -1021,6 +1021,7 @@ function renderOverviewKpis(){
   var totalSeguros = 0;
   var totalPIC = 0;
   var totalCombinaqui = 0;
+  var totalEngajamento = 0;
 
   lista.forEach(function(e){
     var p = getProducaoTri(e.id, tri);
@@ -1031,6 +1032,7 @@ function renderOverviewKpis(){
     totalSeguros    += getTotalTrimestreOutroProduto(e.id, tri, 0);
     totalPIC        += getTotalTrimestreOutroProduto(e.id, tri, 1);
     totalCombinaqui += getTotalTrimestreOutroProduto(e.id, tri, 2);
+    totalEngajamento += getTotalTrimestreOutroProduto(e.id, tri, 4);
   });
 
   var porTrilha = {iniciante:0, intermediario:0, avancado:0};
@@ -1044,7 +1046,8 @@ function renderOverviewKpis(){
     {label:'Produção do trimestre', valor:fmtMilhar(totalProducao), cor:'#16A34A', bg:'#DCFCE7'},
     {label:'Seguros', valor:fmtMilhar(totalSeguros), cor:'#8B5CF6', bg:'#EDE9FE'},
     {label:'PIC', valor:fmtMilhar(totalPIC), cor:'#06B6D4', bg:'#CFFAFE'},
-    {label:'Combinaqui', valor:fmtMilhar(totalCombinaqui), cor:'#F97316', bg:'#FFEDD5'}
+    {label:'Combinaqui', valor:fmtMilhar(totalCombinaqui), cor:'#F97316', bg:'#FFEDD5'},
+    {label:'Engajamento', valor:fmtMilhar(totalEngajamento), cor:'#EC4899', bg:'#FCE7F3'}
   ];
 
   el.innerHTML = cards.map(function(c){
@@ -3468,7 +3471,7 @@ function applyModoGestor(){
   var dMp = document.getElementById('drawerMeuPerfil');
   if(dMp) dMp.style.display = 'block';
   renderCards();
-  goPage('estagiarios');
+  goPage('overview');
 }
 
 async function logoutGestor(){

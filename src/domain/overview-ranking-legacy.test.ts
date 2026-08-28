@@ -74,6 +74,13 @@ test("opens the tutor dashboard with all regions consolidated", () => {
   assert.equal(runtimeApp.includes("S.selectedRegionalId = 'all';"), true);
 });
 
+test("opens the overview for managers and shows engagement in consolidated KPIs", () => {
+  assert.match(sourceApp, /goPage\('overview'\);/);
+  assert.match(sourceApp, /var totalEngajamento = 0/);
+  assert.match(sourceApp, /getTotalTrimestreOutroProduto\(e\.id, tri, 4\)/);
+  assert.match(sourceApp, /label:'Engajamento'/);
+});
+
 test("keeps the manager permissions modal compact and scrollable", () => {
   assert.match(sourceHtml, /class="permissions-manager-type"/);
   assert.match(sourceHtml, /class="permissions-access-list"/);
