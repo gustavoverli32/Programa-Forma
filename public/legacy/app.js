@@ -1032,7 +1032,7 @@ function renderOverviewKpis(){
     totalSeguros    += getTotalTrimestreOutroProduto(e.id, tri, 0);
     totalPIC        += getTotalTrimestreOutroProduto(e.id, tri, 1);
     totalCombinaqui += getTotalTrimestreOutroProduto(e.id, tri, 2);
-    totalEngajamento += getTotalTrimestreOutroProduto(e.id, tri, 4);
+    totalEngajamento += getTotalTrimestreOutroProduto(e.id, tri, 3);
   });
 
   var porTrilha = {iniciante:0, intermediario:0, avancado:0};
@@ -1550,7 +1550,9 @@ var CORES_MODALIDADES = {
 };
 
 // ── OUTROS PRODUTOS ──
-var OUTROS_PRODUTOS = ['Seguros', 'PIC', 'Combinaqui', 'Consórcios', 'Engajamento'];
+// A posição faz parte da chave persistida de produção (OUT0 a OUT4).
+// Engajamento é OUT3 e Consórcios é OUT4; não inverter sem migrar os dados já gravados.
+var OUTROS_PRODUTOS = ['Seguros', 'PIC', 'Combinaqui', 'Engajamento', 'Consórcios'];
 var CORES_OUTROS = {
   'Seguros': '#8B5CF6',
   'PIC': '#06B6D4',
@@ -5168,8 +5170,8 @@ function gerarContextoIA(){
         Seguros: _totOutProd(e.id, 0),
         PIC: _totOutProd(e.id, 1),
         Combinaqui: _totOutProd(e.id, 2),
-        Consorcios: _totOutProd(e.id, 3),
-        Engajamento: _totOutProd(e.id, 4)
+        Consorcios: _totOutProd(e.id, 4),
+        Engajamento: _totOutProd(e.id, 3)
       },
       pct_atingido_credito: meta > 0 ? Math.round((producaoCredito/meta)*100) : 0,
       pct_atingido_produtos: metaProdutos > 0 ? Math.round((producaoOutros/metaProdutos)*100) : 0,

@@ -74,10 +74,16 @@ test("opens the tutor dashboard with all regions consolidated", () => {
   assert.equal(runtimeApp.includes("S.selectedRegionalId = 'all';"), true);
 });
 
-test("opens the overview for managers and shows engagement in consolidated KPIs", () => {
+test("opens the overview for managers and keeps engagement mapped to OUT3", () => {
   assert.match(sourceApp, /goPage\('overview'\);/);
   assert.match(sourceApp, /var totalEngajamento = 0/);
-  assert.match(sourceApp, /getTotalTrimestreOutroProduto\(e\.id, tri, 4\)/);
+  assert.match(sourceApp, /totalEngajamento \+= getTotalTrimestreOutroProduto\(e\.id, tri, 3\)/);
+  assert.match(
+    sourceApp,
+    /var OUTROS_PRODUTOS = \['Seguros', 'PIC', 'Combinaqui', 'Engajamento', 'Consórcios'\]/,
+  );
+  assert.match(sourceApp, /Engajamento: _totOutProd\(e\.id, 3\)/);
+  assert.match(sourceApp, /Consorcios: _totOutProd\(e\.id, 4\)/);
   assert.match(sourceApp, /label:'Engajamento'/);
 });
 
