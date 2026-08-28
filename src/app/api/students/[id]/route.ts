@@ -39,12 +39,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     let fullAccess = session.role === "tutora";
     if (session.role === "gestor") {
       const manager = await loadSessionManager(supabase, session);
+      if (!manager.regional_id) {
+        throw new ProductionHttpError("Gestor sem regional vinculada.", 403);
+      }
+      if (input.regionalId && input.regionalId !== manager.regional_id) {
+        throw new ProductionHttpError("Gestores só podem manter estagiários na própria regional.", 403);
+      }
+      await authorizeStudentWrite(supabase, session, id);
       if (manager.tipo_gestor !== "gga") {
         const permissions = (manager.permissoes ?? {}) as Record<string, unknown>;
         if (permissions.trilhas !== true) {
           throw new ProductionHttpError("Sem permissao para editar trilhas.", 403);
         }
-        await authorizeStudentWrite(supabase, session, id);
         const currentProfile = (current.perfil ?? {}) as Record<string, Json | undefined>;
         const requestedProfile = input.profile as Record<string, Json | undefined>;
         update = {
@@ -100,6 +106,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     const id = parseUuid((await params).id, "Estagiario");
     const supabase = createSupabaseAdminClient();
     await requireTutorOrGga(supabase, session);
+    await authorizeStudentWrite(supabase, session, id);
     const { error } = await supabase.from("estagiarios").delete().eq("id", id);
     if (error) throw error;
     return Response.json({ ok: true });

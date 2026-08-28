@@ -26,7 +26,7 @@ test("oferece arquivamento no perfil e histórico por seis meses", () => {
   assert.match(app, /getElementById\(['"]cadList['"]\)\.querySelectorAll\(['"]\.cad-list-btn:not\(\.cad-del-btn\)['"]\)/);
   assert.match(app, /section\.style\.display\s*=\s*editor\s*\?\s*['"]block['"]\s*:\s*['"]none['"]/);
   assert.match(bootstrap, /archivedStudents\s*=\s*\[\]/);
-  assert.match(bootstrap, /readableStudentIds\s*=\s*new Set\(\s*activeRows/);
+  assert.match(bootstrap, /readableStudentIds\s*=\s*new Set\(\s*visibleStudents/);
 });
 
 test("inclui configuracoes entre as permissoes conhecidas do gestor", () => {

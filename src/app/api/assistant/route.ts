@@ -1,6 +1,5 @@
 import { buildAssistantResultsContext } from "@/domain/assistant-context";
 import {
-  isStudentAssignedToManager,
   isStudentInRegional,
   type StudentReadRow,
 } from "@/domain/read-model";
@@ -38,23 +37,11 @@ async function buildPlatformContext(
   let students = (studentsResult.data ?? []) as StudentReadRow[];
   if (session.role === "gestor") {
     const manager = await loadSessionManager(supabase, session);
-    const permissions = (manager.permissoes ?? {}) as Record<string, unknown>;
-    const hasRegional = Boolean(manager.regional_id);
-    const isRegionalLeader =
-      manager.tipo_gestor === "lider_regional" || manager.tipo_gestor === "gga";
-    const scopedToRegional =
-      hasRegional &&
-      (String(permissions.escopo ?? "") === "regional" || isRegionalLeader);
-    const seesAll =
-      !scopedToRegional &&
-      (manager.tipo_gestor === "gga" || permissions.todos_estagiarios === true);
-
-    students = students.filter(
-      (student) =>
-        seesAll ||
-        isStudentAssignedToManager(student, String(manager.funcional ?? "")) ||
-        (scopedToRegional && isStudentInRegional(student, manager.regional_id)),
-    );
+    if (manager.tipo_gestor !== "lider_regional") {
+      students = students.filter((student) =>
+        isStudentInRegional(student, manager.regional_id),
+      );
+    }
   }
 
   const studentIds = students.map((student) => student.id);

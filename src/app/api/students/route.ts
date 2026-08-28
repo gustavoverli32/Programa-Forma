@@ -32,6 +32,12 @@ export async function POST(request: Request) {
     if (session.role === "gestor") {
       const manager = await loadSessionManager(supabase, session);
       defaultRegionalId = manager.regional_id ?? null;
+      if (!defaultRegionalId) {
+        throw new ProductionHttpError("Gestor sem regional vinculada.", 403);
+      }
+      if (input.regionalId && input.regionalId !== defaultRegionalId) {
+        throw new ProductionHttpError("Gestores só podem cadastrar estagiários na própria regional.", 403);
+      }
     }
 
     const { data, error } = await supabase
@@ -43,7 +49,7 @@ export async function POST(request: Request) {
         atencao: input.attention,
         perfil: input.profile,
         trilha_checks: input.trailChecks,
-        regional_id: input.regionalId || defaultRegionalId,
+        regional_id: defaultRegionalId || input.regionalId,
       })
       .select()
       .single();

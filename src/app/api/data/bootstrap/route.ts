@@ -1,8 +1,6 @@
 import {
-  isStudentAssignedToManager,
   isStudentInRegional,
   privateStudent,
-  publicStudent,
   sanitizeProjectTexts,
   type StudentReadRow,
 } from "@/domain/read-model";
@@ -184,9 +182,7 @@ export async function GET(request: Request) {
 
     const activeRows = rows.filter((row) => !row.arquivado_em);
     const archivedRows = rows.filter((row) => Boolean(row.arquivado_em));
-    let students: Array<
-      ReturnType<typeof publicStudent> | ReturnType<typeof privateStudent>
-    > = activeRows.map(privateStudent);
+    let students: Array<ReturnType<typeof privateStudent>> = activeRows.map(privateStudent);
     let archivedStudents = archivedRows.map(privateStudent);
     let readableStudentIds = new Set(rows.map((row) => row.id));
     let canAccessSettings = session.role === "tutora";
@@ -196,36 +192,16 @@ export async function GET(request: Request) {
         unknown
       >;
       canAccessSettings = permissions.configuracoes === true;
-      const hasRegional = Boolean(currentManager.regional_id);
-      const isLiderRegional = currentManager.tipo_gestor === "lider_regional" || currentManager.tipo_gestor === "gga";
-      const scopedToRegional = hasRegional && (String(permissions.escopo ?? "") === "regional" || isLiderRegional);
-      
-      const seesAll = !scopedToRegional && (currentManager.tipo_gestor === "gga" || permissions.todos_estagiarios === true);
-      
+      const canSwitchRegionals = currentManager.tipo_gestor === "lider_regional";
+      const visibleStudents = canSwitchRegionals
+        ? activeRows
+        : activeRows.filter((row) =>
+            isStudentInRegional(row, currentManager.regional_id),
+          );
       readableStudentIds = new Set(
-        activeRows
-          .filter(
-            (row) =>
-              seesAll ||
-              isStudentAssignedToManager(
-                row,
-                String(currentManager.funcional ?? ""),
-              ) ||
-              (scopedToRegional && isStudentInRegional(row, currentManager.regional_id))
-          )
-          .map((row) => row.id),
+        visibleStudents.map((row) => row.id),
       );
-      students = activeRows.map((row) =>
-        seesAll ||
-        isStudentAssignedToManager(
-          row,
-          String(currentManager.funcional ?? ""),
-        ) ||
-        (Boolean(currentManager.regional_id) &&
-          String(row.regional_id ?? "") === String(currentManager.regional_id))
-          ? privateStudent(row)
-          : publicStudent(row),
-      );
+      students = visibleStudents.map(privateStudent);
       archivedStudents = [];
     }
 

@@ -122,25 +122,10 @@ export async function authorizeStudentWrite(
   if (managerError) throw managerError;
   if (!manager) throw new ProductionHttpError("Gestor nao encontrado.", 403);
 
-  const permissions = (manager.permissoes ?? {}) as Record<string, unknown>;
-  const profile = (student.perfil ?? {}) as Record<string, unknown>;
-  const managerCode = String(manager.funcional ?? "");
   const hasRegional = Boolean(manager.regional_id);
-  const isLiderRegional = manager.tipo_gestor === "lider_regional" || manager.tipo_gestor === "gga";
-  const scopedToRegional = hasRegional && (String(permissions.escopo ?? "") === "regional" || isLiderRegional);
-  
   const sameRegional = hasRegional && String(student.regional_id ?? "") === String(manager.regional_id);
-  
-  const canWrite = scopedToRegional
-    ? sameRegional
-    : manager.tipo_gestor === "gga" ||
-      permissions.todos_estagiarios === true ||
-      String(profile.ga_funcional ?? "") === managerCode ||
-      String(profile.gga_funcional ?? "") === managerCode ||
-      String(student.gestor_funcional ?? "") === managerCode ||
-      sameRegional;
 
-  if (!canWrite) {
+  if (!sameRegional) {
     throw new ProductionHttpError("Sem permissao para este estagiario.", 403);
   }
   return student;

@@ -228,13 +228,14 @@ var DB_LOADED = false;
 
 // ── HELPERS DE REGIONAL ──
 function getEstagiariosAtivos(){
-  var regionalDoGestor = getRegionalDoGerenteRegional();
-  if(isGerenteRegional()){
+  var regionalDoGestor = getRegionalDoGestorLogado();
+  if(modoGestor && gestorLogado && !isGerenteRegional()){
     if(!regionalDoGestor) return [];
     return (S.ests || []).filter(function(e){
       return String(e.regional_id || '') === regionalDoGestor;
     });
   }
+  if(isGerenteRegional() && S.selectedRegionalId === 'all') return [];
   if(!S.selectedRegionalId || S.selectedRegionalId === 'all') return S.ests || [];
   return (S.ests || []).filter(function(e){
     return String(e.regional_id || '') === String(S.selectedRegionalId);
@@ -242,8 +243,8 @@ function getEstagiariosAtivos(){
 }
 
 function getGestoresAtivos(){
-  var regionalDoGestor = getRegionalDoGerenteRegional();
-  if(isGerenteRegional()){
+  var regionalDoGestor = getRegionalDoGestorLogado();
+  if(modoGestor && gestorLogado && !isGerenteRegional()){
     if(!regionalDoGestor) return [];
     return (S.gestores || []).filter(function(g){
       return String(g.regional_id || '') === regionalDoGestor;
@@ -259,10 +260,7 @@ function podeAlternarRegional(){
   if(editor) return true;
   if(modoGestor && gestorLogado){
     var tipo = String(gestorLogado.tipo_gestor || '').toLowerCase();
-    if(tipo === 'lider_regional') return !!gestorLogado.regional_id;
-    if(tipo === 'diretor' || tipo === 'tutor') {
-      return true;
-    }
+    if(tipo === 'lider_regional') return true;
   }
   return false;
 }
@@ -279,15 +277,15 @@ function renderRegionalSelectorUI(){
   }
 
   var isRegionalManager = isGerenteRegional();
-  var regionalDoGestor = getRegionalDoGerenteRegional();
+  var regionalDoGestor = getRegionalDoGestorLogado();
   var list = S.regionais || [];
   if(isRegionalManager){
-    list = list.filter(function(r){ return String(r.id) === regionalDoGestor; });
-    if(regionalDoGestor) S.selectedRegionalId = regionalDoGestor;
+    // O gerente regional navega entre as regionais, mas não usa a visão global consolidada.
+    if(S.selectedRegionalId === 'all') S.selectedRegionalId = regionalDoGestor || (list[0] && list[0].id) || null;
   }
   if(list.length === 0){
-    dropdown.innerHTML = '<option value="all">Todas as Regionais</option>';
-    if(badge) badge.textContent = 'Visão Global';
+    dropdown.innerHTML = '<option value="">Nenhuma regional disponível</option>';
+    if(badge) badge.textContent = 'Nenhuma regional disponível';
     return;
   }
 
@@ -296,7 +294,7 @@ function renderRegionalSelectorUI(){
     var sel = String(r.id) === String(S.selectedRegionalId) ? 'selected' : '';
     html += '<option value="'+escapeAttr(r.id)+'" '+sel+'>'+escapeHtml(r.nome)+'</option>';
   });
-  if(!isRegionalManager){
+  if(editor){
     html += '<option value="all" '+(S.selectedRegionalId === 'all' ? 'selected' : '')+'>🌐 Todas as Regionais (Consolidado)</option>';
   }
   dropdown.innerHTML = html;
@@ -816,8 +814,8 @@ function isGerenteRegional(){
   if(!modoGestor || !gestorLogado) return false;
   return gestorLogado.tipo_gestor === 'lider_regional';
 }
-function getRegionalDoGerenteRegional(){
-  if(!isGerenteRegional()) return '';
+function getRegionalDoGestorLogado(){
+  if(!modoGestor || !gestorLogado) return '';
   return String(gestorLogado.regional_id || '');
 }
 
@@ -5132,15 +5130,10 @@ function gerarContextoIA(){
   var lista = S_.ests || [];
   if(modoGestor_ && gestorLogado_){
     var perm = gestorLogado_.permissoes || {};
-    var _isGGA = (gestorLogado_.tipo_gestor === 'gga');
     var _isGerenteRegional = (gestorLogado_.tipo_gestor === 'lider_regional');
-    if(_isGerenteRegional){
+    if(!_isGerenteRegional){
       var regionalId = String(gestorLogado_.regional_id || '');
       lista = regionalId ? lista.filter(function(e){ return String(e.regional_id || '') === regionalId; }) : [];
-    } else if(!perm.todos_estagiarios && !_isGGA){
-      lista = lista.filter(function(e){
-        return e.perfil && (e.perfil.ga_funcional === gestorLogado_.funcional || e.perfil.gga_funcional === gestorLogado_.funcional);
-      });
     }
   }
 
