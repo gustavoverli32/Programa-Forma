@@ -49,6 +49,18 @@ test("accepts only known legacy settings", () => {
   assert.throws(() => parseLegacySetting({ key: "service_role", value: "secret" }));
 });
 
+test("accepts the regional manager role and rejects unknown manager roles", () => {
+  const manager = parseManagerAdmin({
+    permissions: { trilhas: true, ranking: true, todos_estagiarios: true, configuracoes: false },
+    managerType: "lider_regional",
+    password: "",
+  });
+  assert.equal(manager.managerType, "lider_regional");
+  assert.throws(() =>
+    parseManagerAdmin({ permissions: {}, managerType: "administrador_global", password: "" }),
+  );
+});
+
 test("requires agency when creating or editing a manager", () => {
   const regionalId = "123e4567-e89b-42d3-a456-426614174000";
   assert.deepEqual(

@@ -76,11 +76,10 @@ async function authorizeAppointment(
   if (session.role === "tutora") return data;
   const manager = await loadSessionManager(supabase, session);
   const permissions = (manager.permissoes ?? {}) as Record<string, unknown>;
-  if (
-    data.gestor_id !== manager.id &&
-    manager.tipo_gestor !== "gga" &&
-    permissions.todos_estagiarios !== true
-  ) {
+  const canEditAnyAppointment =
+    manager.tipo_gestor === "gga" ||
+    (manager.tipo_gestor !== "lider_regional" && permissions.todos_estagiarios === true);
+  if (data.gestor_id !== manager.id && !canEditAnyAppointment) {
     throw new ProductionHttpError("Sem permissao para alterar este agendamento.", 403);
   }
   return data;

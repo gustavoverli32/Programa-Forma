@@ -171,14 +171,17 @@ export type ManagerAdminInput = {
     todos_estagiarios: boolean;
     configuracoes: boolean;
   };
-  managerType: "ga" | "gga";
+  managerType: "ga" | "gga" | "lider_regional";
   password: string;
 };
 
 export function parseManagerAdmin(value: unknown): ManagerAdminInput {
   const body = asRecord(value, "Permissoes invalidas.");
   const permissions = asRecord(body.permissions, "Permissoes invalidas.");
-  const managerType = body.managerType === "gga" ? "gga" : "ga";
+  const managerType = body.managerType;
+  if (managerType !== "ga" && managerType !== "gga" && managerType !== "lider_regional") {
+    throw new Error("Tipo de gestor invalido.");
+  }
   const password = cleanString(body.password, "Senha", 128);
   if (password && password.length < 4) throw new Error("Senha deve ter ao menos 4 caracteres.");
   return {

@@ -228,6 +228,13 @@ var DB_LOADED = false;
 
 // ── HELPERS DE REGIONAL ──
 function getEstagiariosAtivos(){
+  var regionalDoGestor = getRegionalDoGerenteRegional();
+  if(isGerenteRegional()){
+    if(!regionalDoGestor) return [];
+    return (S.ests || []).filter(function(e){
+      return String(e.regional_id || '') === regionalDoGestor;
+    });
+  }
   if(!S.selectedRegionalId || S.selectedRegionalId === 'all') return S.ests || [];
   return (S.ests || []).filter(function(e){
     return String(e.regional_id || '') === String(S.selectedRegionalId);
@@ -235,6 +242,13 @@ function getEstagiariosAtivos(){
 }
 
 function getGestoresAtivos(){
+  var regionalDoGestor = getRegionalDoGerenteRegional();
+  if(isGerenteRegional()){
+    if(!regionalDoGestor) return [];
+    return (S.gestores || []).filter(function(g){
+      return String(g.regional_id || '') === regionalDoGestor;
+    });
+  }
   if(!S.selectedRegionalId || S.selectedRegionalId === 'all') return S.gestores || [];
   return (S.gestores || []).filter(function(g){
     return String(g.regional_id || '') === String(S.selectedRegionalId);
@@ -245,7 +259,8 @@ function podeAlternarRegional(){
   if(editor) return true;
   if(modoGestor && gestorLogado){
     var tipo = String(gestorLogado.tipo_gestor || '').toLowerCase();
-    if(tipo === 'diretor' || tipo === 'lider_regional' || tipo === 'tutor') {
+    if(tipo === 'lider_regional') return !!gestorLogado.regional_id;
+    if(tipo === 'diretor' || tipo === 'tutor') {
       return true;
     }
   }
@@ -263,7 +278,13 @@ function renderRegionalSelectorUI(){
     container.style.display = canSwitch ? 'block' : 'none';
   }
 
+  var isRegionalManager = isGerenteRegional();
+  var regionalDoGestor = getRegionalDoGerenteRegional();
   var list = S.regionais || [];
+  if(isRegionalManager){
+    list = list.filter(function(r){ return String(r.id) === regionalDoGestor; });
+    if(regionalDoGestor) S.selectedRegionalId = regionalDoGestor;
+  }
   if(list.length === 0){
     dropdown.innerHTML = '<option value="all">Todas as Regionais</option>';
     if(badge) badge.textContent = 'Visão Global';
@@ -275,7 +296,9 @@ function renderRegionalSelectorUI(){
     var sel = String(r.id) === String(S.selectedRegionalId) ? 'selected' : '';
     html += '<option value="'+escapeAttr(r.id)+'" '+sel+'>'+escapeHtml(r.nome)+'</option>';
   });
-  html += '<option value="all" '+(S.selectedRegionalId === 'all' ? 'selected' : '')+'>🌐 Todas as Regionais (Consolidado)</option>';
+  if(!isRegionalManager){
+    html += '<option value="all" '+(S.selectedRegionalId === 'all' ? 'selected' : '')+'>🌐 Todas as Regionais (Consolidado)</option>';
+  }
   dropdown.innerHTML = html;
 
   var currentReg = list.find(function(r){ return String(r.id) === String(S.selectedRegionalId); });
@@ -789,6 +812,14 @@ function isGGA(){
   if(!modoGestor || !gestorLogado) return false;
   return gestorLogado.tipo_gestor === 'gga';
 }
+function isGerenteRegional(){
+  if(!modoGestor || !gestorLogado) return false;
+  return gestorLogado.tipo_gestor === 'lider_regional';
+}
+function getRegionalDoGerenteRegional(){
+  if(!isGerenteRegional()) return '';
+  return String(gestorLogado.regional_id || '');
+}
 
 function isAniversario(e){
   if(!e.perfil || !e.perfil.mes_aniversario) return false;
@@ -980,7 +1011,7 @@ function renderOverviewKpis(){
   var lista = baseList;
   if(modoGestor && gestorLogado){
     var p = gestorLogado.permissoes || {};
-    if(!p.todos_estagiarios && !isGGA()){
+    if(!p.todos_estagiarios && !isGGA() && !isGerenteRegional()){
       lista = baseList.filter(function(e){ return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional); });
     }
   }
@@ -1033,7 +1064,7 @@ function renderOverviewTrilhaChart(){
   var lista = baseList;
   if(modoGestor && gestorLogado){
     var p = gestorLogado.permissoes || {};
-    if(!p.todos_estagiarios && !isGGA()){
+    if(!p.todos_estagiarios && !isGGA() && !isGerenteRegional()){
       lista = baseList.filter(function(e){ return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional); });
     }
   }
@@ -2421,7 +2452,7 @@ function renderCards(){
   var lista = baseList;
   if(modoGestor && gestorLogado){
     var p = gestorLogado.permissoes || {};
-    if(!p.todos_estagiarios && !isGGA()){
+    if(!p.todos_estagiarios && !isGGA() && !isGerenteRegional()){
       lista = baseList.filter(function(e){
         return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional);
       });
@@ -2840,8 +2871,12 @@ function abrirPermissoesGestor(id){
   document.getElementById('permGestorNome').textContent = g.nome;
 
   // Carregar tipo de gestor
-  document.getElementById('tipoGA').checked = (tipo === 'ga');
-  document.getElementById('tipoGGA').checked = (tipo === 'gga');
+  var tipoGA = document.getElementById('tipoGA');
+  var tipoGGA = document.getElementById('tipoGGA');
+  var tipoLiderRegional = document.getElementById('tipoLiderRegional');
+  tipoGA.checked = (tipo === 'ga');
+  tipoGGA.checked = (tipo === 'gga');
+  tipoLiderRegional.checked = (tipo === 'lider_regional');
 
   // Carregar permissões
   document.getElementById('permTrilhas').checked = !!perms.trilhas;
@@ -2852,31 +2887,27 @@ function abrirPermissoesGestor(id){
   // Limpar campo de nova senha sempre que abrir
   document.getElementById('permNovaSenha').value = '';
 
-  // Listeners para auto-marcar checkboxes quando GGA é selecionado
-  document.getElementById('tipoGA').addEventListener('change', function(){
-    if(this.checked){
-      // GA = usuário controla manualmente, desabilitar auto-check
-      document.getElementById('permTrilhas').disabled = false;
-      document.getElementById('permRanking').disabled = false;
-      document.getElementById('permTodosEstag').disabled = false;
-      document.getElementById('permConfiguracoes').disabled = false;
-    }
-  });
-
-  document.getElementById('tipoGGA').addEventListener('change', function(){
-    if(this.checked){
-      // GGA = auto-marcar todas as permissões
-      document.getElementById('permTrilhas').checked = true;
-      document.getElementById('permRanking').checked = true;
-      document.getElementById('permTodosEstag').checked = true;
-      document.getElementById('permConfiguracoes').checked = true;
-      // Ainda permite o usuário desmarcar se quiser
-      document.getElementById('permTrilhas').disabled = false;
-      document.getElementById('permRanking').disabled = false;
-      document.getElementById('permTodosEstag').disabled = false;
-      document.getElementById('permConfiguracoes').disabled = false;
-    }
-  });
+  function habilitarPermissoesGestor(){
+    ['permTrilhas','permRanking','permTodosEstag','permConfiguracoes'].forEach(function(field){
+      document.getElementById(field).disabled = false;
+    });
+  }
+  tipoGA.onchange = function(){ if(this.checked) habilitarPermissoesGestor(); };
+  tipoGGA.onchange = function(){
+    if(!this.checked) return;
+    ['permTrilhas','permRanking','permTodosEstag','permConfiguracoes'].forEach(function(field){
+      document.getElementById(field).checked = true;
+    });
+    habilitarPermissoesGestor();
+  };
+  tipoLiderRegional.onchange = function(){
+    if(!this.checked) return;
+    // O acesso do gerente regional é limitado no servidor à regional vinculada.
+    document.getElementById('permTrilhas').checked = true;
+    document.getElementById('permRanking').checked = true;
+    document.getElementById('permTodosEstag').checked = true;
+    habilitarPermissoesGestor();
+  };
 
   document.getElementById('permissoesOv').classList.add('open');
 }
@@ -3047,9 +3078,9 @@ function renderGestoresList(){
     var perms = g.permissoes || {};
     var pCount = Object.keys(perms).filter(function(k){ return perms[k]; }).length;
     var tipo = g.tipo_gestor || 'ga';
-    var tipoBg = tipo === 'gga' ? '#FEE2E2' : '#E0F2FE';
-    var tipoColor = tipo === 'gga' ? '#DC2626' : '#0369A1';
-    var tipoLabel = tipo === 'gga' ? '👔 GGA' : '👤 GA';
+    var tipoBg = tipo === 'gga' ? '#FEE2E2' : (tipo === 'lider_regional' ? '#EDE9FE' : '#E0F2FE');
+    var tipoColor = tipo === 'gga' ? '#DC2626' : (tipo === 'lider_regional' ? '#6D28D9' : '#0369A1');
+    var tipoLabel = tipo === 'gga' ? '👔 GGA' : (tipo === 'lider_regional' ? '🧭 Gerente Regional' : '👤 GA');
 
     return '<div class="cad-list-row">'
       +'<div class="cad-list-av" style="background:var(--ink);color:#fff;">'+escapeHtml(g.nome[0].toUpperCase())+'</div>'
@@ -3572,11 +3603,11 @@ function exportToExcelSync(){
   if(!checkedTris.length){ alert('Selecione ao menos um trimestre.'); return; }
 
   // Determinar lista de estagiários (gestor vê só os seus, tutora vê todos)
-  var lista = S.ests;
+  var lista = getEstagiariosAtivos();
   if(modoGestor && gestorLogado){
     var p = gestorLogado.permissoes || {};
-    if(!p.todos_estagiarios && !isGGA()){
-      lista = S.ests.filter(function(e){
+    if(!p.todos_estagiarios && !isGGA() && !isGerenteRegional()){
+      lista = getEstagiariosAtivos().filter(function(e){
         return e.perfil && (e.perfil.ga_funcional === gestorLogado.funcional || e.perfil.gga_funcional === gestorLogado.funcional);
       });
     }
@@ -5102,7 +5133,11 @@ function gerarContextoIA(){
   if(modoGestor_ && gestorLogado_){
     var perm = gestorLogado_.permissoes || {};
     var _isGGA = (gestorLogado_.tipo_gestor === 'gga');
-    if(!perm.todos_estagiarios && !_isGGA){
+    var _isGerenteRegional = (gestorLogado_.tipo_gestor === 'lider_regional');
+    if(_isGerenteRegional){
+      var regionalId = String(gestorLogado_.regional_id || '');
+      lista = regionalId ? lista.filter(function(e){ return String(e.regional_id || '') === regionalId; }) : [];
+    } else if(!perm.todos_estagiarios && !_isGGA){
       lista = lista.filter(function(e){
         return e.perfil && (e.perfil.ga_funcional === gestorLogado_.funcional || e.perfil.gga_funcional === gestorLogado_.funcional);
       });
