@@ -1,4 +1,8 @@
-import { parseProductionBatchInput, summarizeProduction } from "@/domain/production";
+import {
+  hasProductionEntries,
+  parseProductionBatchInput,
+  summarizeProduction,
+} from "@/domain/production";
 import { productTargetRef } from "@/domain/production-view";
 import { markProductionVerified } from "@/domain/production-deadline";
 import { createSupabaseAdminClient } from "@/lib/supabase-server";
@@ -105,7 +109,7 @@ export async function POST(request: Request) {
 
     let profile = (student.perfil ?? {}) as Record<string, unknown>;
     let confirmed = false;
-    if (input.entries.some((entry) => entry.value > 0)) {
+    if (hasProductionEntries(input)) {
       const verification = markProductionVerified(profile, config);
       profile = verification.profile;
       confirmed = verification.confirmed;

@@ -11,6 +11,13 @@ export type ProductionBatchInput = {
   entries: ProductionEntry[];
 };
 
+// A confirmação semanal representa que o gestor revisou e salvou a produção.
+// Um lançamento com valor zero ainda é uma atualização válida: não houve resultado,
+// mas a tabela foi conferida. A edição de alvos não envia entries e não confirma.
+export function hasProductionEntries(input: Pick<ProductionBatchInput, "entries">) {
+  return input.entries.length > 0;
+}
+
 export type ProductionRow = {
   estagiario_id: string | number | null;
   tri_ref: string;

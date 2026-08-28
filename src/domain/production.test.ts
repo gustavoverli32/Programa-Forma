@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseProductionBatchInput, summarizeProduction } from "./production.ts";
+import {
+  hasProductionEntries,
+  parseProductionBatchInput,
+  summarizeProduction,
+} from "./production.ts";
 
 test("validates and deduplicates production entries", () => {
   const parsed = parseProductionBatchInput({
@@ -77,4 +81,16 @@ test("allows production to be cleared to zero", () => {
   );
   assert.equal(summary.credit, 0);
   assert.equal(summary.score, 0);
+});
+
+test("treats any saved production field as a weekly update, including zero", () => {
+  assert.equal(
+    hasProductionEntries({ entries: [{ ref: "2026-Q3-M2-S1-MOD0", value: 150 }] }),
+    true,
+  );
+  assert.equal(
+    hasProductionEntries({ entries: [{ ref: "2026-Q3-M2-S1-OUT0", value: 0 }] }),
+    true,
+  );
+  assert.equal(hasProductionEntries({ entries: [] }), false);
 });
